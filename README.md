@@ -1,7 +1,7 @@
 # CatBox-RS
 My attempt at a physics engine sandbox based on verlet integration. <br>
 This is also a continuation of my Java attempt [CatBox](https://github.com/CoffeeCatRailway/CatBox), I decided to try remaking this in Rust for two reasons.
-1. I ran into limitations using Java
+1. I ran into limitations using Java and got bored using it.
 2. I discovered Rust and got fixated...
 
 ### Features:
