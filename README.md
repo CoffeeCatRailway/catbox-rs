@@ -1,0 +1,14 @@
+# CatBox-RS
+My attempt at a physics engine sandbox based on verlet integration. <br>
+This is also a continuation of my Java attempt [CatBox](https://github.com/CoffeeCatRailway/CatBox), I decided to try remaking this in Rust for two reasons.
+1. I ran into limitations using Java
+2. I discovered Rust and got fixated...
+
+### Features:
+- [ ] Line Renderer for debug info
+- [ ] Simple Shape Renderer
+- [ ] Simple object (ball) with collision
+- [ ] Constraints (Fixed distance & Spring)
+- [ ] Constraint collision (Box)
+- [ ] Editor/Interface to interact with and add/remove objects
+- [ ] Environment controls (Gravity, Pause/Step, Step time or DT)
