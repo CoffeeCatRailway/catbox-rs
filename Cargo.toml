@@ -2,5 +2,22 @@
 name = "catbox-rs"
 version = "0.1.0"
 edition = "2024"
+readme = "README.md"
+license = "GPL-3"
+license-file = "LICENSE"
+repository = "https://github.com/CoffeeCatRailway/catbox-rs"
+homepage = "https://github.com/CoffeeCatRailway/catbox-rs"
 
 [dependencies]
+glow = { version = "0.16.0", default-features = false }
+glam = "0.30.9"
+glutin = "0.32.3"
+glutin-winit = "0.5.0"
+winit = { version = "0.30.12", features = ["rwh_06"] }
+winit_input_helper = "0.17.0"
+raw-window-handle = "0.6.2"
+
+log = "0.4.29"
+log2 = "0.2.2"
+chrono = "0.4.42"
+log-panics = { version = "2.1.0", features = ["with-backtrace"] }
