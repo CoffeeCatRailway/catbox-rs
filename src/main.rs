@@ -1,5 +1,8 @@
 #![allow(non_snake_case)]
 
+mod render;
+mod simulation;
+
 use glutin::config::ConfigTemplateBuilder;
 use glutin::context::{ContextApi, ContextAttributesBuilder, PossiblyCurrentContext};
 use glutin::display::GetGlDisplay;
@@ -16,6 +19,7 @@ use winit::event::{DeviceEvent, DeviceId, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes, WindowId};
 use winit_input_helper::WinitInputHelper;
+use crate::simulation::Simulation;
 
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = 600;
@@ -25,7 +29,7 @@ const FPS: u32 = 60;
 struct State {
 	glSurface: Surface<WindowSurface>,
 	glContext: PossiblyCurrentContext,
-	// simulation: Simulation
+	simulation: Simulation,
 }
 
 struct App {
@@ -97,7 +101,7 @@ impl ApplicationHandler for App {
 			})))
 			.build(rwh);
 		
-		let (window, _gl, glSurface, glContext) = unsafe {
+		let (window, gl, glSurface, glContext) = unsafe {
 			let notCurrentGlContext = glDisplay
 				.create_context(&glConfig, &contextAttributes)
 				.unwrap();
@@ -118,32 +122,32 @@ impl ApplicationHandler for App {
 			(window, gl, glSurface, glContext)
 		};
 		
-		// let simulation = Simulation::new(window.clone(), gl.clone(), (WIDTH, HEIGHT));
+		let simulation = Simulation::new(window.clone(), gl.clone(), (WIDTH, HEIGHT));
 		
 		self.window = Some(window.clone());
 		self.state = Some(State {
 			glSurface,
 			glContext,
-			// simulation,
+			simulation,
 		});
 	}
 	
 	fn window_event(&mut self, eventLoop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
 		self.input.process_window_event(&event);
 		match event {
-			// WindowEvent::Resized(size) => {
-			// 	self.requestRedraw = true;
-			// 	if let Some(ref mut state) = self.state {
-			// 		state.simulation.resize(size.width, size.height);
-			// 	}
-			// },
+			WindowEvent::Resized(size) => {
+				self.requestRedraw = true;
+				if let Some(ref mut state) = self.state {
+					state.simulation.resize(size.width, size.height);
+				}
+			},
 			WindowEvent::CloseRequested => {
 				info!("The close button was pressed; stopping");
 				eventLoop.exit();
 			},
 			WindowEvent::RedrawRequested => {
 				if let Some(ref mut state) = self.state {
-					// state.simulation.render();
+					state.simulation.render();
 					state.glSurface.swap_buffers(&state.glContext).unwrap();
 				}
 				
@@ -165,10 +169,10 @@ impl ApplicationHandler for App {
 			self.requestRedraw = false;
 			
 			let dt = self.instant.elapsed().as_secs_f64();
-			info!("Delta time: {}s", dt);
-			// if let Some(ref mut state) = self.state {
-			// 	state.simulation.update(dt, &self.input, eventLoop);
-			// }
+			// info!("Delta time: {}s", dt);
+			if let Some(ref mut state) = self.state {
+				state.simulation.update(dt, &self.input, eventLoop);
+			}
 		}
 		
 		if !self.waitCancelled {
@@ -179,9 +183,9 @@ impl ApplicationHandler for App {
 	}
 	
 	fn exiting(&mut self, _eventLoop: &ActiveEventLoop) {
-		// if let Some(ref mut state) = self.state {
-		// 	state.simulation.destroy();
-		// }
+		if let Some(ref mut state) = self.state {
+			state.simulation.destroy();
+		}
 	}
 }
 

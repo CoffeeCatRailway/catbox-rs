@@ -5,7 +5,7 @@ This is also a continuation of my Java attempt [CatBox](https://github.com/Coffe
 2. I discovered Rust and got fixated...
 
 ### Features:
-- [ ] Line Renderer for debug info
+- [x] Line Renderer for debug info
 - [ ] Simple Shape Renderer
 - [ ] Simple object (ball) with collision
 - [ ] Constraints (Fixed distance & Spring)

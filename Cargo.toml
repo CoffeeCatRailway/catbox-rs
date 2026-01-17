@@ -11,6 +11,8 @@ homepage = "https://github.com/CoffeeCatRailway/catbox-rs"
 [dependencies]
 glow = { version = "0.16.0", default-features = false }
 glam = "0.30.9"
+bytemuck = "1.24.0"
+
 glutin = "0.32.3"
 glutin-winit = "0.5.0"
 winit = { version = "0.30.12", features = ["rwh_06"] }
