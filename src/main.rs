@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-mod render;
+mod graphics;
 mod simulation;
 
 use glutin::config::ConfigTemplateBuilder;

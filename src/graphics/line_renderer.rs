@@ -4,7 +4,7 @@ use std::rc::Rc;
 use glam::{Mat4, Vec2, Vec3};
 use glow::{Buffer, Context, HasContext, VertexArray};
 use log::info;
-use crate::render::Shader;
+use crate::graphics::Shader;
 
 pub struct LineRenderer {
 	gl: Rc<Context>,

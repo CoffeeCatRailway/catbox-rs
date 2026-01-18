@@ -7,7 +7,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
-use crate::render::LineRenderer;
+use crate::graphics::LineRenderer;
 
 pub struct Simulation {
 	window: Rc<Window>,
