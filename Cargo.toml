@@ -9,7 +9,7 @@ repository = "https://github.com/CoffeeCatRailway/catbox-rs"
 homepage = "https://github.com/CoffeeCatRailway/catbox-rs"
 
 [dependencies]
-glow = { version = "0.16.0", default-features = false }
+glow = "0.16.0"
 glam = "0.30.9"
 bytemuck = "1.24.0"
 

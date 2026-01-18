@@ -44,11 +44,12 @@ impl Simulation {
 	}
 	
 	pub fn resize(&mut self, _width: u32, _height: u32) {
-		// Stretches/Shrinks on Arch Linux Wayland, but works fine without it
+		// TODO: Fix stretching on Linux. Test on Arch Linux Wayland
 		#[cfg(not(target_os = "linux"))]
 		unsafe {
 			// info!("{} {}", width, height);
 			// self.gl.viewport(0, 0, width as i32, height as i32);
+			// let scaleFactor = self.window.scale_factor();
 			let size = self.window.inner_size();
 			// info!("{} {}", size.width, size.height);
 			self.gl.viewport(0, 0, size.width as i32, size.height as i32);
@@ -83,9 +84,9 @@ impl Simulation {
 		}
 		
 		let aspect = self.window.inner_size().width as f32 / self.window.inner_size().height as f32;
-		let projection = Mat4::orthographic_rh(aspect * -2.0, aspect * 2.0, -2.0, 2.0, 0.0, 1.0);//Mat4::perspective_rh(self.camera.fov.to_radians(), aspect, 0.1, 100.0);
-		let view = Mat4::IDENTITY;//self.camera.getViewMatrix();
-		let pvm = projection * view;
+		let projection = Mat4::orthographic_rh(aspect * -1.0, aspect * 1.0, -1.0, 1.0, 0.0, 1.0);//Mat4::perspective_rh(self.camera.fov.to_radians(), aspect, 0.1, 100.0);
+		// let view = self.camera.getViewMatrix();
+		let pvm = projection;// * view;
 		self.lineRenderer.drawFlush(&pvm);
 	}
 	
