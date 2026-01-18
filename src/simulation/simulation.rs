@@ -3,6 +3,7 @@
 use std::rc::Rc;
 use glam::{vec2, vec3, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
+use log2::info;
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::Window;
@@ -17,11 +18,12 @@ pub struct Simulation {
 }
 
 impl Simulation {
-	pub fn new(window: Rc<Window>, gl: Rc<Context>, (width, height): (u32, u32)) -> Self {
+	pub fn new(window: Rc<Window>, gl: Rc<Context>, (_width, _height): (u32, u32)) -> Self {
 		unsafe {
-			gl.viewport(0, 0, width as i32, height as i32); // `window.inner_size()` return (0, 0) on wasm
-			// gl.viewport(0, 0, window.inner_size().width as i32, window.inner_size().height as i32);
-			// info!("{:?}", window.inner_size());
+			// gl.viewport(0, 0, width as i32, height as i32);
+			let size = window.inner_size();
+			gl.viewport(0, 0, size.width as i32, size.height as i32);
+			info!("Initial viewport: {}/{}", size.width, size.height);
 			
 			gl.line_width(10.0);
 			// gl.enable(glow::DEPTH_TEST);

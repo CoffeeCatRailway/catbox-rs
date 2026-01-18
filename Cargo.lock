@@ -202,7 +202,6 @@ dependencies = [
  "glow",
  "glutin",
  "glutin-winit",
- "log",
  "log-panics",
  "log2",
  "raw-window-handle",
