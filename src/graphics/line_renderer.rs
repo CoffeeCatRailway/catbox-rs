@@ -39,7 +39,7 @@ impl LineRenderer {
 	pub fn new(gl: Rc<Context>, capacity: usize) -> Result<Self, String> {
 		unsafe {
 			let vec = Vec::with_capacity(capacity);
-			let shader = Shader::newVertFrag(gl.clone(), SHADER_VERT, SHADER_FRAG)?;
+			let shader = Shader::new(gl.clone()).addFromSource(glow::VERTEX_SHADER, SHADER_VERT).addFromSource(glow::FRAGMENT_SHADER, SHADER_FRAG).link();
 			
 			let vao = gl.create_vertex_array().map_err(|e| format!("Failed to create vertex array: {}", e))?;
 			let vbo = gl.create_named_buffer().map_err(|e| format!("Failed to create buffer object: {}", e))?;

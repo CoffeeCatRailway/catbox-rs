@@ -3,66 +3,91 @@
 use std::rc::Rc;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use glow::{Context, HasContext, Program};
+use log::{error, info};
 
 type GlShader = glow::Shader;
 
 pub struct Shader {
 	gl: Rc<Context>,
-	pub program: Program,
+	program: Program,
 	destroyed: bool,
+	linked: bool,
+	shaders: Vec<GlShader>,
 }
 
 #[allow(dead_code)]
 impl Shader {
-	pub fn newVertFrag(gl: Rc<Context>, vertSource: &str, fragSource: &str) -> Result<Self, String> {
+	pub fn new(gl: Rc<Context>) -> Self {
 		unsafe {
-			let program = gl.create_program().map_err(|e| format!("Failed to create program: {}", e))?;
-			
-			let vs = compileShader(&gl, vertSource, glow::VERTEX_SHADER)?;
-			let fs = compileShader(&gl, fragSource, glow::FRAGMENT_SHADER)?;
-			
-			gl.attach_shader(program, vs);
-			gl.attach_shader(program, fs);
-			
-			gl.bind_frag_data_location(program, glow::COLOR_ATTACHMENT0, "o_color");
-			gl.link_program(program);
-			
-			gl.delete_shader(vs);
-			gl.delete_shader(fs);
-			
-			Ok(Shader {
+			info!("Creating shader program...");
+			let program = gl.create_program().expect("Failed create shader program!");
+			Shader {
 				gl,
 				program,
 				destroyed: false,
-			})
+				linked: false,
+				shaders: Vec::new(),
+			}
 		}
 	}
 	
-	pub fn newVertGeomFrag(gl: Rc<Context>, vertexPath: &str, geometryPath: &str, fragmentPath: &str) -> Result<Self, String> {
-		unsafe {
-			let program = gl.create_program().map_err(|e| format!("Failed to create program: {}", e))?;
-			
-			let vs = compileShader(&gl, vertexPath, glow::VERTEX_SHADER)?;
-			let gs = compileShader(&gl, geometryPath, glow::GEOMETRY_SHADER)?;
-			let fs = compileShader(&gl, fragmentPath, glow::FRAGMENT_SHADER)?;
-			
-			gl.attach_shader(program, vs);
-			gl.attach_shader(program, gs);
-			gl.attach_shader(program, fs);
-			
-			gl.bind_frag_data_location(program, glow::COLOR_ATTACHMENT0, "o_color");
-			gl.link_program(program);
-			
-			gl.delete_shader(vs);
-			gl.delete_shader(gs);
-			gl.delete_shader(fs);
-			
-			Ok(Shader {
-				gl,
-				program,
-				destroyed: false,
-			})
+	pub fn addFromSource(mut self, stype: u32, source: &str) -> Self {
+		if self.linked {
+			error!("Shader program already linked! You can not attach more shaders!");
+			return self;
 		}
+		// let src = fs::read_to_string(path).map_err(|e| format!("Failed to read shader file ({}): {}", path, e))?;
+		unsafe {
+			info!("Attaching {} shader to program {}...", match stype {
+				glow::VERTEX_SHADER => "vertex",
+				glow::TESS_CONTROL_SHADER => "tess-control",
+				glow::TESS_EVALUATION_SHADER => "tess-evaluation",
+				glow::GEOMETRY_SHADER => "geometry",
+				glow::FRAGMENT_SHADER => "fragment",
+				glow::COMPUTE_SHADER => "compute",
+				_ => "UNKNOWN",
+			}, self.program.0);
+			
+			let shader = self.gl.create_shader(stype).expect(format!("Failed to create shader of type {}!", stype).as_str());
+			self.gl.shader_source(shader, source);
+			self.gl.compile_shader(shader);
+			
+			if !self.gl.get_shader_compile_status(shader) {
+				let error = self.gl.get_shader_info_log(shader);
+				panic!("Failed to compile shader: {}", error);
+			}
+			self.gl.attach_shader(self.program, shader);
+			self.shaders.push(shader);
+		}
+		self
+	}
+	
+	pub fn link(mut self) -> Self {
+		if self.linked {
+			error!("Shader program already linked!");
+			return self;
+		}
+		unsafe {
+			info!("Linking shader program {}...", self.program.0);
+			
+			self.gl.bind_frag_data_location(self.program, glow::COLOR_ATTACHMENT0, "o_color");
+			self.gl.link_program(self.program);
+			if !self.gl.get_program_link_status(self.program) {
+				let error = self.gl.get_program_info_log(self.program);
+				panic!("Failed to link shader: {}", error);
+			}
+			
+			for shader in self.shaders.iter() {
+				self.gl.delete_shader(*shader);
+			}
+			self.shaders = Vec::new(); // Clear and deallocate
+			self.linked = true;
+		}
+		self
+	}
+	
+	pub fn program(&self) -> &Program {
+		&self.program
 	}
 	
 	pub fn bind(&self) {
@@ -76,9 +101,10 @@ impl Shader {
 			return;
 		}
 		unsafe {
+			info!("Deleting shader program {}", self.program.0);
 			self.gl.delete_program(self.program);
+			self.destroyed = true;
 		}
-		self.destroyed = true;
 	}
 	
 	pub fn getAttribLocation(&self, name: &str) -> Option<u32> {
@@ -147,22 +173,6 @@ impl Shader {
 			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
 			self.gl.uniform_matrix_4_f32_slice(loc, false, &mat.to_cols_array());
 		}
-	}
-}
-
-fn compileShader(gl: &Context, source: &str, shaderType: u32) -> Result<GlShader, String> {
-	// let src = fs::read_to_string(path).map_err(|e| format!("Failed to read shader file ({}): {}", path, e))?;
-	
-	unsafe {
-		let shader = gl.create_shader(shaderType).map_err(|e| format!("Failed to create shader: {}", e))?;
-		gl.shader_source(shader, source);
-		gl.compile_shader(shader);
-		
-		if !gl.get_shader_compile_status(shader) {
-			let error = gl.get_shader_info_log(shader);
-			return Err(format!("Failed to compile shader: {}", error));
-		}
-		Ok(shader)
 	}
 }
 
