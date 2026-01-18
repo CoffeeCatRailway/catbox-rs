@@ -12,7 +12,7 @@ use glutin_winit::{DisplayBuilder, GlWindow};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
-use log2::info;
+use log::info;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::{DeviceEvent, DeviceId, StartCause, WindowEvent};
@@ -190,16 +190,7 @@ impl ApplicationHandler for App {
 }
 
 fn main() {
-    let _log2 = log2::open("latest.log")
-		.rotate(2)
-		.tee(true)
-		.module(true)
-		.module_with_line(true)
-		.module_filter(|_| true)
-		.compress(true)
-		.format(|record, _tee| format!("[{}] [{}] {}\n", chrono::Local::now(), record.level(), record.args()))
-		.level("info")
-		.start();
+	env_logger::builder().filter_level(log::LevelFilter::Info).init();
 	log_panics::init();
 	
 	info!("Hello, world!");

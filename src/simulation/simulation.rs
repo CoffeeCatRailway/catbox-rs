@@ -3,7 +3,7 @@
 use std::rc::Rc;
 use glam::{vec2, vec3, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
-use log2::info;
+use log::info;
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::Window;
