@@ -85,7 +85,8 @@ impl Simulation {
 			self.gl.clear_color(0.0, 0.0, 0.0, 1.0);
 		}
 		
-		let aspect = self.window.inner_size().width as f32 / self.window.inner_size().height as f32;
+		let size = self.window.inner_size();
+		let aspect = size.width as f32 / size.height as f32;
 		let projection = Mat4::orthographic_rh(aspect * -1.0, aspect * 1.0, -1.0, 1.0, 0.0, 1.0);//Mat4::perspective_rh(self.camera.fov.to_radians(), aspect, 0.1, 100.0);
 		// let view = self.camera.getViewMatrix();
 		let pvm = projection;// * view;
