@@ -21,8 +21,8 @@ use winit::window::{Window, WindowAttributes, WindowId};
 use winit_input_helper::WinitInputHelper;
 use crate::simulation::Simulation;
 
-const WIDTH: u32 = 800;
-const HEIGHT: u32 = 600;
+const WIN_WIDTH: u32 = 800;
+const WIN_HEIGHT: u32 = 600;
 
 const FPS: u32 = 60;
 
@@ -70,7 +70,8 @@ impl ApplicationHandler for App {
 		}
 		
 		let attributes = WindowAttributes::default()
-			.with_inner_size(PhysicalSize::new(WIDTH, HEIGHT))
+			// .with_fullscreen(Some(Fullscreen::Borderless(None)))
+			.with_inner_size(PhysicalSize::new(WIN_WIDTH, WIN_HEIGHT))
 			.with_title("CatBox Native");
 		
 		let template = ConfigTemplateBuilder::new();
@@ -115,14 +116,11 @@ impl ApplicationHandler for App {
 			let glContext = notCurrentGlContext.make_current(&glSurface).unwrap();
 			let gl = Rc::new(glow::Context::from_loader_function_cstr(|s| glDisplay.get_proc_address(s)));
 			// glSurface.set_swap_interval(&glContext, SwapInterval::Wait(NonZeroU32::new(1).unwrap())).unwrap();
-			// glSurface.set_swap_interval(&glContext, SwapInterval::DontWait).unwrap();
-			
-			// gl.viewport(0, 0, 800, 600);
 			
 			(window, gl, glSurface, glContext)
 		};
 		
-		let simulation = Simulation::new(window.clone(), gl.clone(), (WIDTH, HEIGHT));
+		let simulation = Simulation::new(window.clone(), gl.clone());
 		
 		self.window = Some(window.clone());
 		self.state = Some(State {

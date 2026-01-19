@@ -18,9 +18,8 @@ pub struct Simulation {
 }
 
 impl Simulation {
-	pub fn new(window: Rc<Window>, gl: Rc<Context>, (_width, _height): (u32, u32)) -> Self {
+	pub fn new(window: Rc<Window>, gl: Rc<Context>) -> Self {
 		unsafe {
-			// gl.viewport(0, 0, width as i32, height as i32);
 			let size = window.inner_size();
 			gl.viewport(0, 0, size.width as i32, size.height as i32);
 			info!("Initial viewport: {}/{}", size.width, size.height);
