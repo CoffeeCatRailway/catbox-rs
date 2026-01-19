@@ -45,15 +45,19 @@ impl Simulation {
 	}
 	
 	pub fn resize(&mut self, _width: u32, _height: u32) {
-		// TODO: Fix stretching on Linux. Tested on Arch Linux Wayland
+		// TODO: WTF?! Fix stretching on Linux. Tested on Arch Linux Wayland
 		#[cfg(not(target_os = "linux"))]
 		unsafe {
-			// info!("{} {}", width, height);
-			// self.gl.viewport(0, 0, width as i32, height as i32);
-			// let scaleFactor = self.window.scale_factor();
 			let size = self.window.inner_size();
 			// info!("{} {}", size.width, size.height);
 			self.gl.viewport(0, 0, size.width as i32, size.height as i32);
+			
+			// #[cfg(target_os = "linux")]
+			// {
+			// 	let max = self.gl.get_parameter_i32(glow::MAX_VIEWPORTS);
+			// 	// info!("{}", max);
+			// 	self.gl.viewport_f32_slice(0, max, &[[0.0, 0.0, size.width as f32, size.height as f32]]);
+			// }
 		}
 	}
 	
@@ -76,6 +80,9 @@ impl Simulation {
 		self.lineRenderer.pushLine2(p2, c2, p3, c3);
 		self.lineRenderer.pushLine2(p3, c3, p4, c4);
 		self.lineRenderer.pushLine2(p4, c4, p1, c1);
+		
+		self.lineRenderer.pushLine2(p1, c1, p3, c3);
+		self.lineRenderer.pushLine2(p2, c2, p4, c4);
 	}
 	
 	pub fn render(&mut self) {
