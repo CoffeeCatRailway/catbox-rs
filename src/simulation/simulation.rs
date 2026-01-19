@@ -45,7 +45,7 @@ impl Simulation {
 	}
 	
 	pub fn resize(&mut self, _width: u32, _height: u32) {
-		// TODO: Fix stretching on Linux. Test on Arch Linux Wayland
+		// TODO: Fix stretching on Linux. Tested on Arch Linux Wayland
 		#[cfg(not(target_os = "linux"))]
 		unsafe {
 			// info!("{} {}", width, height);
