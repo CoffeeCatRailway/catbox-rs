@@ -25,6 +25,7 @@ const WIN_WIDTH: u32 = 800;
 const WIN_HEIGHT: u32 = 600;
 
 const FPS: u32 = 60;
+const TIME_STEP: f64 = 1.0 / FPS as f64;
 
 struct State {
 	glSurface: Surface<WindowSurface>,
@@ -162,26 +163,33 @@ impl ApplicationHandler for App {
 	fn about_to_wait(&mut self, eventLoop: &ActiveEventLoop) {
 		self.input.end_step();
 		
+		if let Some(ref mut state) = self.state {
+			let dt = self.input.delta_time().unwrap().as_secs_f64();
+			// info!("Delta time: {}s", dt);
+			state.simulation.handleInput(dt, &self.input, eventLoop);
+		}
+		
 		if self.requestRedraw && !self.waitCancelled {
 			self.window.as_ref().unwrap().request_redraw();
 			self.requestRedraw = false;
 			
-			let dt = self.instant.elapsed().as_secs_f64();
-			// info!("Delta time: {}s", dt);
 			if let Some(ref mut state) = self.state {
-				state.simulation.update(dt, &self.input, eventLoop);
+				let dt = TIME_STEP;//self.instant.elapsed().as_secs_f64();
+				// info!("Delta time: {}s", dt);
+				state.simulation.update(dt, eventLoop);
 			}
 		}
 		
 		if !self.waitCancelled {
-			eventLoop.set_control_flow(ControlFlow::WaitUntil(Instant::now() + Duration::from_secs_f64(1.0 / FPS as f64)));
-			self.requestRedraw = true;
 			self.instant = Instant::now();
+			eventLoop.set_control_flow(ControlFlow::WaitUntil(self.instant + Duration::from_secs_f64(TIME_STEP)));
+			self.requestRedraw = true;
 		}
 	}
 	
 	fn exiting(&mut self, _eventLoop: &ActiveEventLoop) {
 		if let Some(ref mut state) = self.state {
+			info!("Exiting");
 			state.simulation.destroy();
 		}
 	}
