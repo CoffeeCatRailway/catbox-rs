@@ -26,7 +26,7 @@ pub struct LineRenderer {
  * - float3 color2
  *
  * Floats: 6 // Per Vertex + Color
- * Bytes: 48
+ * Bytes: 48 (24, but it's doubled as a line has two ends)
  */
 const FLOATS: usize = 6;
 const FLOAT_SIZE: usize = size_of::<f32>();
@@ -34,7 +34,7 @@ const FLOAT_SIZE: usize = size_of::<f32>();
 const SHADER_VERT: &str = include_str!("../../resources/shaders/line_renderer.vert");
 const SHADER_FRAG: &str = include_str!("../../resources/shaders/line_renderer.frag");
 
-#[allow(dead_code)]
+#[allow(unused)]
 impl LineRenderer {
 	pub fn new(gl: Rc<Context>, capacity: usize) -> Result<Self, String> {
 		unsafe {
@@ -123,7 +123,7 @@ impl LineRenderer {
 	}
 	
 	pub fn drawFlush(&mut self, pvMatrix: &Mat4) {
-		if self.vec.len() < FLOATS * 2 || self.floatsPushed < FLOATS * 2 {
+		if !self.enabled || self.vec.len() < FLOATS * 2 || self.floatsPushed < FLOATS * 2 {
 			return;
 		}
 		

@@ -7,7 +7,7 @@ This is also a continuation of my Java attempt [CatBox](https://github.com/Coffe
 ### Features:
 - [x] Line Renderer for debug info
 - [x] Camera controller
-- [ ] Primitive Shape Renderer (Circle, Box, Triangle)
+- [x] Primitive Shape Renderer (Circle, Box, Triangle-WIP)
 - [ ] Simple object (ball) with collision
 - [ ] Constraints (Fixed distance & Spring)
 - [ ] Constraint collision (Box)

@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use std::rc::Rc;
-use glam::{vec3, Vec3};
+use glam::{vec3, Vec2, Vec3};
 use glow::{Context, HasContext};
 use log::info;
 use winit::dpi::PhysicalPosition;
@@ -9,7 +9,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::{CursorGrabMode, Window};
 use winit_input_helper::WinitInputHelper;
-use crate::graphics::LineRenderer;
+use crate::graphics::{LineRenderer, ShapeRenderer};
 use crate::simulation::camera::{Camera, Direction, Projection};
 
 pub struct Simulation {
@@ -21,6 +21,7 @@ pub struct Simulation {
 	view2D: bool,
 	
 	lineRenderer: LineRenderer,
+	shapeRenderer: ShapeRenderer,
 	time: f64,
 }
 
@@ -42,6 +43,7 @@ impl Simulation {
 		};
 		
 		let lineRenderer = LineRenderer::new(gl.clone(), 1024).unwrap();
+		let shapeRenderer = ShapeRenderer::new(gl.clone(), 1024).unwrap();
 		
 		Simulation {
 			window,
@@ -52,6 +54,7 @@ impl Simulation {
 			view2D: false,
 			
 			lineRenderer,
+			shapeRenderer,
 			time: 0.0,
 		}
 	}
@@ -230,6 +233,8 @@ impl Simulation {
 			
 			// self.lineRenderer.pushLine3(Vec3::ZERO, Vec3::ONE, self.camera.pos + self.camera.front, Vec3::ONE);
 		}
+		
+		self.shapeRenderer.pushCircle(Vec2::ZERO, Vec3::ONE, 1.0, 0.1);
 	}
 	
 	pub fn render(&mut self) {
@@ -253,10 +258,14 @@ impl Simulation {
 		let view = self.camera.getViewMatrix();
 		
 		let pvm = projection * view;
+		self.shapeRenderer.drawFlush(&pvm);
 		self.lineRenderer.drawFlush(&pvm);
 	}
 	
 	pub fn destroy(&mut self) {
+		self.setMouseCaptured(false);
+		
 		self.lineRenderer.destroy();
+		self.shapeRenderer.destroy();
 	}
 }
