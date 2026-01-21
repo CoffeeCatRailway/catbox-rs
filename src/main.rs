@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 mod graphics;
-mod simulation;
+mod window;
 
 use glutin::config::ConfigTemplateBuilder;
 use glutin::context::{ContextApi, ContextAttributesBuilder, PossiblyCurrentContext};
@@ -19,7 +19,7 @@ use winit::event::{DeviceEvent, DeviceId, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes, WindowId};
 use winit_input_helper::WinitInputHelper;
-use crate::simulation::Simulation;
+use crate::window::ViewportTest;
 
 const WIN_WIDTH: u32 = 800;
 const WIN_HEIGHT: u32 = 600;
@@ -30,7 +30,7 @@ const TIME_STEP: f64 = 1.0 / FPS as f64;
 struct State {
 	glSurface: Surface<WindowSurface>,
 	glContext: PossiblyCurrentContext,
-	simulation: Simulation,
+	viewport: ViewportTest,
 }
 
 struct App {
@@ -121,13 +121,13 @@ impl ApplicationHandler for App {
 			(window, gl, glSurface, glContext)
 		};
 		
-		let simulation = Simulation::new(window.clone(), gl.clone());
+		let viewport = ViewportTest::new(window.clone(), gl.clone());
 		
 		self.window = Some(window.clone());
 		self.state = Some(State {
 			glSurface,
 			glContext,
-			simulation,
+			viewport,
 		});
 	}
 	
@@ -137,7 +137,7 @@ impl ApplicationHandler for App {
 			WindowEvent::Resized(size) => {
 				self.requestRedraw = true;
 				if let Some(ref mut state) = self.state {
-					state.simulation.resize(size.width, size.height);
+					state.viewport.resize(size.width, size.height);
 				}
 			},
 			WindowEvent::CloseRequested => {
@@ -146,7 +146,7 @@ impl ApplicationHandler for App {
 			},
 			WindowEvent::RedrawRequested => {
 				if let Some(ref mut state) = self.state {
-					state.simulation.render();
+					state.viewport.render();
 					state.glSurface.swap_buffers(&state.glContext).unwrap();
 				}
 				
@@ -166,7 +166,7 @@ impl ApplicationHandler for App {
 		if let Some(ref mut state) = self.state {
 			let dt = self.input.delta_time().unwrap().as_secs_f64();
 			// info!("Delta time: {}s", dt);
-			state.simulation.handleInput(dt, &self.input, eventLoop);
+			state.viewport.handleInput(dt, &self.input, eventLoop);
 		}
 		
 		if self.requestRedraw && !self.waitCancelled {
@@ -176,7 +176,7 @@ impl ApplicationHandler for App {
 			if let Some(ref mut state) = self.state {
 				let dt = TIME_STEP;//self.instant.elapsed().as_secs_f64();
 				// info!("Delta time: {}s", dt);
-				state.simulation.update(dt, eventLoop);
+				state.viewport.update(dt, eventLoop);
 			}
 		}
 		
@@ -190,7 +190,7 @@ impl ApplicationHandler for App {
 	fn exiting(&mut self, _eventLoop: &ActiveEventLoop) {
 		if let Some(ref mut state) = self.state {
 			info!("Exiting");
-			state.simulation.destroy();
+			state.viewport.destroy();
 		}
 	}
 }

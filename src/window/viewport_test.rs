@@ -11,9 +11,9 @@ use winit::keyboard::KeyCode;
 use winit::window::{CursorGrabMode, Window};
 use winit_input_helper::WinitInputHelper;
 use crate::graphics::{LineRenderer, ShapeRenderer};
-use crate::simulation::camera::{Camera, Direction, Projection};
+use crate::window::camera::{Camera, Direction, Projection};
 
-pub struct Simulation {
+pub struct ViewportTest {
 	window: Rc<Window>,
 	gl: Rc<Context>,
 	
@@ -29,7 +29,7 @@ pub struct Simulation {
 	time: f64,
 }
 
-impl Simulation {
+impl ViewportTest {
 	pub fn new(window: Rc<Window>, gl: Rc<Context>) -> Self {
 		unsafe {
 			let size = window.inner_size();
@@ -49,7 +49,7 @@ impl Simulation {
 		let lineRenderer = LineRenderer::new(gl.clone(), 1024).unwrap();
 		let shapeRenderer = ShapeRenderer::new(gl.clone(), 1024).unwrap();
 		
-		let mut sim = Simulation {
+		let mut sim = ViewportTest {
 			window,
 			gl,
 			
