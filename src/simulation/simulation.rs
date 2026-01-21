@@ -1,10 +1,11 @@
 #![allow(non_snake_case)]
 
 use std::rc::Rc;
-use glam::{vec3, Vec2, Vec3};
+use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
 use log::info;
 use winit::dpi::PhysicalPosition;
+use winit::event::MouseButton;
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::{CursorGrabMode, Window};
@@ -19,6 +20,9 @@ pub struct Simulation {
 	camera: Camera,
 	mouseCaptured: bool,
 	view2D: bool,
+	lastMousePos: Vec2,
+	projectionMatrix: Mat4,
+	viewMatrix: Mat4,
 	
 	lineRenderer: LineRenderer,
 	shapeRenderer: ShapeRenderer,
@@ -45,18 +49,36 @@ impl Simulation {
 		let lineRenderer = LineRenderer::new(gl.clone(), 1024).unwrap();
 		let shapeRenderer = ShapeRenderer::new(gl.clone(), 1024).unwrap();
 		
-		Simulation {
+		let mut sim = Simulation {
 			window,
 			gl,
 			
 			camera,
 			mouseCaptured: false,
 			view2D: false,
+			lastMousePos: Vec2::ZERO,
+			projectionMatrix: Mat4::IDENTITY,
+			viewMatrix: Mat4::IDENTITY,
 			
 			lineRenderer,
 			shapeRenderer,
 			time: 0.0,
-		}
+		};
+		sim.updateProjectionMatrix();
+		sim
+	}
+	
+	fn updateProjectionMatrix(&mut self) {
+		let size = self.window.inner_size();
+		let aspect = size.width as f32 / size.height as f32;
+		
+		let projection = if self.view2D {
+			Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0)
+		} else {
+			Projection::Perspective(aspect)
+		};
+		
+		self.projectionMatrix = self.camera.getProjectionMatrix(projection);
 	}
 	
 	pub fn resize(&mut self, _width: u32, _height: u32) {
@@ -74,6 +96,7 @@ impl Simulation {
 			// 	self.gl.viewport_f32_slice(0, max, &[[0.0, 0.0, size.width as f32, size.height as f32]]);
 			// }
 		}
+		self.updateProjectionMatrix();
 	}
 	
 	fn setMouseCaptured(&mut self, mouseCaptured: bool) {
@@ -89,6 +112,17 @@ impl Simulation {
 		}
 	}
 	
+	fn cursorToWorldSpace(&mut self, cursor: Vec2) -> Vec3 {
+		let size = self.window.inner_size();
+		// https://antongerdelan.net/opengl/raycasting.html
+		let ndc = vec2((2.0 * cursor.x) / size.width as f32 - 1.0, 1.0 - (2.0 * cursor.y) / size.height as f32);
+		let clip = vec4(ndc.x, ndc.y, -1.0, 1.0);
+		let mut eye = self.projectionMatrix.inverse() * clip;
+		eye.z = -1.0;
+		eye.w = 0.0;
+		(self.viewMatrix.inverse() * eye).truncate()//.normalize()
+	}
+	
 	pub fn handleInput(&mut self, dt: f64, input: &WinitInputHelper, eventLoop: &ActiveEventLoop) {
 		if input.key_pressed(KeyCode::Escape) {
 			eventLoop.exit();
@@ -100,16 +134,60 @@ impl Simulation {
 		if input.key_pressed(KeyCode::Digit2) {
 			self.view2D = !self.view2D;
 			self.setMouseCaptured(self.mouseCaptured);
+			self.updateProjectionMatrix();
 		}
 		
 		if self.mouseCaptured {
-			if input.scroll_diff().1 != 0.0 {
+			let scrollDiff = {
+				let d = input.scroll_diff();
+				vec2(d.0, d.1)
+			};
+			let mouseDiff = {
+				let d = input.mouse_diff();
+				vec2(d.0, d.1)
+			};
+			
+			if scrollDiff.y != 0.0 {
 				// info!("{}", 1.0 / dt);
-				self.camera.frustum.zoom(-input.scroll_diff().1);
+				self.camera.frustum.zoom(-scrollDiff.y);
+				self.updateProjectionMatrix();
 			}
 			
 			let speed: f32 = 5.0;
 			if self.view2D {
+				if input.mouse_pressed(MouseButton::Middle) {
+					if let Some(cursor) = input.cursor() {
+						self.lastMousePos = vec2(cursor.0, cursor.1);
+					}
+				}
+				if input.mouse_held(MouseButton::Middle) {
+					if let Some(cursor) = input.cursor() {
+						let current = vec2(cursor.0, cursor.1);
+						// info!("{} {}", current.x, current.y);
+						let diff = self.lastMousePos - current;
+						if diff.length() > 0.0 {
+							// info!("{}", diff);
+							
+							// info!("{}", self.cursorToWorldSpace(current));
+							
+							let lastMouseWorldPos = self.cursorToWorldSpace(self.lastMousePos).truncate();
+							let diffWorldSpace = self.cursorToWorldSpace(self.lastMousePos + diff).truncate();
+							// info!("{}", diffWorldSpace);
+							
+							let diff = lastMouseWorldPos - diffWorldSpace;
+							// info!("{}", diff);
+							
+							// self.camera.pos.x = -diffWorldSpace.x;
+							// self.camera.pos.y = -diffWorldSpace.y;
+							
+							self.camera.pos.x -= diff.x;
+							self.camera.pos.y -= diff.y;
+						}
+						
+						self.lastMousePos = current;
+					}
+				}
+				
 				if input.key_held(KeyCode::KeyW) {
 					self.camera.walk(Direction::Up, false, speed * dt as f32);
 				}
@@ -123,8 +201,8 @@ impl Simulation {
 					self.camera.walk(Direction::Right, false, speed * dt as f32);
 				}
 			} else {
-				if input.mouse_diff().0 != 0.0 || input.mouse_diff().1 != 0.0 {
-					self.camera.turn(input.mouse_diff().0, -input.mouse_diff().1, 89.0);
+				if mouseDiff.length() > 0.0 {
+					self.camera.turn(mouseDiff.x, -mouseDiff.y, 89.0);
 					let size = self.window.inner_size();
 					self.window.set_cursor_position(PhysicalPosition::new(size.width / 2, size.height / 2)).expect("Unable to set cursor position!");
 				}
@@ -243,21 +321,21 @@ impl Simulation {
 			self.gl.clear_color(0.0, 0.1, 0.0, 1.0);
 		}
 		
-		let size = self.window.inner_size();
-		let aspect = size.width as f32 / size.height as f32;
+		// let size = self.window.inner_size();
+		// let aspect = size.width as f32 / size.height as f32;
 		
 		// let projection = Mat4::orthographic_rh(aspect * -1.0, aspect * 1.0, -1.0, 1.0, 0.0, 1.0);
 		// let view = Mat4::IDENTITY;
 		
-		let projection = if self.view2D {
-			Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0)
-		} else {
-			Projection::Perspective(aspect)
-		};
-		let projection = self.camera.getProjectionMatrix(projection);
-		let view = self.camera.getViewMatrix();
+		// let projection = if self.view2D {
+		// 	Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0)
+		// } else {
+		// 	Projection::Perspective(aspect)
+		// };
+		let projection = self.projectionMatrix;//self.camera.getProjectionMatrix(projection);
+		self.viewMatrix = self.camera.getViewMatrix();
 		
-		let pvm = projection * view;
+		let pvm = projection * self.viewMatrix;
 		self.shapeRenderer.drawFlush(&pvm);
 		self.lineRenderer.drawFlush(&pvm);
 	}

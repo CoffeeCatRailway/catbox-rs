@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use glam::{vec3, Mat4, Vec3};
+use glam::{Mat4, Vec3};
 
 pub enum Direction {
 	Up,
@@ -14,12 +14,12 @@ pub enum Direction {
 impl Direction {
 	pub fn unitVec(&self) -> Vec3 {
 		match self {
-			Direction::Up => vec3(0.0, 1.0, 0.0),
-			Direction::Down => vec3(0.0, -1.0, 0.0),
-			Direction::Left => vec3(-1.0, 0.0, 0.0),
-			Direction::Right => vec3(1.0, 0.0, 0.0),
-			Direction::Forward => vec3(0.0, 0.0, 1.0),
-			Direction::Backward => vec3(0.0, 0.0, -1.0),
+			Direction::Up => Vec3::Y,
+			Direction::Down => Vec3::NEG_Y,
+			Direction::Left => Vec3::NEG_X,
+			Direction::Right => Vec3::X,
+			Direction::Forward => Vec3::Z,
+			Direction::Backward => Vec3::NEG_Z,
 		}
 	}
 }
