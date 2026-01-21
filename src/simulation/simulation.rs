@@ -15,10 +15,12 @@ use crate::simulation::camera::{Camera, Direction, Projection};
 pub struct Simulation {
 	window: Rc<Window>,
 	gl: Rc<Context>,
-	camera: Camera,
-	lineRenderer: LineRenderer,
 	
+	camera: Camera,
 	mouseCaptured: bool,
+	view2D: bool,
+	
+	lineRenderer: LineRenderer,
 	time: f64,
 }
 
@@ -44,10 +46,12 @@ impl Simulation {
 		Simulation {
 			window,
 			gl,
-			camera,
-			lineRenderer,
 			
+			camera,
 			mouseCaptured: false,
+			view2D: false,
+			
+			lineRenderer,
 			time: 0.0,
 		}
 	}
@@ -72,7 +76,7 @@ impl Simulation {
 	fn setMouseCaptured(&mut self, mouseCaptured: bool) {
 		info!("Mouse captured: {}", mouseCaptured);
 		self.mouseCaptured = mouseCaptured;
-		if self.mouseCaptured {
+		if !self.view2D && self.mouseCaptured {
 			// TODO: Test on Wayland & X11
 			self.window.set_cursor_grab(CursorGrabMode::Confined).expect("Unable to confine mouse!"); // .or_else(|_| self.window.set_cursor_grab(CursorGrabMode::Locked))
 			self.window.set_cursor_visible(false);
@@ -90,36 +94,56 @@ impl Simulation {
 		if input.key_pressed(KeyCode::Digit1) {
 			self.setMouseCaptured(!self.mouseCaptured);
 		}
+		if input.key_pressed(KeyCode::Digit2) {
+			self.view2D = !self.view2D;
+			self.setMouseCaptured(self.mouseCaptured);
+		}
 		
 		if self.mouseCaptured {
 			if input.scroll_diff().1 != 0.0 {
 				// info!("{}", 1.0 / dt);
-				self.camera.frustum.zoom(input.scroll_diff().1);
+				self.camera.frustum.zoom(-input.scroll_diff().1);
 			}
 			
-			if input.mouse_diff().0 != 0.0 || input.mouse_diff().1 != 0.0 {
-				self.camera.turn(input.mouse_diff().0, -input.mouse_diff().1, 89.0);
-				let size = self.window.inner_size();
-				self.window.set_cursor_position(PhysicalPosition::new(size.width / 2, size.height / 2)).expect("Unable to set cursor position!");
-			}
-			
-			if input.key_held(KeyCode::KeyW) {
-				self.camera.walk(Direction::Forward, true, 1.0 * dt as f32);
-			}
-			if input.key_held(KeyCode::KeyS) {
-				self.camera.walk(Direction::Backward, true, 1.0 * dt as f32);
-			}
-			if input.key_held(KeyCode::KeyA) {
-				self.camera.walk(Direction::Left, true, 1.0 * dt as f32);
-			}
-			if input.key_held(KeyCode::KeyD) {
-				self.camera.walk(Direction::Right, true, 1.0 * dt as f32);
-			}
-			if input.key_held(KeyCode::Space) {
-				self.camera.walk(Direction::Up, false, 1.0 * dt as f32);
-			}
-			if input.key_held(KeyCode::ControlLeft) {
-				self.camera.walk(Direction::Down, false, 1.0 * dt as f32);
+			let speed: f32 = 5.0;
+			if self.view2D {
+				if input.key_held(KeyCode::KeyW) {
+					self.camera.walk(Direction::Up, false, speed * dt as f32);
+				}
+				if input.key_held(KeyCode::KeyS) {
+					self.camera.walk(Direction::Down, false, speed * dt as f32);
+				}
+				if input.key_held(KeyCode::KeyA) {
+					self.camera.walk(Direction::Left, false, speed * dt as f32);
+				}
+				if input.key_held(KeyCode::KeyD) {
+					self.camera.walk(Direction::Right, false, speed * dt as f32);
+				}
+			} else {
+				if input.mouse_diff().0 != 0.0 || input.mouse_diff().1 != 0.0 {
+					self.camera.turn(input.mouse_diff().0, -input.mouse_diff().1, 89.0);
+					let size = self.window.inner_size();
+					self.window.set_cursor_position(PhysicalPosition::new(size.width / 2, size.height / 2)).expect("Unable to set cursor position!");
+				}
+				
+				if input.key_held(KeyCode::KeyW) {
+					self.camera.walk(Direction::Forward, true, speed * dt as f32);
+				}
+				if input.key_held(KeyCode::KeyS) {
+					self.camera.walk(Direction::Backward, true, speed * dt as f32);
+				}
+				if input.key_held(KeyCode::KeyA) {
+					self.camera.walk(Direction::Left, true, speed * dt as f32);
+				}
+				if input.key_held(KeyCode::KeyD) {
+					self.camera.walk(Direction::Right, true, speed * dt as f32);
+				}
+				if input.key_held(KeyCode::Space) {
+					self.camera.walk(Direction::Up, false, speed * dt as f32);
+				}
+				if input.key_held(KeyCode::ControlLeft) {
+					self.camera.walk(Direction::Down, false, speed * dt as f32);
+				}
 			}
 		}
 	}
@@ -138,10 +162,10 @@ impl Simulation {
 		// 	let p3 = vec2(1.0, 1.0);
 		// 	let p4 = vec2(-1.0, 1.0);
 		//
-		// 	let c1 = v2normv3(p1);
-		// 	let c2 = v2normv3(p2);
-		// 	let c3 = v2normv3(p3);
-		// 	let c4 = v2normv3(p4);
+		// 	let c1 = norm(p1);
+		// 	let c2 = norm(p2);
+		// 	let c3 = norm(p3);
+		// 	let c4 = norm(p4);
 		//
 		// 	self.lineRenderer.pushLine2(p1, c1, p2, c2);
 		// 	self.lineRenderer.pushLine2(p2, c2, p3, c3);
@@ -151,7 +175,7 @@ impl Simulation {
 		// 	self.lineRenderer.pushLine2(p1, c1, p3, c3);
 		// 	self.lineRenderer.pushLine2(p2, c2, p4, c4);
 		//
-		// 	self.lineRenderer.pushLine2(Vec2::ZERO, Vec3::ONE, self.camera.pos, Vec3::ONE);
+		// 	self.lineRenderer.pushLine2(Vec2::ZERO, Vec3::ONE, self.camera.pos.xy(), Vec3::ONE);
 		// }
 		
 		{
@@ -220,8 +244,12 @@ impl Simulation {
 		// let projection = Mat4::orthographic_rh(aspect * -1.0, aspect * 1.0, -1.0, 1.0, 0.0, 1.0);
 		// let view = Mat4::IDENTITY;
 		
-		// let projection = self.camera.getProjectionMatrix(Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0));
-		let projection = self.camera.getProjectionMatrix(Projection::Perspective(aspect));
+		let projection = if self.view2D {
+			Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0)
+		} else {
+			Projection::Perspective(aspect)
+		};
+		let projection = self.camera.getProjectionMatrix(projection);
 		let view = self.camera.getViewMatrix();
 		
 		let pvm = projection * view;
