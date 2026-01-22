@@ -2,6 +2,7 @@
 
 use glam::{Mat4, Vec3};
 
+#[allow(unused)]
 pub enum Direction {
 	Up,
 	Down,
@@ -79,6 +80,7 @@ impl Default for Camera {
 	}
 }
 
+#[allow(unused)]
 impl Camera {
 	fn updateVectors(&mut self) {
 		let front = Vec3 {

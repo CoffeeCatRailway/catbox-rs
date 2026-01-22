@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+#![allow(unused)]
 
 use std::rc::Rc;
 use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
@@ -12,6 +13,7 @@ use winit::window::{CursorGrabMode, Window};
 use winit_input_helper::WinitInputHelper;
 use crate::graphics::{LineRenderer, ShapeRenderer};
 use crate::window::camera::{Camera, Direction, Projection};
+use crate::window::viewport::Viewport;
 
 pub struct ViewportTest {
 	window: Rc<Window>,
@@ -29,59 +31,8 @@ pub struct ViewportTest {
 	time: f64,
 }
 
-impl ViewportTest {
-	pub fn new(window: Rc<Window>, gl: Rc<Context>) -> Self {
-		unsafe {
-			let size = window.inner_size();
-			gl.viewport(0, 0, size.width as i32, size.height as i32);
-			info!("Initial viewport: {}/{}", size.width, size.height);
-			
-			gl.line_width(10.0);
-			gl.enable(glow::DEPTH_TEST);
-			// gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
-		}
-		
-		let camera = Camera {
-			pos: Vec3::new(0.0, 0.0, 5.0),
-			..Camera::default()
-		};
-		
-		let lineRenderer = LineRenderer::new(gl.clone(), 1024).unwrap();
-		let shapeRenderer = ShapeRenderer::new(gl.clone(), 1024).unwrap();
-		
-		let mut sim = ViewportTest {
-			window,
-			gl,
-			
-			camera,
-			mouseCaptured: false,
-			view2D: false,
-			lastMousePos: Vec2::ZERO,
-			projectionMatrix: Mat4::IDENTITY,
-			viewMatrix: Mat4::IDENTITY,
-			
-			lineRenderer,
-			shapeRenderer,
-			time: 0.0,
-		};
-		sim.updateProjectionMatrix();
-		sim
-	}
-	
-	fn updateProjectionMatrix(&mut self) {
-		let size = self.window.inner_size();
-		let aspect = size.width as f32 / size.height as f32;
-		
-		let projection = if self.view2D {
-			Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0)
-		} else {
-			Projection::Perspective(aspect)
-		};
-		
-		self.projectionMatrix = self.camera.getProjectionMatrix(projection);
-	}
-	
-	pub fn resize(&mut self, _width: u32, _height: u32) {
+impl Viewport for ViewportTest {
+	fn resize(&mut self, _width: u32, _height: u32) {
 		// TODO: WTF?! Fix stretching on Linux. Tested on Arch Linux Wayland
 		#[cfg(not(target_os = "linux"))]
 		unsafe {
@@ -99,31 +50,7 @@ impl ViewportTest {
 		self.updateProjectionMatrix();
 	}
 	
-	fn setMouseCaptured(&mut self, mouseCaptured: bool) {
-		info!("Mouse captured: {}", mouseCaptured);
-		self.mouseCaptured = mouseCaptured;
-		if !self.view2D && self.mouseCaptured {
-			// TODO: Test on Wayland & X11
-			self.window.set_cursor_grab(CursorGrabMode::Confined).expect("Unable to confine mouse!"); // .or_else(|_| self.window.set_cursor_grab(CursorGrabMode::Locked))
-			self.window.set_cursor_visible(false);
-		} else {
-			self.window.set_cursor_grab(CursorGrabMode::None).unwrap();
-			self.window.set_cursor_visible(true);
-		}
-	}
-	
-	fn cursorToWorldSpace(&mut self, cursor: Vec2) -> Vec3 {
-		let size = self.window.inner_size();
-		// https://antongerdelan.net/opengl/raycasting.html
-		let ndc = vec2((2.0 * cursor.x) / size.width as f32 - 1.0, 1.0 - (2.0 * cursor.y) / size.height as f32);
-		let clip = vec4(ndc.x, ndc.y, -1.0, 1.0);
-		let mut eye = self.projectionMatrix.inverse() * clip;
-		eye.z = -1.0;
-		eye.w = 0.0;
-		(self.viewMatrix.inverse() * eye).truncate()//.normalize()
-	}
-	
-	pub fn handleInput(&mut self, dt: f64, input: &WinitInputHelper, eventLoop: &ActiveEventLoop) {
+	fn handleInput(&mut self, dt: f64, input: &WinitInputHelper, eventLoop: &ActiveEventLoop) {
 		if input.key_pressed(KeyCode::Escape) {
 			eventLoop.exit();
 		}
@@ -229,7 +156,7 @@ impl ViewportTest {
 		}
 	}
 	
-	pub fn update(&mut self, dt: f64, _eventLoop: &ActiveEventLoop) {
+	fn update(&mut self, dt: f64, _eventLoop: &ActiveEventLoop) {
 		self.time += dt;
 		
 		// {
@@ -315,7 +242,7 @@ impl ViewportTest {
 		self.shapeRenderer.pushCircle(Vec2::ZERO, Vec3::ONE, 1.0, 0.1);
 	}
 	
-	pub fn render(&mut self) {
+	fn render(&mut self) {
 		unsafe {
 			self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
 			self.gl.clear_color(0.0, 0.1, 0.0, 1.0);
@@ -340,10 +267,87 @@ impl ViewportTest {
 		self.lineRenderer.drawFlush(&pvm);
 	}
 	
-	pub fn destroy(&mut self) {
+	fn destroy(&mut self) {
 		self.setMouseCaptured(false);
 		
 		self.lineRenderer.destroy();
 		self.shapeRenderer.destroy();
+	}
+}
+
+impl ViewportTest {
+	pub fn new(window: Rc<Window>, gl: Rc<Context>) -> Self {
+		unsafe {
+			let size = window.inner_size();
+			gl.viewport(0, 0, size.width as i32, size.height as i32);
+			info!("Initial viewport: {}/{}", size.width, size.height);
+			
+			gl.line_width(10.0);
+			gl.enable(glow::DEPTH_TEST);
+			// gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
+		}
+		
+		let camera = Camera {
+			pos: Vec3::new(0.0, 0.0, 5.0),
+			..Camera::default()
+		};
+		
+		let lineRenderer = LineRenderer::new(gl.clone(), 1024).unwrap();
+		let shapeRenderer = ShapeRenderer::new(gl.clone(), 1024).unwrap();
+		
+		let mut sim = ViewportTest {
+			window,
+			gl,
+			
+			camera,
+			mouseCaptured: false,
+			view2D: false,
+			lastMousePos: Vec2::ZERO,
+			projectionMatrix: Mat4::IDENTITY,
+			viewMatrix: Mat4::IDENTITY,
+			
+			lineRenderer,
+			shapeRenderer,
+			time: 0.0,
+		};
+		sim.updateProjectionMatrix();
+		sim
+	}
+	
+	fn updateProjectionMatrix(&mut self) {
+		let size = self.window.inner_size();
+		let aspect = size.width as f32 / size.height as f32;
+		
+		let projection = if self.view2D {
+			Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0)
+		} else {
+			Projection::Perspective(aspect)
+		};
+		
+		self.projectionMatrix = self.camera.getProjectionMatrix(projection);
+	}
+	
+	fn setMouseCaptured(&mut self, mouseCaptured: bool) {
+		info!("Mouse captured: {}", mouseCaptured);
+		self.mouseCaptured = mouseCaptured;
+		if !self.view2D && self.mouseCaptured {
+			// TODO: Test on Wayland & X11
+			self.window.set_cursor_grab(CursorGrabMode::Confined).expect("Unable to confine mouse!"); // .or_else(|_| self.window.set_cursor_grab(CursorGrabMode::Locked))
+			self.window.set_cursor_visible(false);
+		} else {
+			self.window.set_cursor_grab(CursorGrabMode::None).unwrap();
+			self.window.set_cursor_visible(true);
+		}
+	}
+	
+	fn cursorToWorldSpace(&mut self, cursor: Vec2) -> Vec3 {
+		let size = self.window.inner_size();
+		// https://antongerdelan.net/opengl/raycasting.html
+		let ndc = vec2((2.0 * cursor.x) / size.width as f32 - 1.0, 1.0 - (2.0 * cursor.y) / size.height as f32);
+		let clip = vec4(ndc.x, ndc.y, -1.0, 1.0);
+		let mut eye = self.projectionMatrix.inverse() * clip;
+		eye.z = -1.0;
+		eye.w = 0.0;
+		(self.viewMatrix.inverse() * eye).truncate()//.normalize()
 	}
 }

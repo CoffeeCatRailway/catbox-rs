@@ -2,6 +2,7 @@
 
 mod graphics;
 mod window;
+mod simulation;
 
 use glutin::config::ConfigTemplateBuilder;
 use glutin::context::{ContextApi, ContextAttributesBuilder, PossiblyCurrentContext};
@@ -19,7 +20,7 @@ use winit::event::{DeviceEvent, DeviceId, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes, WindowId};
 use winit_input_helper::WinitInputHelper;
-use crate::window::ViewportTest;
+use crate::window::*;//{Viewport, ViewportTest};
 
 const WIN_WIDTH: u32 = 800;
 const WIN_HEIGHT: u32 = 600;
@@ -30,7 +31,7 @@ const TIME_STEP: f64 = 1.0 / FPS as f64;
 struct State {
 	glSurface: Surface<WindowSurface>,
 	glContext: PossiblyCurrentContext,
-	viewport: ViewportTest,
+	viewport: Box<dyn Viewport>,
 }
 
 struct App {
@@ -121,13 +122,14 @@ impl ApplicationHandler for App {
 			(window, gl, glSurface, glContext)
 		};
 		
-		let viewport = ViewportTest::new(window.clone(), gl.clone());
+		// let viewport = ViewportTest::new(window.clone(), gl.clone());
+		let viewport = ViewportSim::new(window.clone(), gl.clone());
 		
 		self.window = Some(window.clone());
 		self.state = Some(State {
 			glSurface,
 			glContext,
-			viewport,
+			viewport: Box::new(viewport),
 		});
 	}
 	
