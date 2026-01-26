@@ -26,7 +26,7 @@ const WIN_WIDTH: u32 = 800;
 const WIN_HEIGHT: u32 = 600;
 
 const FPS: u32 = 60;
-const TIME_STEP: f64 = 1.0 / FPS as f64;
+const TIME_STEP: f32 = 1.0 / FPS as f32;
 
 struct State {
 	glSurface: Surface<WindowSurface>,
@@ -148,7 +148,7 @@ impl ApplicationHandler for App {
 			},
 			WindowEvent::RedrawRequested => {
 				if let Some(ref mut state) = self.state {
-					state.viewport.render();
+					state.viewport.render(TIME_STEP);
 					self.window.as_ref().unwrap().pre_present_notify();
 					state.glSurface.swap_buffers(&state.glContext).unwrap();
 				}
@@ -167,7 +167,7 @@ impl ApplicationHandler for App {
 		self.input.end_step();
 		
 		if let Some(ref mut state) = self.state {
-			let dt = self.input.delta_time().unwrap().as_secs_f64();
+			let dt = self.input.delta_time().unwrap().as_secs_f32();
 			// info!("Delta time: {}s", dt);
 			state.viewport.handleInput(dt, &self.input, eventLoop);
 		}
@@ -177,7 +177,7 @@ impl ApplicationHandler for App {
 			self.requestRedraw = false;
 			
 			if let Some(ref mut state) = self.state {
-				let dt = TIME_STEP;//self.instant.elapsed().as_secs_f64();
+				let dt = TIME_STEP;//self.instant.elapsed().as_secs_f32();
 				// info!("Delta time: {}s", dt);
 				state.viewport.update(dt, eventLoop);
 			}
@@ -185,7 +185,7 @@ impl ApplicationHandler for App {
 		
 		if !self.waitCancelled {
 			self.instant = Instant::now();
-			eventLoop.set_control_flow(ControlFlow::WaitUntil(self.instant + Duration::from_secs_f64(TIME_STEP)));
+			eventLoop.set_control_flow(ControlFlow::WaitUntil(self.instant + Duration::from_secs_f32(TIME_STEP)));
 			self.requestRedraw = true;
 		}
 	}

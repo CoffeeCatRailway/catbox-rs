@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::graphics::{LineRenderer, ShapeRenderer};
+use crate::graphics::Renderer;
 use crate::simulation::camera::{Camera, Direction, Frustum, Projection};
 use glam::{Mat4, Vec2, Vec3, Vec3Swizzles, vec2, vec3, vec4};
 use glow::{Context, HasContext};
@@ -16,11 +16,11 @@ use crate::simulation::Transform;
 pub trait Viewport {
     fn resize(&mut self, width: u32, height: u32);
 
-    fn handleInput(&mut self, dt: f64, input: &WinitInputHelper, eventLoop: &ActiveEventLoop);
+    fn handleInput(&mut self, dt: f32, input: &WinitInputHelper, eventLoop: &ActiveEventLoop);
 
-    fn update(&mut self, dt: f64, _eventLoop: &ActiveEventLoop);
+    fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop);
 
-    fn render(&mut self);
+    fn render(&mut self, dt: f32);
 
     fn destroy(&mut self);
 }
@@ -34,9 +34,8 @@ pub struct ViewportSim {
     projectionMatrix: Mat4,
     viewMatrix: Mat4,
 
-    lineRenderer: LineRenderer,
-    shapeRenderer: ShapeRenderer,
-    time: f64,
+    renderer: Renderer,
+    time: f32,
 }
 
 impl ViewportSim {
@@ -65,9 +64,8 @@ impl ViewportSim {
             },
 			..Camera::default()
 		};
-		
-		let lineRenderer = LineRenderer::new(gl.clone(), 1024).unwrap();
-		let shapeRenderer = ShapeRenderer::new(gl.clone(), 1024).unwrap();
+
+        let renderer = Renderer::new(gl.clone());
 		
 		let mut sim = ViewportSim {
 			window,
@@ -77,9 +75,8 @@ impl ViewportSim {
 			lastMousePos: Vec2::ZERO,
 			projectionMatrix: Mat4::IDENTITY,
 			viewMatrix: Mat4::IDENTITY,
-			
-			lineRenderer,
-			shapeRenderer,
+
+            renderer,
 			time: 0.0,
 		};
 		sim.updateProjectionMatrix();
@@ -120,7 +117,7 @@ impl Viewport for ViewportSim {
         self.updateProjectionMatrix();
     }
 
-    fn handleInput(&mut self, dt: f64, input: &WinitInputHelper, eventLoop: &ActiveEventLoop) {
+    fn handleInput(&mut self, dt: f32, input: &WinitInputHelper, eventLoop: &ActiveEventLoop) {
         if input.key_pressed(KeyCode::Escape) {
             eventLoop.exit();
         }
@@ -171,54 +168,52 @@ impl Viewport for ViewportSim {
         }
 
         if input.key_held(KeyCode::KeyW) {
-            self.camera.walk(Direction::Up, false, speed * dt as f32);
+            self.camera.walk(Direction::Up, false, speed * dt);
         }
         if input.key_held(KeyCode::KeyS) {
-            self.camera.walk(Direction::Down, false, speed * dt as f32);
+            self.camera.walk(Direction::Down, false, speed * dt);
         }
         if input.key_held(KeyCode::KeyA) {
-            self.camera.walk(Direction::Left, false, speed * dt as f32);
+            self.camera.walk(Direction::Left, false, speed * dt);
         }
         if input.key_held(KeyCode::KeyD) {
-            self.camera.walk(Direction::Right, false, speed * dt as f32);
+            self.camera.walk(Direction::Right, false, speed * dt);
         }
     }
 
-    fn update(&mut self, dt: f64, _eventLoop: &ActiveEventLoop) {
+    fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop) {
         self.time += dt;
+        
+        let norm = |v: Vec2| {
+            let n = v.normalize();
+            vec3(n.x * 0.5 + 0.5, n.y * 0.5 + 0.5, 0.0)
+        };
 
-        {
-            let norm = |v: Vec2| {
-                let n = v.normalize();
-                vec3(n.x * 0.5 + 0.5, n.y * 0.5 + 0.5, 0.0)
-            };
+        let p1 = vec2(-1.0, -1.0);
+        let p2 = vec2(1.0, -1.0);
+        let p3 = vec2(1.0, 1.0);
+        let p4 = vec2(-1.0, 1.0);
 
-            let p1 = vec2(-1.0, -1.0);
-            let p2 = vec2(1.0, -1.0);
-            let p3 = vec2(1.0, 1.0);
-            let p4 = vec2(-1.0, 1.0);
+        let c1 = norm(p1);
+        let c2 = norm(p2);
+        let c3 = norm(p3);
+        let c4 = norm(p4);
 
-            let c1 = norm(p1);
-            let c2 = norm(p2);
-            let c3 = norm(p3);
-            let c4 = norm(p4);
+        self.renderer.getLineRenderer().pushLine2(p1, c1, p2, c2);
+        self.renderer.getLineRenderer().pushLine2(p2, c2, p3, c3);
+        self.renderer.getLineRenderer().pushLine2(p3, c3, p4, c4);
+        self.renderer.getLineRenderer().pushLine2(p4, c4, p1, c1);
 
-            self.lineRenderer.pushLine2(p1, c1, p2, c2);
-            self.lineRenderer.pushLine2(p2, c2, p3, c3);
-            self.lineRenderer.pushLine2(p3, c3, p4, c4);
-            self.lineRenderer.pushLine2(p4, c4, p1, c1);
+        self.renderer.getLineRenderer().pushLine2(p1, c1, p3, c3);
+        self.renderer.getLineRenderer().pushLine2(p2, c2, p4, c4);
 
-            self.lineRenderer.pushLine2(p1, c1, p3, c3);
-            self.lineRenderer.pushLine2(p2, c2, p4, c4);
+        let cp = self.camera.transform.position.xy();
+        self.renderer.getLineRenderer().pushLine2(Vec2::ZERO, Vec3::ZERO, cp, cp.extend(0.0).normalize());
 
-            let cp = self.camera.transform.position.xy();
-            self.lineRenderer.pushLine2(Vec2::ZERO, Vec3::ZERO, cp, cp.extend(0.0).normalize());
-        }
-
-        self.shapeRenderer.pushCircle(Vec2::ZERO, Vec3::ONE, 1.0, 0.1);
+        self.renderer.getShapeRenderer().pushCircle(Vec2::ZERO, Vec3::ONE, 1.0, 0.1);
     }
 
-    fn render(&mut self) {
+    fn render(&mut self, dt: f32) {
         unsafe {
             self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
             self.gl.clear_color(0.0, 0.1, 0.0, 1.0);
@@ -228,12 +223,10 @@ impl Viewport for ViewportSim {
         self.viewMatrix = self.camera.getViewMatrix();
 
         let pvm = projection * self.viewMatrix;
-        self.shapeRenderer.drawFlush(&pvm);
-        self.lineRenderer.drawFlush(&pvm);
+        self.renderer.render(dt, &pvm)
     }
 
     fn destroy(&mut self) {
-        self.lineRenderer.destroy();
-        self.shapeRenderer.destroy();
+        self.renderer.destroy();
     }
 }
