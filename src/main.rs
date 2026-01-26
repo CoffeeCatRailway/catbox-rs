@@ -149,6 +149,7 @@ impl ApplicationHandler for App {
 			WindowEvent::RedrawRequested => {
 				if let Some(ref mut state) = self.state {
 					state.viewport.render();
+					self.window.as_ref().unwrap().pre_present_notify();
 					state.glSurface.swap_buffers(&state.glContext).unwrap();
 				}
 				

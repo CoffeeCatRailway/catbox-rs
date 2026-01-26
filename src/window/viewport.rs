@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::graphics::{LineRenderer, ShapeRenderer};
-use crate::window::camera::{Camera, Direction, Frustum, Projection};
+use crate::simulation::camera::{Camera, Direction, Frustum, Projection};
 use glam::{Mat4, Vec2, Vec3, Vec3Swizzles, vec2, vec3, vec4};
 use glow::{Context, HasContext};
 use log::info;
@@ -11,6 +11,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
+use crate::simulation::Transform;
 
 pub trait Viewport {
     fn resize(&mut self, width: u32, height: u32);
@@ -51,8 +52,17 @@ impl ViewportSim {
 		}
 		
 		let camera = Camera {
-			frustum: Frustum::new(0.1, 100.0, 10.0, 1.0, 10.0),
-			pos: Vec3::new(0.0, 0.0, 5.0),
+			frustum: Frustum {
+                near: 0.1,
+                far: 100.0,
+                fov: 10.0,
+                fovMin: 1.0,
+                fovMax: 10.0
+            },
+            transform: Transform {
+                position: vec3(0.0, 0.0, 5.0),
+                ..Transform::default()
+            },
 			..Camera::default()
 		};
 		
@@ -152,8 +162,8 @@ impl Viewport for ViewportSim {
                     // self.camera.pos.x = -diffWorldSpace.x;
                     // self.camera.pos.y = -diffWorldSpace.y;
 
-                    self.camera.pos.x -= diff.x;
-                    self.camera.pos.y -= diff.y;
+                    self.camera.transform.position.x -= diff.x;
+                    self.camera.transform.position.y -= diff.y;
                 }
 
                 self.lastMousePos = current;
@@ -201,7 +211,7 @@ impl Viewport for ViewportSim {
             self.lineRenderer.pushLine2(p1, c1, p3, c3);
             self.lineRenderer.pushLine2(p2, c2, p4, c4);
 
-			let cp = self.camera.pos.xy();
+            let cp = self.camera.transform.position.xy();
             self.lineRenderer.pushLine2(Vec2::ZERO, Vec3::ZERO, cp, cp.extend(0.0).normalize());
         }
 

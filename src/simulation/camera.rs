@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Quat, Vec3};
+use crate::simulation::Transform;
 
 #[allow(unused)]
 pub enum Direction {
@@ -40,10 +41,6 @@ pub struct Frustum {
 }
 
 impl Frustum {
-	pub fn new(near: f32, far: f32, fov: f32, fovMin: f32, fovMax: f32) -> Self {
-		Self { near, far, fov, fovMin, fovMax, }
-	}
-	
 	pub fn zoom(&mut self, dt: f32) {
 		self.fov += dt;
 		self.fov = self.fov.clamp(self.fovMin, self.fovMax);
@@ -52,11 +49,7 @@ impl Frustum {
 
 pub struct Camera {
 	pub frustum: Frustum,
-	pub pos: Vec3,
-	pub front: Vec3,
-	pub up: Vec3,
-	pub right: Vec3,
-	
+	pub transform: Transform,
 	pub yaw: f32,
 	pub pitch: f32,
 	pub turnSensitivity: f32,
@@ -65,46 +58,50 @@ pub struct Camera {
 impl Default for Camera {
 	fn default() -> Self {
 		let mut camera = Camera {
-			frustum: Frustum::new(0.1, 100.0, 45.0, 1.0, 45.0), // FOV depends on Projection
-			pos: Vec3::ZERO,
-			front: Vec3::ZERO,
-			up: Vec3::ZERO,
-			right: Vec3::ZERO,
-			
+			frustum: Frustum {
+				near: 0.1,
+				far: 100.0,
+				fov: 45.0,
+				fovMin: 1.0,
+				fovMax: 45.0
+			}, // FOV depends on Projection
+			transform: Transform::default(),
 			yaw: -90.0,
 			pitch: 0.0,
 			turnSensitivity: 0.1,
 		};
-		camera.updateVectors();
+		// camera.transform.rotation = Quat::from_axis_angle(Vec3::Y, -90.0_f32.to_radians());
+		camera.updateLocalVectors();
 		camera
 	}
 }
 
 #[allow(unused)]
 impl Camera {
-	fn updateVectors(&mut self) {
+	fn updateLocalVectors(&mut self) {
 		let front = Vec3 {
 			x: self.yaw.to_radians().cos() * self.pitch.to_radians().cos(),
 			y: self.pitch.to_radians().sin(),
 			z: self.yaw.to_radians().sin() * self.pitch.to_radians().cos(),
 		};
-		self.front = front;
-		self.right = self.front.cross(Vec3::Y).normalize();
-		self.up = self.right.cross(self.front).normalize();
+		self.transform.front = front;
+		self.transform.right = self.transform.front.cross(Vec3::Y).normalize();
+		self.transform.up = self.transform.right.cross(self.transform.front).normalize();
+		self.transform.rotation = Quat::look_to_rh(self.transform.front, self.transform.up).normalize().inverse();
 	}
 	
 	pub fn walk(&mut self, direction: Direction, local: bool, dt: f32) {
 		if local {
 			match direction {
-				Direction::Up => { self.pos += self.up * dt; }
-				Direction::Down => { self.pos -= self.up * dt; }
-				Direction::Left => { self.pos -= self.right * dt; }
-				Direction::Right => { self.pos += self.right * dt; }
-				Direction::Forward => { self.pos += self.front * dt; }
-				Direction::Backward => { self.pos -= self.front * dt; }
+				Direction::Up => { self.transform.moveUp(dt); }
+				Direction::Down => { self.transform.moveDown(dt); }
+				Direction::Left => { self.transform.moveLeft(dt); }
+				Direction::Right => { self.transform.moveRight(dt); }
+				Direction::Forward => { self.transform.moveForward(dt); }
+				Direction::Backward => { self.transform.moveBackward(dt); }
 			}
 		} else {
-			self.pos += direction.unitVec() * dt;
+			self.transform.position += direction.unitVec() * dt;
 		}
 	}
 	
@@ -114,14 +111,11 @@ impl Camera {
 		
 		self.yaw += xo;
 		self.pitch += yo;
-		
+
 		self.yaw = self.yaw % 360.0;
+		self.pitch = self.pitch.clamp(-constrainPitch, constrainPitch) % 360.0;
 		
-		if constrainPitch != 0.0 {
-			self.pitch = self.pitch.clamp(-constrainPitch, constrainPitch);
-		}
-		
-		self.updateVectors();
+		self.updateLocalVectors();
 	}
 	
 	pub fn getProjectionMatrix(&mut self, projection: Projection) -> Mat4 {
@@ -135,7 +129,7 @@ impl Camera {
 	}
 	
 	pub fn getViewMatrix(&self) -> Mat4 {
-		Mat4::look_at_rh(self.pos, self.pos + self.front, self.up)
+		Mat4::look_at_rh(self.transform.position, self.transform.position + self.transform.front, self.transform.up)
 	}
 }
 

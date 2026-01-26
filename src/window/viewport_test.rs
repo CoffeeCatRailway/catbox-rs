@@ -12,7 +12,8 @@ use winit::keyboard::KeyCode;
 use winit::window::{CursorGrabMode, Window};
 use winit_input_helper::WinitInputHelper;
 use crate::graphics::{LineRenderer, ShapeRenderer};
-use crate::window::camera::{Camera, Direction, Projection};
+use crate::simulation::Transform;
+use crate::simulation::camera::{Camera, Direction, Projection};
 use crate::window::viewport::Viewport;
 
 pub struct ViewportTest {
@@ -106,9 +107,9 @@ impl Viewport for ViewportTest {
 							
 							// self.camera.pos.x = -diffWorldSpace.x;
 							// self.camera.pos.y = -diffWorldSpace.y;
-							
-							self.camera.pos.x -= diff.x;
-							self.camera.pos.y -= diff.y;
+
+							self.camera.transform.position.x -= diff.x;
+							self.camera.transform.position.y -= diff.y;
 						}
 						
 						self.lastMousePos = current;
@@ -236,7 +237,7 @@ impl Viewport for ViewportTest {
 			self.lineRenderer.pushLine3(t3, ct3, b3, cb3);
 			self.lineRenderer.pushLine3(t4, ct4, b4, cb4);
 			
-			// self.lineRenderer.pushLine3(Vec3::ZERO, Vec3::ONE, self.camera.pos + self.camera.front, Vec3::ONE);
+			self.lineRenderer.pushLine3(vec3(0.0, 2.0, 0.0), Vec3::ZERO, vec3(0.0, 2.0, 0.0) + self.camera.transform.rotation.mul_vec3(Vec3::NEG_Z), Vec3::ONE);
 		}
 		
 		self.shapeRenderer.pushCircle(Vec2::ZERO, Vec3::ONE, 1.0, 0.1);
@@ -288,7 +289,10 @@ impl ViewportTest {
 		}
 		
 		let camera = Camera {
-			pos: Vec3::new(0.0, 0.0, 5.0),
+			transform: Transform {
+				position: vec3(0.0, 0.0, 5.0),
+				..Transform::default()
+			},
 			..Camera::default()
 		};
 		
@@ -331,8 +335,10 @@ impl ViewportTest {
 		info!("Mouse captured: {}", mouseCaptured);
 		self.mouseCaptured = mouseCaptured;
 		if !self.view2D && self.mouseCaptured {
-			// TODO: Test on Wayland & X11
+			#[cfg(not(target_os = "linux"))]
 			self.window.set_cursor_grab(CursorGrabMode::Confined).expect("Unable to confine mouse!"); // .or_else(|_| self.window.set_cursor_grab(CursorGrabMode::Locked))
+			#[cfg(target_os = "linux")]
+			self.window.set_cursor_grab(CursorGrabMode::Locked).expect("Unable to confine mouse!");
 			self.window.set_cursor_visible(false);
 		} else {
 			self.window.set_cursor_grab(CursorGrabMode::None).unwrap();
