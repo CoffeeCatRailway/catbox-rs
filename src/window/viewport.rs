@@ -107,12 +107,10 @@ impl ViewportSim {
 }
 
 impl Viewport for ViewportSim {
-    fn resize(&mut self, _width: u32, _height: u32) {
-        // TODO: WTF?! Fix stretching on Linux. Tested on Arch Linux Wayland
-        #[cfg(not(target_os = "linux"))]
+    fn resize(&mut self, width: u32, height: u32) {
+        // #[cfg(not(target_os = "linux"))]
         unsafe {
-            let size = self.window.inner_size();
-            self.gl.viewport(0, 0, size.width as i32, size.height as i32);
+            self.gl.viewport(0, 0, width as i32, height as i32);
         }
         self.updateProjectionMatrix();
     }

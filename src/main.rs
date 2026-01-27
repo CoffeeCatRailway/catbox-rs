@@ -4,6 +4,7 @@ mod graphics;
 mod window;
 mod simulation;
 
+use std::num::NonZeroU32;
 use glutin::config::ConfigTemplateBuilder;
 use glutin::context::{ContextApi, ContextAttributesBuilder, PossiblyCurrentContext};
 use glutin::display::GetGlDisplay;
@@ -139,6 +140,8 @@ impl ApplicationHandler for App {
 			WindowEvent::Resized(size) => {
 				self.requestRedraw = true;
 				if let Some(ref mut state) = self.state {
+					// #[cfg(target_os = "linux")]
+					state.glSurface.resize(&state.glContext, NonZeroU32::new(size.width).unwrap(), NonZeroU32::new(size.height).unwrap());
 					state.viewport.resize(size.width, size.height);
 				}
 			},
