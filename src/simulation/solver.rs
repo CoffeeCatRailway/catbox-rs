@@ -47,6 +47,36 @@ impl SimpleSolver {
         self.objects.push(Rc::new(RefCell::new(object)));
         self.objects.last_mut().unwrap().clone()
     }
+	
+	fn worldCollision(_dt: f32, obj: &mut Rc<RefCell<VerletObject>>, worldSize: Vec2) {
+		let mut obj = obj.borrow_mut();
+		
+		let halfSize = worldSize * 0.5 - obj.radius;
+		let velocity = obj.getVelocity(1.0) * obj.elasticity;
+		if obj.position.x < -halfSize.x {
+			obj.position.x = -halfSize.x;
+			obj.positionLast.x = obj.position.x + velocity.x;
+		} else if obj.position.x > halfSize.x {
+			obj.position.x = halfSize.x;
+			obj.positionLast.x = obj.position.x + velocity.x;
+		}
+		
+		if obj.position.y < -halfSize.y {
+			obj.position.y = -halfSize.y;
+			obj.positionLast.y = obj.position.y + velocity.y;
+		} else if obj.position.y > halfSize.y {
+			obj.position.y = halfSize.y;
+			obj.positionLast.y = obj.position.y + velocity.y;
+		}
+	}
+	
+	fn handleCollision(&mut self, dt: f32) {
+		for obj in self.objects.iter_mut() {
+			// object-object
+			// object-line
+			SimpleSolver::worldCollision(dt, obj, self.worldSize);
+		}
+	}
 
     fn updateObjects(&mut self, dt: f32) {
         for obj in self.objects.iter_mut() {
@@ -58,7 +88,7 @@ impl SimpleSolver {
 
     fn step(&mut self, dt: f32) {
         // sort
-        // collide
+        self.handleCollision(dt);
         // constrain
         self.updateObjects(dt);
     }

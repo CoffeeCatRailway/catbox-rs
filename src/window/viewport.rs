@@ -13,6 +13,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
+use crate::TIME_STEP;
 
 pub trait Viewport {
     fn resize(&mut self, width: u32, height: u32);
@@ -57,7 +58,7 @@ impl ViewportSim {
                 far: 100.0,
                 fov: 500.0,
                 fovMin: 1.0,
-                fovMax: 500.0
+                fovMax: 1000.0
             },
             transform: Transform {
                 position: vec3(0.0, 0.0, 5.0),
@@ -70,9 +71,13 @@ impl ViewportSim {
         let solver = Rc::new(RefCell::new(SimpleSolver::new(vec2(1000.0, 1000.0), 8)));
         renderer.addRenderable(solver.clone());
 
-        let obj = solver.borrow_mut().addObject(VerletObject::default());
+        let obj = solver.borrow_mut().addObject(VerletObject {
+			elasticity: 0.9,
+			..VerletObject::default()
+		});
         obj.borrow_mut().position.y = solver.borrow().worldSize.y * 0.25;
-        obj.borrow_mut().positionLast.y = solver.borrow().worldSize.y * 0.25;
+		obj.borrow_mut().positionLast.y = solver.borrow().worldSize.y * 0.25;
+		obj.borrow_mut().setVelocity(vec2(100.0, 0.0), TIME_STEP);
 
 		let mut sim = ViewportSim {
 			window,
@@ -222,7 +227,7 @@ impl Viewport for ViewportSim {
     fn render(&mut self, dt: f32) {
         unsafe {
             self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
-            self.gl.clear_color(0.0, 0.1, 0.0, 1.0);
+            self.gl.clear_color(0.27, 0.59, 0.27, 1.0);
         }
 
         let projection = self.projectionMatrix;
