@@ -1,8 +1,10 @@
 #![allow(non_snake_case)]
 
+use std::cell::RefCell;
 use crate::graphics::Renderer;
 use crate::simulation::camera::{Camera, Direction, Frustum, Projection};
-use glam::{Mat4, Vec2, Vec3, Vec3Swizzles, vec2, vec3, vec4};
+use crate::simulation::{SimpleSolver, Transform, VerletObject};
+use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
 use log::info;
 use std::rc::Rc;
@@ -11,7 +13,6 @@ use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
-use crate::simulation::Transform;
 
 pub trait Viewport {
     fn resize(&mut self, width: u32, height: u32);
@@ -33,9 +34,9 @@ pub struct ViewportSim {
     lastMousePos: Vec2,
     projectionMatrix: Mat4,
     viewMatrix: Mat4,
-
     renderer: Renderer,
-    time: f32,
+
+    solver: Rc<RefCell<SimpleSolver>>,
 }
 
 impl ViewportSim {
@@ -54,9 +55,9 @@ impl ViewportSim {
 			frustum: Frustum {
                 near: 0.1,
                 far: 100.0,
-                fov: 10.0,
+                fov: 500.0,
                 fovMin: 1.0,
-                fovMax: 10.0
+                fovMax: 500.0
             },
             transform: Transform {
                 position: vec3(0.0, 0.0, 5.0),
@@ -64,9 +65,15 @@ impl ViewportSim {
             },
 			..Camera::default()
 		};
+        let mut renderer = Renderer::new(gl.clone());
 
-        let renderer = Renderer::new(gl.clone());
-		
+        let solver = Rc::new(RefCell::new(SimpleSolver::new(vec2(1000.0, 1000.0), 8)));
+        renderer.addRenderable(solver.clone());
+
+        let obj = solver.borrow_mut().addObject(VerletObject::default());
+        obj.borrow_mut().position.y = solver.borrow().worldSize.y * 0.25;
+        obj.borrow_mut().positionLast.y = solver.borrow().worldSize.y * 0.25;
+
 		let mut sim = ViewportSim {
 			window,
 			gl,
@@ -75,9 +82,9 @@ impl ViewportSim {
 			lastMousePos: Vec2::ZERO,
 			projectionMatrix: Mat4::IDENTITY,
 			viewMatrix: Mat4::IDENTITY,
-
             renderer,
-			time: 0.0,
+
+            solver,
 		};
 		sim.updateProjectionMatrix();
 		sim
@@ -127,7 +134,7 @@ impl Viewport for ViewportSim {
 
         if scrollDiff.y != 0.0 {
             // info!("{}", 1.0 / dt);
-            self.camera.frustum.zoom(-scrollDiff.y);
+            self.camera.frustum.zoom(-scrollDiff.y * 10.0);
             self.updateProjectionMatrix();
         }
 
@@ -180,35 +187,36 @@ impl Viewport for ViewportSim {
     }
 
     fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop) {
-        self.time += dt;
-        
-        let norm = |v: Vec2| {
-            let n = v.normalize();
-            vec3(n.x * 0.5 + 0.5, n.y * 0.5 + 0.5, 0.0)
-        };
+        // self.renderer.getShapeRenderer().pushBox(Vec2::ZERO, Vec3::splat(0.15), self.solver.borrow().worldSize, 0.0, 10.0);
 
-        let p1 = vec2(-1.0, -1.0);
-        let p2 = vec2(1.0, -1.0);
-        let p3 = vec2(1.0, 1.0);
-        let p4 = vec2(-1.0, 1.0);
+        // let norm = |v: Vec2| {
+        //     let n = v.normalize();
+        //     vec3(n.x * 0.5 + 0.5, n.y * 0.5 + 0.5, 0.0)
+        // };
+        //
+        // let p1 = vec2(-1.0, -1.0);
+        // let p2 = vec2(1.0, -1.0);
+        // let p3 = vec2(1.0, 1.0);
+        // let p4 = vec2(-1.0, 1.0);
+        //
+        // let c1 = norm(p1);
+        // let c2 = norm(p2);
+        // let c3 = norm(p3);
+        // let c4 = norm(p4);
+        //
+        // self.renderer.getLineRenderer().pushLine2(p1, c1, p2, c2);
+        // self.renderer.getLineRenderer().pushLine2(p2, c2, p3, c3);
+        // self.renderer.getLineRenderer().pushLine2(p3, c3, p4, c4);
+        // self.renderer.getLineRenderer().pushLine2(p4, c4, p1, c1);
+        //
+        // self.renderer.getLineRenderer().pushLine2(p1, c1, p3, c3);
+        // self.renderer.getLineRenderer().pushLine2(p2, c2, p4, c4);
+        //
+        // let cp = self.camera.transform.position.xy();
+        // self.renderer.getLineRenderer().pushLine2(Vec2::ZERO, Vec3::ZERO, cp, cp.extend(0.0).normalize());
 
-        let c1 = norm(p1);
-        let c2 = norm(p2);
-        let c3 = norm(p3);
-        let c4 = norm(p4);
-
-        self.renderer.getLineRenderer().pushLine2(p1, c1, p2, c2);
-        self.renderer.getLineRenderer().pushLine2(p2, c2, p3, c3);
-        self.renderer.getLineRenderer().pushLine2(p3, c3, p4, c4);
-        self.renderer.getLineRenderer().pushLine2(p4, c4, p1, c1);
-
-        self.renderer.getLineRenderer().pushLine2(p1, c1, p3, c3);
-        self.renderer.getLineRenderer().pushLine2(p2, c2, p4, c4);
-
-        let cp = self.camera.transform.position.xy();
-        self.renderer.getLineRenderer().pushLine2(Vec2::ZERO, Vec3::ZERO, cp, cp.extend(0.0).normalize());
-
-        self.renderer.getShapeRenderer().pushCircle(Vec2::ZERO, Vec3::ONE, 1.0, 0.1);
+        // self.renderer.getShapeRenderer().pushCircle(Vec2::ZERO, Vec3::ONE, 20.0, 1.0);
+        self.solver.borrow_mut().update(dt);
     }
 
     fn render(&mut self, dt: f32) {
@@ -221,10 +229,11 @@ impl Viewport for ViewportSim {
         self.viewMatrix = self.camera.getViewMatrix();
 
         let pvm = projection * self.viewMatrix;
-        self.renderer.render(dt, &pvm)
+        self.renderer.render(dt, &pvm);
     }
 
     fn destroy(&mut self) {
         self.renderer.destroy();
+        self.solver.borrow_mut().destroy();
     }
 }
