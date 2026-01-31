@@ -8,7 +8,10 @@ This is also a continuation of my Java attempt [CatBox](https://github.com/Coffe
 - [x] Line Renderer for debug info
 - [x] Camera controller
 - [x] Primitive Shape Renderer (Circle, Box, Triangle-WIP)
-- [ ] Simple object (ball) with collision
+- [x] Simple object (ball)
+- [x] Collide with world boundaries
+- [ ] Imgui
+- [x] Collide with other objects
 - [ ] Constraints (Fixed distance & Spring)
 - [ ] Constraint collision (Box)
 - [ ] Editor/Interface to interact with and add/remove objects
