@@ -75,7 +75,7 @@ impl VerletObject {
 impl Renderable for VerletObject {
     fn render(&mut self, dt: f32, _pvMatrix: &Mat4, shapeRenderer: &mut ShapeRenderer, lineRenderer: &mut LineRenderer) {
         if self.visible {
-            shapeRenderer.pushCircle(self.position, self.color, self.radius, 1.0);
+            shapeRenderer.pushCircle(self.position, self.color, self.radius, 0.0);
 
             let velocity = self.getVelocity(dt);
             let color = 1.0 - self.color;

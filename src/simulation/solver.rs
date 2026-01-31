@@ -48,7 +48,7 @@ impl SimpleSolver {
         self.objects.last_mut().unwrap().clone()
     }
 	
-	fn worldCollision(_dt: f32, obj: &mut Rc<RefCell<VerletObject>>, worldSize: Vec2) {
+	fn worldCollision(&mut self, _dt: f32, obj: &mut Rc<RefCell<VerletObject>>, worldSize: Vec2) {
 		let mut obj = obj.borrow_mut();
 		
 		let halfSize = worldSize * 0.5 - obj.radius;
@@ -71,11 +71,13 @@ impl SimpleSolver {
 	}
 	
 	fn handleCollision(&mut self, dt: f32) {
-		for obj in self.objects.iter_mut() {
+        let mut objects = self.objects.clone();
+		for obj in objects.iter_mut() {
 			// object-object
 			// object-line
-			SimpleSolver::worldCollision(dt, obj, self.worldSize);
+			self.worldCollision(dt, obj, self.worldSize);
 		}
+        self.objects = objects;
 	}
 
     fn updateObjects(&mut self, dt: f32) {
@@ -113,6 +115,18 @@ impl SimpleSolver {
 
     pub fn destroy(&mut self) {
 
+    }
+
+    pub fn getObjectCount(&self) -> usize {
+        self.objects.len()
+    }
+
+    pub fn getTotalSteps(&self) -> u32 {
+        self.totalSteps
+    }
+
+    pub fn getTimeElapsed(&self) -> f32 {
+        self.time
     }
 }
 

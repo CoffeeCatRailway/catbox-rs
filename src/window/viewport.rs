@@ -67,17 +67,18 @@ impl ViewportSim {
 			..Camera::default()
 		};
         let mut renderer = Renderer::new(gl.clone());
+        renderer.getLineRenderer().enabled = false;
 
         let solver = Rc::new(RefCell::new(SimpleSolver::new(vec2(1000.0, 1000.0), 8)));
         renderer.addRenderable(solver.clone());
 
-        let obj = solver.borrow_mut().addObject(VerletObject {
-			elasticity: 0.9,
-			..VerletObject::default()
-		});
-        obj.borrow_mut().position.y = solver.borrow().worldSize.y * 0.25;
-		obj.borrow_mut().positionLast.y = solver.borrow().worldSize.y * 0.25;
-		obj.borrow_mut().setVelocity(vec2(100.0, 0.0), TIME_STEP);
+        // let obj = solver.borrow_mut().addObject(VerletObject {
+		// 	elasticity: 0.9,
+		// 	..VerletObject::default()
+		// });
+        // obj.borrow_mut().position.y = solver.borrow().worldSize.y * 0.25;
+		// obj.borrow_mut().positionLast.y = solver.borrow().worldSize.y * 0.25;
+		// obj.borrow_mut().setVelocity(vec2(100.0, 0.0), TIME_STEP);
 
 		let mut sim = ViewportSim {
 			window,
@@ -130,6 +131,10 @@ impl Viewport for ViewportSim {
     fn handleInput(&mut self, dt: f32, input: &WinitInputHelper, eventLoop: &ActiveEventLoop) {
         if input.key_pressed(KeyCode::Escape) {
             eventLoop.exit();
+        }
+        if input.key_pressed(KeyCode::Digit1) {
+            let mut solver = self.solver.borrow_mut();
+            solver.pause = !solver.pause;
         }
 
         let scrollDiff = {
@@ -194,34 +199,28 @@ impl Viewport for ViewportSim {
     fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop) {
         // self.renderer.getShapeRenderer().pushBox(Vec2::ZERO, Vec3::splat(0.15), self.solver.borrow().worldSize, 0.0, 10.0);
 
-        // let norm = |v: Vec2| {
-        //     let n = v.normalize();
-        //     vec3(n.x * 0.5 + 0.5, n.y * 0.5 + 0.5, 0.0)
-        // };
-        //
-        // let p1 = vec2(-1.0, -1.0);
-        // let p2 = vec2(1.0, -1.0);
-        // let p3 = vec2(1.0, 1.0);
-        // let p4 = vec2(-1.0, 1.0);
-        //
-        // let c1 = norm(p1);
-        // let c2 = norm(p2);
-        // let c3 = norm(p3);
-        // let c4 = norm(p4);
-        //
-        // self.renderer.getLineRenderer().pushLine2(p1, c1, p2, c2);
-        // self.renderer.getLineRenderer().pushLine2(p2, c2, p3, c3);
-        // self.renderer.getLineRenderer().pushLine2(p3, c3, p4, c4);
-        // self.renderer.getLineRenderer().pushLine2(p4, c4, p1, c1);
-        //
-        // self.renderer.getLineRenderer().pushLine2(p1, c1, p3, c3);
-        // self.renderer.getLineRenderer().pushLine2(p2, c2, p4, c4);
-        //
-        // let cp = self.camera.transform.position.xy();
-        // self.renderer.getLineRenderer().pushLine2(Vec2::ZERO, Vec3::ZERO, cp, cp.extend(0.0).normalize());
+        let mut solver = self.solver.borrow_mut();
+        if !solver.pause {
+            if solver.getTotalSteps() % 2 == 0 && solver.getObjectCount() <= 1000 {
+                info!("{}", solver.getObjectCount());
+                let t = solver.getObjectCount() as f32 * 0.5;
+                let color = vec3(
+                    t.sin() * 0.5 + 0.5,
+                    t.cos() * 0.5 + 0.5,
+                    (t + t.cos()).cos() * 0.5 + 0.5,
+                );
+                let obj = solver.addObject(VerletObject {
+                    color,
+                    elasticity: 1.0,
+                    ..VerletObject::default()
+                });
+                obj.borrow_mut().position.y = solver.worldSize.y * 0.25;
+                obj.borrow_mut().positionLast.y = solver.worldSize.y * 0.25;
+                obj.borrow_mut().setVelocity(vec2(100.0, 50.0), TIME_STEP);
+            }
+        }
 
-        // self.renderer.getShapeRenderer().pushCircle(Vec2::ZERO, Vec3::ONE, 20.0, 1.0);
-        self.solver.borrow_mut().update(dt);
+        solver.update(dt);
     }
 
     fn render(&mut self, dt: f32) {
