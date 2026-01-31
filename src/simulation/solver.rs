@@ -125,6 +125,7 @@ impl SimpleSolver {
         self.totalSteps
     }
 
+	#[allow(unused)]
     pub fn getTimeElapsed(&self) -> f32 {
         self.time
     }

@@ -30,166 +30,151 @@ const FPS: u32 = 60;
 const TIME_STEP: f32 = 1.0 / FPS as f32;
 
 struct State {
+	window: Rc<Window>,
 	glSurface: Surface<WindowSurface>,
 	glContext: PossiblyCurrentContext,
+	input: WinitInputHelper,
+	requestRedraw: bool,
+	waitCancelled: bool,
 	viewport: Box<dyn Viewport>,
 }
 
 struct App {
-	window: Option<Rc<Window>>,
 	state: Option<State>,
-	input: WinitInputHelper,
-	requestRedraw: bool,
-	waitCancelled: bool,
-	instant: Instant,
-}
-
-impl Default for App {
-	fn default() -> Self {
-		App {
-			window: None,
-			state: None,
-			input: WinitInputHelper::new(),
-			requestRedraw: false,
-			waitCancelled: false,
-			instant: Instant::now(),
-		}
-	}
 }
 
 impl ApplicationHandler for App {
 	fn new_events(&mut self, _eventLoop: &ActiveEventLoop, cause: StartCause) {
-		self.input.step();
-		
-		self.waitCancelled = match cause {
-			StartCause::WaitCancelled { .. } => true,
-			_ => false,
+		if let Some(ref mut state) = self.state {
+			state.input.step();
+			
+			state.waitCancelled = match cause {
+				StartCause::WaitCancelled { .. } => true,
+				_ => false,
+			}
 		}
 	}
 	
 	fn resumed(&mut self, eventLoop: &ActiveEventLoop) {
-		if self.state.is_some() {
-			return;
+		if self.state.is_none() {
+			let attributes = WindowAttributes::default()
+				// .with_fullscreen(Some(Fullscreen::Borderless(None)))
+				.with_inner_size(PhysicalSize::new(WIN_WIDTH, WIN_HEIGHT))
+				.with_title("CatBox Native");
+			
+			let template = ConfigTemplateBuilder::new();
+			let displayBuilder = DisplayBuilder::new().with_window_attributes(Some(attributes));
+			
+			let (window, glConfig) = displayBuilder
+				.build(eventLoop, template, |configs| {
+					configs
+						.reduce(|accum, config| {
+							if config.num_samples() > accum.num_samples() {
+								config
+							} else {
+								accum
+							}
+						})
+						.unwrap()
+				})
+				.unwrap();
+			let rwh: Option<RawWindowHandle> = window.as_ref().and_then(|w| w.window_handle().map(Into::into).ok());
+			
+			let glDisplay = glConfig.display();
+			let contextAttributes = ContextAttributesBuilder::new()
+				.with_context_api(ContextApi::OpenGl(Some(glutin::context::Version {
+					major: 4,
+					minor: 1,
+				})))
+				.build(rwh);
+			
+			let (window, gl, glSurface, glContext) = unsafe {
+				let notCurrentGlContext = glDisplay.create_context(&glConfig, &contextAttributes).unwrap();
+				let window = Rc::new(window.unwrap());
+				
+				let surfaceAttributes = window.build_surface_attributes(Default::default()).unwrap();
+				let glSurface = glDisplay.create_window_surface(&glConfig, &surfaceAttributes).unwrap();
+				
+				let glContext = notCurrentGlContext.make_current(&glSurface).unwrap();
+				let gl = Rc::new(glow::Context::from_loader_function_cstr(|s| glDisplay.get_proc_address(s)));
+				// glSurface.set_swap_interval(&glContext, SwapInterval::Wait(NonZeroU32::new(1).unwrap())).unwrap();
+				
+				(window, gl, glSurface, glContext)
+			};
+			
+			// let viewport = ViewportTest::new(window.clone(), gl.clone());
+			let viewport = ViewportSim::new(window.clone(), gl.clone());
+			
+			self.state = Some(State {
+				window,
+				glSurface,
+				glContext,
+				input: WinitInputHelper::new(),
+				requestRedraw: false,
+				waitCancelled: false,
+				viewport: Box::new(viewport),
+			});
 		}
-		
-		let attributes = WindowAttributes::default()
-			// .with_fullscreen(Some(Fullscreen::Borderless(None)))
-			.with_inner_size(PhysicalSize::new(WIN_WIDTH, WIN_HEIGHT))
-			.with_title("CatBox Native");
-		
-		let template = ConfigTemplateBuilder::new();
-		let displayBuilder = DisplayBuilder::new().with_window_attributes(Some(attributes));
-		
-		let (window, glConfig) = displayBuilder
-			.build(eventLoop, template, |configs| {
-				configs
-					.reduce(|accum, config| {
-						if config.num_samples() > accum.num_samples() {
-							config
-						} else {
-							accum
-						}
-					})
-					.unwrap()
-			})
-			.unwrap();
-		let rwh: Option<RawWindowHandle> = window
-			.as_ref()
-			.and_then(|w| w.window_handle().map(Into::into).ok());
-		
-		let glDisplay = glConfig.display();
-		let contextAttributes = ContextAttributesBuilder::new()
-			.with_context_api(ContextApi::OpenGl(Some(glutin::context::Version {
-				major: 4,
-				minor: 1,
-			})))
-			.build(rwh);
-		
-		let (window, gl, glSurface, glContext) = unsafe {
-			let notCurrentGlContext = glDisplay
-				.create_context(&glConfig, &contextAttributes)
-				.unwrap();
-			let window = Rc::new(window.unwrap());
-			
-			let surfaceAttributes = window.build_surface_attributes(Default::default()).unwrap();
-			let glSurface = glDisplay
-				.create_window_surface(&glConfig, &surfaceAttributes)
-				.unwrap();
-			
-			let glContext = notCurrentGlContext.make_current(&glSurface).unwrap();
-			let gl = Rc::new(glow::Context::from_loader_function_cstr(|s| glDisplay.get_proc_address(s)));
-			// glSurface.set_swap_interval(&glContext, SwapInterval::Wait(NonZeroU32::new(1).unwrap())).unwrap();
-			
-			(window, gl, glSurface, glContext)
-		};
-		
-		// let viewport = ViewportTest::new(window.clone(), gl.clone());
-		let viewport = ViewportSim::new(window.clone(), gl.clone());
-		
-		self.window = Some(window.clone());
-		self.state = Some(State {
-			glSurface,
-			glContext,
-			viewport: Box::new(viewport),
-		});
 	}
 	
 	fn window_event(&mut self, eventLoop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-		self.input.process_window_event(&event);
-		match event {
-			WindowEvent::Resized(size) => {
-				self.requestRedraw = true;
-				if let Some(ref mut state) = self.state {
+		if let Some(ref mut state) = self.state {
+			state.input.process_window_event(&event);
+			match event {
+				WindowEvent::Resized(size) => {
+					state.requestRedraw = true;
 					// #[cfg(target_os = "linux")]
 					state.glSurface.resize(&state.glContext, NonZeroU32::new(size.width).unwrap(), NonZeroU32::new(size.height).unwrap());
 					state.viewport.resize(size.width, size.height);
-				}
-			},
-			WindowEvent::CloseRequested => {
-				info!("The close button was pressed; stopping");
-				eventLoop.exit();
-			},
-			WindowEvent::RedrawRequested => {
-				if let Some(ref mut state) = self.state {
+				},
+				WindowEvent::CloseRequested => {
+					info!("The close button was pressed; stopping");
+					eventLoop.exit();
+				},
+				WindowEvent::RedrawRequested => {
 					state.viewport.render(TIME_STEP);
-					self.window.as_ref().unwrap().pre_present_notify();
+					state.window.pre_present_notify();
 					state.glSurface.swap_buffers(&state.glContext).unwrap();
-				}
-				
-				// self.window.as_ref().unwrap().request_redraw();
-			},
-			_ => (),
+				},
+				_ => (),
+			}
 		}
 	}
 	
 	fn device_event(&mut self, _eventLoop: &ActiveEventLoop, _id: DeviceId, event: DeviceEvent) {
-		self.input.process_device_event(&event);
+		if let Some(ref mut state) = self.state {
+			state.input.process_device_event(&event);
+		}
 	}
 	
 	fn about_to_wait(&mut self, eventLoop: &ActiveEventLoop) {
-		self.input.end_step();
-		
 		if let Some(ref mut state) = self.state {
-			let dt = self.input.delta_time().unwrap().as_secs_f32();
-			// info!("Delta time: {}s", dt);
-			state.viewport.handleInput(dt, &self.input, eventLoop);
-		}
-		
-		if self.requestRedraw && !self.waitCancelled {
-			self.window.as_ref().unwrap().request_redraw();
-			self.requestRedraw = false;
+			state.input.end_step();
 			
-			if let Some(ref mut state) = self.state {
-				let dt = TIME_STEP;//self.instant.elapsed().as_secs_f32();
+			// Use `if let` because first cycle is None
+			// let dt = state.input.delta_time().unwrap().as_secs_f32();
+			let dt = if let Some(time) = state.input.delta_time() {
+				time.as_secs_f32()
+			} else {
+				TIME_STEP
+			};
+			// info!("Delta time: {}s", dt);
+			state.viewport.handleInput(dt, &state.input, eventLoop);
+			
+			if state.requestRedraw && !state.waitCancelled {
+				state.window.request_redraw();
+				state.requestRedraw = false;
+				
+				let dt = TIME_STEP; //self.instant.elapsed().as_secs_f32();
 				// info!("Delta time: {}s", dt);
 				state.viewport.update(dt, eventLoop);
 			}
-		}
-		
-		if !self.waitCancelled {
-			self.instant = Instant::now();
-			eventLoop.set_control_flow(ControlFlow::WaitUntil(self.instant + Duration::from_secs_f32(TIME_STEP)));
-			self.requestRedraw = true;
+			
+			if !state.waitCancelled {
+				let now = Instant::now();
+				eventLoop.set_control_flow(ControlFlow::WaitUntil(now + Duration::from_secs_f32(TIME_STEP)));
+				state.requestRedraw = true;
+			}
 		}
 	}
 	
@@ -209,6 +194,5 @@ fn main() {
 	// panic!("hi");
 	
 	let eventLoop = EventLoop::new().unwrap();
-	eventLoop
-		.run_app(&mut App::default()).expect("Failed to run event loop");
+	eventLoop.run_app(&mut App { state: None }).expect("Failed to run event loop");
 }
