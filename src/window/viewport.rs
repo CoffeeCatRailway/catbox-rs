@@ -97,10 +97,21 @@ impl ViewportSim {
 	}
 	
 	fn updateProjectionMatrix(&mut self) {
-		let size = self.window.inner_size();
-		let aspect = size.width as f32 / size.height as f32;
+		let windowSize = self.window.inner_size();
+		let windowAspect = windowSize.width as f32 / windowSize.height as f32;
 		
-		let projection = Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0);
+		let solverSize = self.solver.borrow().worldSize;
+		let solverAspect = solverSize.x / solverSize.y;
+		
+		let projection = if windowAspect >= solverAspect {
+			let aspect = windowAspect / solverAspect;
+			Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0)
+		} else {
+			let aspect = solverAspect / windowAspect;
+			Projection::Orthographic(-1.0, 1.0, aspect * -1.0, aspect * 1.0)
+		};
+		
+		// let projection = Projection::Orthographic(windowAspect * -1.0, windowAspect * 1.0, -1.0, 1.0);
 		self.projectionMatrix = self.camera.getProjectionMatrix(projection);
 	}
 	

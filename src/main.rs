@@ -123,9 +123,9 @@ impl ApplicationHandler for App {
 			match event {
 				WindowEvent::Resized(size) => {
 					state.requestRedraw = true;
-					// #[cfg(target_os = "linux")]
-					state.glSurface.resize(&state.glContext, NonZeroU32::new(size.width).unwrap(), NonZeroU32::new(size.height).unwrap());
-					state.viewport.resize(size.width, size.height);
+					let (width, height) = (size.width.max(1), size.height.max(1));
+					state.glSurface.resize(&state.glContext, NonZeroU32::new(width).unwrap(), NonZeroU32::new(height).unwrap());
+					state.viewport.resize(width, height);
 				},
 				WindowEvent::CloseRequested => {
 					info!("The close button was pressed; stopping");
