@@ -100,18 +100,19 @@ impl ViewportSim {
 		let windowSize = self.window.inner_size();
 		let windowAspect = windowSize.width as f32 / windowSize.height as f32;
 		
-		let solverSize = self.solver.borrow().worldSize;
-		let solverAspect = solverSize.x / solverSize.y;
+		// Doesn't work if worldSize is not square
+		// let solverSize = self.solver.borrow().worldSize;
+		// let solverAspect = solverSize.x / solverSize.y;
+		//
+		// let projection = if windowAspect >= solverAspect {
+		// 	let aspect = windowAspect / solverAspect;
+		// 	Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0)
+		// } else {
+		// 	let aspect = solverAspect / windowAspect;
+		// 	Projection::Orthographic(-1.0, 1.0, aspect * -1.0, aspect * 1.0)
+		// };
 		
-		let projection = if windowAspect >= solverAspect {
-			let aspect = windowAspect / solverAspect;
-			Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0)
-		} else {
-			let aspect = solverAspect / windowAspect;
-			Projection::Orthographic(-1.0, 1.0, aspect * -1.0, aspect * 1.0)
-		};
-		
-		// let projection = Projection::Orthographic(windowAspect * -1.0, windowAspect * 1.0, -1.0, 1.0);
+		let projection = Projection::Orthographic(windowAspect * -1.0, windowAspect * 1.0, -1.0, 1.0);
 		self.projectionMatrix = self.camera.getProjectionMatrix(projection);
 	}
 	
@@ -213,7 +214,7 @@ impl Viewport for ViewportSim {
         let mut solver = self.solver.borrow_mut();
         if !solver.pause {
             if solver.getTotalSteps() % 2 == 0 && solver.getObjectCount() <= 1000 {
-                info!("{}", solver.getObjectCount());
+                // info!("{}", solver.getObjectCount());
                 let t = solver.getObjectCount() as f32 * 0.5;
                 let color = vec3(
                     t.sin() * 0.5 + 0.5,
