@@ -93,6 +93,7 @@ impl ViewportSim {
             solver,
 		};
 		sim.updateProjectionMatrix();
+		info!("Viewport initialized");
 		sim
 	}
 	

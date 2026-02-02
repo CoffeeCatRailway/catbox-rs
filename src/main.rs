@@ -78,6 +78,7 @@ impl AppState {
 					.unwrap()
 			})?;
 		let window = Rc::new(window.unwrap());
+		info!("Window initialized");
 		
 		// OpenGL
 		let contextAttributes = ContextAttributesBuilder::new()
@@ -100,10 +101,11 @@ impl AppState {
 			
 			(gl, surface, context)
 		};
+		info!("OpenGL initialized");
 		
 		// Imgui
 		let mut imguiContext = dear_imgui_rs::Context::create();
-		imguiContext.set_ini_filename(None::<String>)?;
+		imguiContext.set_ini_filename(Some("imgui.ini"))?;
 		
 		let mut platform = WinitPlatform::new(&mut imguiContext);
 		platform.attach_window(
@@ -121,6 +123,7 @@ impl AppState {
 			renderer: imguiRenderer,
 			lastFrame: Instant::now(),
 		};
+		info!("Imgui initialized");
 		
 		// Simulation
 		// let viewport = ViewportTest::new(window.clone(), gl.clone());
