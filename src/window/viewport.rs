@@ -8,6 +8,7 @@ use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
 use log::info;
 use std::rc::Rc;
+use dear_imgui_rs::Ui;
 use winit::event::MouseButton;
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
@@ -23,6 +24,8 @@ pub trait Viewport {
     fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop);
 
     fn render(&mut self, dt: f32);
+	
+	fn gui(&mut self, ui: &mut Ui);
 
     fn destroy(&mut self);
 }
@@ -237,17 +240,16 @@ impl Viewport for ViewportSim {
     }
 
     fn render(&mut self, dt: f32) {
-        unsafe {
-            self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
-            self.gl.clear_color(0.27, 0.59, 0.27, 1.0);
-        }
-
         let projection = self.projectionMatrix;
         self.viewMatrix = self.camera.getViewMatrix();
 
         let pvm = projection * self.viewMatrix;
         self.renderer.render(dt, &pvm);
     }
+	
+	fn gui(&mut self, ui: &mut Ui) {
+	
+	}
 
     fn destroy(&mut self) {
         self.renderer.destroy();

@@ -18,6 +18,7 @@ use std::time::{Duration, Instant};
 use dear_imgui_glow::GlowRenderer;
 use dear_imgui_rs::Condition;
 use dear_imgui_winit::WinitPlatform;
+use glow::HasContext;
 use log::{error, info};
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
@@ -37,6 +38,7 @@ struct ImguiWrapper {
 	context: dear_imgui_rs::Context,
 	platform: WinitPlatform,
 	renderer: GlowRenderer,
+	clearColor: [f32; 4],
 	lastFrame: Instant,
 }
 
@@ -121,6 +123,7 @@ impl AppState {
 			context: imguiContext,
 			platform,
 			renderer: imguiRenderer,
+			clearColor: [0.27, 0.59, 0.27, 1.0],
 			lastFrame: Instant::now(),
 		};
 		info!("Imgui initialized");
@@ -178,6 +181,12 @@ impl AppState {
 	}
 	
 	fn render(&mut self) -> Result<(), Box<dyn Error>> {
+		let gl = self.imgui.renderer.gl_context().unwrap();
+		unsafe {
+			gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+			gl.clear_color(self.imgui.clearColor[0], self.imgui.clearColor[1], self.imgui.clearColor[2], self.imgui.clearColor[3]);
+		}
+		
 		// Render simulation
 		self.viewport.render(TIME_STEP);
 		
@@ -190,13 +199,20 @@ impl AppState {
 		self.imgui.platform.prepare_frame(&self.window, &mut self.imgui.context);
 		let ui = self.imgui.context.frame();
 		
-		let mut uiWidth: f32 = 1.0;
 		ui.window("App Info")
-			.size([400.0, 300.0], Condition::FirstUseEver)
+			.size([260.0, 200.0], Condition::FirstUseEver)
 			.build(|| {
-				uiWidth = ui.window_width();
-				ui.text(format!("ImGUI FPS: {}", ui.io().framerate()));
+				// let uiWidth = ui.window_width();
+				ui.text(format!("ImGUI FPS: {:.2}", ui.io().framerate()));
+				// total frames
+				// fps/ups
+				let mousePos = ui.io().mouse_pos();
+				ui.text(format!("Mouse Position: ({:.2},{:.2})", mousePos[0], mousePos[1]));
+				let windowSize = self.window.inner_size();
+				ui.text(format!("Window Size: ({},{})", windowSize.width, windowSize.height));
+				ui.color_edit4("Clear Color", &mut self.imgui.clearColor);
 			});
+		self.viewport.gui(ui);
 		
 		// Render UI
 		self.imgui.platform.prepare_render_with_ui(&ui, &self.window);

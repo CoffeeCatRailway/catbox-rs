@@ -2,6 +2,7 @@
 #![allow(unused)]
 
 use std::rc::Rc;
+use dear_imgui_rs::Ui;
 use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
 use log::info;
@@ -284,11 +285,6 @@ impl Viewport for ViewportTest {
 	}
 	
 	fn render(&mut self, dt: f32) {
-		unsafe {
-			self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
-			self.gl.clear_color(0.0, 0.1, 0.0, 1.0);
-		}
-		
 		// let size = self.window.inner_size();
 		// let aspect = size.width as f32 / size.height as f32;
 		
@@ -306,6 +302,8 @@ impl Viewport for ViewportTest {
 		let pvm = projection * self.viewMatrix;
 		self.renderer.render(dt, &pvm);
 	}
+	
+	fn gui(&mut self, _ui: &mut Ui) {}
 	
 	fn destroy(&mut self) {
 		self.setMouseCaptured(false);
