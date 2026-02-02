@@ -15,6 +15,9 @@ use glutin_winit::{DisplayBuilder, GlWindow};
 use raw_window_handle::HasWindowHandle;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
+use dear_imgui_glow::GlowRenderer;
+use dear_imgui_rs::Condition;
+use dear_imgui_winit::WinitPlatform;
 use log::{error, info};
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
@@ -30,10 +33,18 @@ const WIN_HEIGHT: u32 = 600;
 const FPS: u32 = 60;
 const TIME_STEP: f32 = 1.0 / FPS as f32;
 
+struct ImguiWrapper {
+	context: dear_imgui_rs::Context,
+	platform: WinitPlatform,
+	renderer: GlowRenderer,
+	lastFrame: Instant,
+}
+
 struct AppState {
 	window: Rc<Window>,
 	surface: Surface<WindowSurface>,
 	context: PossiblyCurrentContext,
+	imgui: ImguiWrapper,
 	input: WinitInputHelper,
 	requestRedraw: bool,
 	waitCancelled: bool,
@@ -47,6 +58,7 @@ struct App {
 
 impl AppState {
 	fn new(eventLoop: &ActiveEventLoop) -> Result<Self, Box<dyn Error>> {
+		// Window
 		let attributes = WindowAttributes::default()
 			// .with_fullscreen(Some(Fullscreen::Borderless(None)))
 			.with_inner_size(PhysicalSize::new(WIN_WIDTH, WIN_HEIGHT))
@@ -67,6 +79,7 @@ impl AppState {
 			})?;
 		let window = Rc::new(window.unwrap());
 		
+		// OpenGL
 		let contextAttributes = ContextAttributesBuilder::new()
 			.with_context_api(ContextApi::OpenGl(Some(glutin::context::Version {
 				major: 4,
@@ -82,19 +95,42 @@ impl AppState {
 			let surface = display.create_window_surface(&config, &surfaceAttributes)?;
 			
 			let context = notCurrentGlContext.make_current(&surface)?;
-			let gl = Rc::new(glow::Context::from_loader_function_cstr(|s| display.get_proc_address(s)));
+			let gl = glow::Context::from_loader_function_cstr(|s| display.get_proc_address(s));
 			// glSurface.set_swap_interval(&glContext, SwapInterval::Wait(NonZeroU32::new(1).unwrap())).unwrap();
 			
 			(gl, surface, context)
 		};
 		
+		// Imgui
+		let mut imguiContext = dear_imgui_rs::Context::create();
+		imguiContext.set_ini_filename(None::<String>)?;
+		
+		let mut platform = WinitPlatform::new(&mut imguiContext);
+		platform.attach_window(
+			&window,
+			dear_imgui_winit::HiDpiMode::Default,
+			&mut imguiContext
+		);
+		
+		let mut imguiRenderer = GlowRenderer::new(gl, &mut imguiContext)?;
+		imguiRenderer.set_framebuffer_srgb_enabled(false);
+		imguiRenderer.new_frame()?;
+		let imgui = ImguiWrapper {
+			context: imguiContext,
+			platform,
+			renderer: imguiRenderer,
+			lastFrame: Instant::now(),
+		};
+		
+		// Simulation
 		// let viewport = ViewportTest::new(window.clone(), gl.clone());
-		let viewport = ViewportSim::new(window.clone(), gl.clone());
+		let viewport = ViewportSim::new(window.clone(), imgui.renderer.gl_context().unwrap().clone());
 		
 		Ok(AppState {
 			window,
 			surface,
 			context,
+			imgui,
 			input: WinitInputHelper::new(),
 			requestRedraw: false,
 			waitCancelled: false,
@@ -139,7 +175,34 @@ impl AppState {
 	}
 	
 	fn render(&mut self) -> Result<(), Box<dyn Error>> {
+		// Render simulation
 		self.viewport.render(TIME_STEP);
+		
+		// UI
+		let now = Instant::now();
+		let dt = (now - self.imgui.lastFrame).as_secs_f32();
+		self.imgui.context.io_mut().set_delta_time(dt);
+		self.imgui.lastFrame = now;
+		
+		self.imgui.platform.prepare_frame(&self.window, &mut self.imgui.context);
+		let ui = self.imgui.context.frame();
+		
+		let mut uiWidth: f32 = 1.0;
+		ui.window("App Info")
+			.size([400.0, 300.0], Condition::FirstUseEver)
+			.build(|| {
+				uiWidth = ui.window_width();
+				ui.text(format!("ImGUI FPS: {}", ui.io().framerate()));
+			});
+		
+		// Render UI
+		self.imgui.platform.prepare_render_with_ui(&ui, &self.window);
+		let drawData = self.imgui.context.render();
+		
+		self.imgui.renderer.new_frame()?;
+		self.imgui.renderer.render(&drawData)?;
+		
+		// Swap
 		self.window.pre_present_notify();
 		self.surface.swap_buffers(&self.context)?;
 		Ok(())
@@ -177,6 +240,9 @@ impl ApplicationHandler for App {
 	fn window_event(&mut self, eventLoop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
 		if let Some(ref mut state) = self.state {
 			state.input.process_window_event(&event);
+			
+			state.imgui.platform.handle_window_event(&mut state.imgui.context, &state.window, &event);
+			
 			match event {
 				WindowEvent::Resized(size) => {
 					state.resize(size);
