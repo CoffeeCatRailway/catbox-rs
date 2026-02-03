@@ -202,15 +202,24 @@ impl AppState {
 		ui.window("App Info")
 			.size([260.0, 200.0], Condition::FirstUseEver)
 			.build(|| {
-				// let uiWidth = ui.window_width();
+				let uiWidth = ui.window_width();
 				ui.text(format!("ImGUI FPS: {:.2}", ui.io().framerate()));
 				// total frames
 				// fps/ups
-				let mousePos = ui.io().mouse_pos();
+				
+				let mousePos = if let Some(cursor) = self.input.cursor() {
+					<[f32; 2]>::from(cursor)
+				} else {
+					ui.io().mouse_pos()
+				};
 				ui.text(format!("Mouse Position: ({:.2},{:.2})", mousePos[0], mousePos[1]));
+				
 				let windowSize = self.window.inner_size();
 				ui.text(format!("Window Size: ({},{})", windowSize.width, windowSize.height));
+				
+				let itemWidth = ui.push_item_width(uiWidth * 0.6);
 				ui.color_edit4("Clear Color", &mut self.imgui.clearColor);
+				itemWidth.end();
 			});
 		self.viewport.gui(ui);
 		
