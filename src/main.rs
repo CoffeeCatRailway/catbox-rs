@@ -31,8 +31,11 @@ use crate::window::*;
 const WIN_WIDTH: u32 = 800;
 const WIN_HEIGHT: u32 = 600;
 
-const FPS: u32 = 60;
-const TIME_STEP: f32 = 1.0 / FPS as f32;
+const TARGET_FPS: u32 = 60;
+const FRAME_DT: f32 = 1.0 / TARGET_FPS as f32;
+
+const TARGET_UPS: u32 = 60;
+const STEP_DT: f32 = 1.0 / TARGET_UPS as f32;
 
 struct ImguiWrapper {
 	context: dear_imgui_rs::Context,
@@ -46,8 +49,11 @@ struct AppState {
 	window: Rc<Window>,
 	surface: Surface<WindowSurface>,
 	context: PossiblyCurrentContext,
+	
 	imgui: ImguiWrapper,
 	input: WinitInputHelper,
+	lastUpdate: Instant,
+	
 	requestRedraw: bool,
 	waitCancelled: bool,
 	viewport: Box<dyn Viewport>,
@@ -136,8 +142,11 @@ impl AppState {
 			window,
 			surface,
 			context,
+			
 			imgui,
 			input: WinitInputHelper::new(),
+			lastUpdate: Instant::now(),
+			
 			requestRedraw: false,
 			waitCancelled: false,
 			viewport: Box::new(viewport),
@@ -154,13 +163,8 @@ impl AppState {
 	fn update(&mut self, eventLoop: &ActiveEventLoop) {
 		self.input.end_step();
 		
-		// Use `if let` because first cycle is None
-		// let dt = state.input.delta_time().unwrap().as_secs_f32();
-		let dt = if let Some(time) = self.input.delta_time() {
-			time.as_secs_f32()
-		} else {
-			TIME_STEP
-		};
+		let dt = self.lastUpdate.elapsed().as_secs_f32();
+		self.lastUpdate = Instant::now();
 		// info!("Delta time: {}s", dt);
 		self.viewport.handleInput(dt, &self.input, eventLoop);
 		
@@ -168,14 +172,14 @@ impl AppState {
 			self.window.request_redraw();
 			self.requestRedraw = false;
 			
-			let dt = TIME_STEP; //self.instant.elapsed().as_secs_f32();
+			let dt = STEP_DT; //self.instant.elapsed().as_secs_f32();
 			// info!("Delta time: {}s", dt);
 			self.viewport.update(dt, eventLoop);
 		}
 		
 		if !self.waitCancelled {
 			let now = Instant::now();
-			eventLoop.set_control_flow(ControlFlow::WaitUntil(now + Duration::from_secs_f32(TIME_STEP)));
+			eventLoop.set_control_flow(ControlFlow::WaitUntil(now + Duration::from_secs_f32(FRAME_DT)));
 			self.requestRedraw = true;
 		}
 	}
@@ -188,13 +192,13 @@ impl AppState {
 		}
 		
 		// Render simulation
-		self.viewport.render(TIME_STEP);
+		let dt = self.imgui.lastFrame.elapsed().as_secs_f32();
+		// info!("{}", dt);
+		self.viewport.render(dt);
 		
 		// UI
-		let now = Instant::now();
-		let dt = (now - self.imgui.lastFrame).as_secs_f32();
 		self.imgui.context.io_mut().set_delta_time(dt);
-		self.imgui.lastFrame = now;
+		self.imgui.lastFrame = Instant::now();
 		
 		self.imgui.platform.prepare_frame(&self.window, &mut self.imgui.context);
 		let ui = self.imgui.context.frame();
@@ -245,7 +249,8 @@ impl ApplicationHandler for App {
 			state.waitCancelled = match cause {
 				StartCause::WaitCancelled { .. } => true,
 				_ => false,
-			}
+			};
+			// info!("{}", state.waitCancelled);
 		}
 	}
 	

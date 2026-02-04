@@ -14,7 +14,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
-use crate::TIME_STEP;
+use crate::STEP_DT;
 
 pub trait Viewport {
     fn resize(&mut self, width: u32, height: u32);
@@ -232,7 +232,7 @@ impl Viewport for ViewportSim {
                 });
                 obj.borrow_mut().position.y = solver.worldSize.y * 0.25;
                 obj.borrow_mut().positionLast.y = solver.worldSize.y * 0.25;
-                obj.borrow_mut().setVelocity(vec2(100.0, 50.0), TIME_STEP);
+                obj.borrow_mut().setVelocity(vec2(100.0, 50.0), STEP_DT);
             }
         }
 
