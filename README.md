@@ -10,7 +10,8 @@ This is also a continuation of my Java attempt [CatBox](https://github.com/Coffe
 - [x] Primitive Shape Renderer (Circle, Box, Triangle-WIP)
 - [x] Simple object (ball)
 - [x] Collide with world boundaries
-- [ ] Imgui
+- [x] Imgui
+- [x] Separate solver thread
 - [ ] Collide with other objects
 - [ ] Constraints (Fixed distance & Spring)
 - [ ] Constraint collision (Box)
