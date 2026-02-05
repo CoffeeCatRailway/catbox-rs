@@ -1,37 +1,22 @@
 #![allow(non_snake_case)]
 
-use std::cell::RefCell;
+use std::rc::Rc;
 use crate::graphics::Renderer;
 use crate::simulation::camera::{Camera, Direction, Frustum, Projection};
 use crate::simulation::{SimpleSolver, Transform, VerletObject};
 use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
 use log::info;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use dear_imgui_rs::Ui;
 use winit::event::MouseButton;
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
-use crate::STEP_DT;
 
-pub trait Viewport {
-    fn resize(&mut self, width: u32, height: u32);
-
-    fn handleInput(&mut self, dt: f32, input: &WinitInputHelper, eventLoop: &ActiveEventLoop);
-
-    fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop);
-
-    fn render(&mut self, dt: f32);
-	
-	fn gui(&mut self, ui: &mut Ui);
-
-    fn destroy(&mut self);
-}
-
-pub struct ViewportSim {
-    window: Rc<Window>,
+pub struct Viewport {
+    window: Arc<Window>,
     gl: Rc<Context>,
 
     camera: Camera,
@@ -39,12 +24,12 @@ pub struct ViewportSim {
     projectionMatrix: Mat4,
     viewMatrix: Mat4,
     renderer: Renderer,
-
-    solver: Rc<RefCell<SimpleSolver>>,
+	
+	solver: Arc<Mutex<SimpleSolver>>,
 }
 
-impl ViewportSim {
-	pub fn new(window: Rc<Window>, gl: Rc<Context>) -> Self {
+impl Viewport {
+	pub fn new(window: Arc<Window>, gl: Rc<Context>, solver: Arc<Mutex<SimpleSolver>>) -> Self {
 		unsafe {
 			let size = window.inner_size();
 			gl.viewport(0, 0, size.width as i32, size.height as i32);
@@ -71,20 +56,15 @@ impl ViewportSim {
 		};
         let mut renderer = Renderer::new(gl.clone());
         renderer.getLineRenderer().enabled = false;
+		
+		if let Ok(mut solver) = solver.lock() {
+			solver.worldSize = Vec2::splat(1000.0);
+			solver.subSteps = 8;
+			solver.gravity.y = -400.0;
+		}
+		renderer.addRenderable(solver.clone());
 
-        let solver = Rc::new(RefCell::new(SimpleSolver::new(vec2(1000.0, 1000.0), 8)));
-		solver.borrow_mut().gravity.y = -400.0;
-        renderer.addRenderable(solver.clone());
-
-        // let obj = solver.borrow_mut().addObject(VerletObject {
-		// 	elasticity: 0.9,
-		// 	..VerletObject::default()
-		// });
-        // obj.borrow_mut().position.y = solver.borrow().worldSize.y * 0.25;
-		// obj.borrow_mut().positionLast.y = solver.borrow().worldSize.y * 0.25;
-		// obj.borrow_mut().setVelocity(vec2(100.0, 0.0), TIME_STEP);
-
-		let mut sim = ViewportSim {
+		let mut sim = Viewport {
 			window,
 			gl,
 			
@@ -93,8 +73,8 @@ impl ViewportSim {
 			projectionMatrix: Mat4::IDENTITY,
 			viewMatrix: Mat4::IDENTITY,
             renderer,
-
-            solver,
+			
+			solver,
 		};
 		sim.updateProjectionMatrix();
 		info!("Viewport initialized");
@@ -134,10 +114,8 @@ impl ViewportSim {
 		eye.w = 0.0;
 		(self.viewMatrix.inverse() * eye).truncate() //.normalize()
 	}
-}
-
-impl Viewport for ViewportSim {
-    fn resize(&mut self, width: u32, height: u32) {
+	
+    pub fn resize(&mut self, width: u32, height: u32) {
         // #[cfg(not(target_os = "linux"))]
         unsafe {
             self.gl.viewport(0, 0, width as i32, height as i32);
@@ -145,14 +123,15 @@ impl Viewport for ViewportSim {
         self.updateProjectionMatrix();
     }
 
-    fn handleInput(&mut self, dt: f32, input: &WinitInputHelper, eventLoop: &ActiveEventLoop) {
+    pub fn handleInput(&mut self, dt: f32, input: &WinitInputHelper, eventLoop: &ActiveEventLoop) {
         if input.key_pressed(KeyCode::Escape) {
             eventLoop.exit();
         }
         if input.key_pressed(KeyCode::Digit1) {
-            let mut solver = self.solver.borrow_mut();
-            solver.pause = !solver.pause;
-        }
+            if let Ok(mut solver) = self.solver.lock() {
+				solver.pause = !solver.pause;
+			}
+		}
 
         let scrollDiff = {
             let d = input.scroll_diff();
@@ -213,48 +192,52 @@ impl Viewport for ViewportSim {
         }
     }
 
-    fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop) {
+    pub fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop) {
         // self.renderer.getShapeRenderer().pushBox(Vec2::ZERO, Vec3::splat(0.15), self.solver.borrow().worldSize, 0.0, 10.0);
-
-        let mut solver = self.solver.borrow_mut();
-        if !solver.pause {
-            if solver.getTotalSteps() % 2 == 0 && solver.getObjectCount() <= 1000 {
-                // info!("{}", solver.getObjectCount());
-                let t = solver.getObjectCount() as f32 * 0.5;
-                let color = vec3(
-                    t.sin() * 0.5 + 0.5,
-                    t.cos() * 0.5 + 0.5,
-                    (t + t.cos()).cos() * 0.5 + 0.5,
-                );
-                let obj = solver.addObject(VerletObject {
-                    color,
-                    elasticity: 1.0,
-                    ..VerletObject::default()
-                });
-                obj.borrow_mut().position.y = solver.worldSize.y * 0.25;
-                obj.borrow_mut().positionLast.y = solver.worldSize.y * 0.25;
-				obj.borrow_mut().setVelocity(vec2(100.0, 50.0), STEP_DT);
-				// obj.borrow_mut().setVelocity(vec2(100.0 * (t * 0.5).cos(), 100.0 * (t * 0.5).sin()), STEP_DT);
-            }
-        }
-
-        solver.update(dt);
-    }
-
-    fn render(&mut self, dt: f32) {
-        let projection = self.projectionMatrix;
-        self.viewMatrix = self.camera.getViewMatrix();
-
-        let pvm = projection * self.viewMatrix;
+		
+		if let Ok(mut solver) = self.solver.lock() {
+			if !solver.pause {
+				if solver.getTotalSteps() % 2 == 0 && solver.getObjectCount() <= 2000 {
+					// info!("{}", solver.getObjectCount());
+					let t = solver.getObjectCount() as f32 * 0.5;
+					let color = vec3(
+						t.sin() * 0.5 + 0.5,
+						t.cos() * 0.5 + 0.5,
+						(t + t.cos()).cos() * 0.5 + 0.5,
+					);
+					let mut obj = VerletObject {
+						color,
+						elasticity: 1.0,
+						..VerletObject::default()
+					};
+					obj.position.y = solver.worldSize.y * 0.25;
+					obj.positionLast.y = solver.worldSize.y * 0.25;
+					obj.setVelocity(vec2(100.0, 50.0), dt);
+					// obj.setVelocity(vec2(100.0 * (t * 0.5).cos(), 100.0 * (t * 0.5).sin()), dt);
+					solver.addObject(Arc::new(Mutex::new(obj)));
+				}
+			}
+			
+			// solver.update(dt);
+		}
+	}
+	
+	pub fn render(&mut self, dt: f32) {
+		let projection = self.projectionMatrix;
+		self.viewMatrix = self.camera.getViewMatrix();
+		
+		let pvm = projection * self.viewMatrix;
         self.renderer.render(dt, &pvm);
     }
 	
-	fn gui(&mut self, ui: &mut Ui) {
+	pub fn gui(&mut self, _ui: &mut Ui) {
 	
 	}
 
-    fn destroy(&mut self) {
+    pub fn destroy(&mut self) {
         self.renderer.destroy();
-        self.solver.borrow_mut().destroy();
-    }
+		if let Ok(mut solver) = self.solver.lock() {
+			solver.destroy();
+		}
+	}
 }

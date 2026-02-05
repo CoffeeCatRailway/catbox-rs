@@ -11,7 +11,6 @@ pub struct VerletObject {
     pub radius: f32,
     #[allow(unused)]
     pub friction: f32,
-    #[allow(unused)]
     pub elasticity: f32,
     pub fixed: bool,
     pub visible: bool,

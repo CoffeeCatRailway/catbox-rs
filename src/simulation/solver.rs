@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use glam::{vec2, Mat4, Vec2, Vec3};
 use crate::graphics::{LineRenderer, Renderable, ShapeRenderer};
@@ -11,9 +10,9 @@ pub struct SimpleSolver {
     pub gravity: Vec2,
     pub worldSize: Vec2,
 
-    objects: Vec<Rc<RefCell<VerletObject>>>,
+    objects: Vec<Arc<Mutex<VerletObject>>>,
 
-    subSteps: u32,
+    pub subSteps: u32,
     totalSteps: u32,
 
     pub pause: bool,
@@ -21,7 +20,8 @@ pub struct SimpleSolver {
 
     time: f32,
     // frameDt: f32, // Use crate::TIME_STEP
-    updateTime: f32
+    updateTime: f32,
+	destroyed: bool,
 }
 
 impl SimpleSolver {
@@ -40,33 +40,33 @@ impl SimpleSolver {
 
             time: 0.0,
             updateTime: 0.0,
+			destroyed: false,
         }
     }
 
-    pub fn addObject(&mut self, object: VerletObject) -> Rc<RefCell<VerletObject>> {
-        self.objects.push(Rc::new(RefCell::new(object)));
-        self.objects.last_mut().unwrap().clone()
+    pub fn addObject(&mut self, object: Arc<Mutex<VerletObject>>) {
+        self.objects.push(object);
     }
 	
-	fn worldCollision(&mut self, _dt: f32, obj: &mut Rc<RefCell<VerletObject>>, worldSize: Vec2) {
-		let mut obj = obj.borrow_mut();
-		
-		let halfSize = worldSize * 0.5 - obj.radius;
-		let velocity = obj.getVelocity(1.0) * obj.elasticity;
-		if obj.position.x < -halfSize.x {
-			obj.position.x = -halfSize.x;
-			obj.positionLast.x = obj.position.x + velocity.x;
-		} else if obj.position.x > halfSize.x {
-			obj.position.x = halfSize.x;
-			obj.positionLast.x = obj.position.x + velocity.x;
-		}
-		
-		if obj.position.y < -halfSize.y {
-			obj.position.y = -halfSize.y;
-			obj.positionLast.y = obj.position.y + velocity.y;
-		} else if obj.position.y > halfSize.y {
-			obj.position.y = halfSize.y;
-			obj.positionLast.y = obj.position.y + velocity.y;
+	fn worldCollision(&mut self, _dt: f32, obj: &mut Arc<Mutex<VerletObject>>, worldSize: Vec2) {
+		if let Ok(mut obj) = obj.lock() {
+			let halfSize = worldSize * 0.5 - obj.radius;
+			let velocity = obj.getVelocity(1.0) * obj.elasticity;
+			if obj.position.x < -halfSize.x {
+				obj.position.x = -halfSize.x;
+				obj.positionLast.x = obj.position.x + velocity.x;
+			} else if obj.position.x > halfSize.x {
+				obj.position.x = halfSize.x;
+				obj.positionLast.x = obj.position.x + velocity.x;
+			}
+			
+			if obj.position.y < -halfSize.y {
+				obj.position.y = -halfSize.y;
+				obj.positionLast.y = obj.position.y + velocity.y;
+			} else if obj.position.y > halfSize.y {
+				obj.position.y = halfSize.y;
+				obj.positionLast.y = obj.position.y + velocity.y;
+			}
 		}
 	}
 	
@@ -81,10 +81,11 @@ impl SimpleSolver {
 	}
 
     fn updateObjects(&mut self, dt: f32) {
-        for obj in self.objects.iter_mut() {
-            let mut obj = obj.borrow_mut();
-            obj.accelerate(self.gravity);
-            obj.update(dt);
+        for obj in &self.objects {
+			if let Ok(mut obj) = obj.lock() {
+				obj.accelerate(self.gravity);
+				obj.update(dt);
+			}
         }
     }
 
@@ -114,8 +115,12 @@ impl SimpleSolver {
     }
 
     pub fn destroy(&mut self) {
-
+		self.destroyed = true;
     }
+	
+	pub fn destroyed(&self) -> bool {
+		self.destroyed
+	}
 
     pub fn getObjectCount(&self) -> usize {
         self.objects.len()
@@ -134,9 +139,11 @@ impl SimpleSolver {
 impl Renderable for SimpleSolver {
     fn render(&mut self, dt: f32, pvMatrix: &Mat4, shapeRenderer: &mut ShapeRenderer, lineRenderer: &mut LineRenderer) {
         shapeRenderer.pushBox(Vec2::ZERO, Vec3::splat(0.15), self.worldSize, 0.0, 10.0);
-
-        for vobj in self.objects.iter_mut() {
-            vobj.borrow_mut().render(dt, pvMatrix, shapeRenderer, lineRenderer);
-        }
-    }
+		
+		for obj in &self.objects {
+			if let Ok(mut obj) = obj.lock() {
+				obj.render(dt, pvMatrix, shapeRenderer, lineRenderer);
+			}
+		}
+	}
 }

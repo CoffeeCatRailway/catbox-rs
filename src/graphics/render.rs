@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
-use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use glam::Mat4;
 use glow::Context;
 use log::info;
@@ -12,7 +12,7 @@ pub trait Renderable {
 }
 
 pub struct Renderer {
-    renderables: Vec<Rc<RefCell<dyn Renderable>>>,
+    renderables: Vec<Arc<Mutex<dyn Renderable>>>,
     destroyed: bool,
 
     shapeRenderer: ShapeRenderer,
@@ -33,15 +33,16 @@ impl Renderer {
         }
     }
 
-    pub fn addRenderable<T: Renderable + 'static>(&mut self, renderable: Rc<RefCell<T>>) {
+    pub fn addRenderable<T: Renderable + 'static>(&mut self, renderable: Arc<Mutex<T>>) {
         self.renderables.push(renderable);
     }
 
     #[allow(unused)]
-    pub fn removeRenderableByIndex(&mut self, i: usize) -> Rc<RefCell<dyn Renderable>> {
+    pub fn removeRenderableByIndex(&mut self, i: usize) -> Arc<Mutex<dyn Renderable>> {
         self.renderables.remove(i)
     }
-
+	
+	#[allow(unused)]
     pub fn getShapeRenderer(&mut self) -> &mut ShapeRenderer {
         &mut self.shapeRenderer
     }
@@ -51,8 +52,10 @@ impl Renderer {
     }
 
     pub fn render(&mut self, dt: f32, pvMatrix: &Mat4) {
-        for renderable in self.renderables.iter_mut() {
-            renderable.borrow_mut().render(dt, pvMatrix, &mut self.shapeRenderer, &mut self.lineRenderer);
+        for renderable in &self.renderables {
+			if let Ok(mut renderable) = renderable.lock() {
+				renderable.render(dt, pvMatrix, &mut self.shapeRenderer, &mut self.lineRenderer);
+			}
         }
 
         self.shapeRenderer.drawFlush(pvMatrix);
