@@ -8,12 +8,14 @@ use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
 use log::info;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use dear_imgui_rs::Ui;
 use winit::event::MouseButton;
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
+use crate::STEP_DT;
 
 pub struct Viewport {
     window: Arc<Window>,
@@ -29,7 +31,7 @@ pub struct Viewport {
 }
 
 impl Viewport {
-	pub fn new(window: Arc<Window>, gl: Rc<Context>, solver: Arc<Mutex<SimpleSolver>>) -> Self {
+	pub fn new(window: Arc<Window>, gl: Rc<Context>) -> Self {
 		unsafe {
 			let size = window.inner_size();
 			gl.viewport(0, 0, size.width as i32, size.height as i32);
@@ -57,12 +59,27 @@ impl Viewport {
         let mut renderer = Renderer::new(gl.clone());
         renderer.getLineRenderer().enabled = false;
 		
-		if let Ok(mut solver) = solver.lock() {
-			solver.worldSize = Vec2::splat(1000.0);
-			solver.subSteps = 8;
-			solver.gravity.y = -400.0;
-		}
+		let mut solver = SimpleSolver::new(Vec2::splat(1000.0), 8);
+		solver.gravity.y = -400.0;
+		
+		let solver = Arc::new(Mutex::new(solver));
 		renderer.addRenderable(solver.clone());
+		{
+			info!("Starting solver thread");
+			let threadSolver = Arc::clone(&solver);
+			
+			std::thread::spawn(move || {
+				loop {
+					if let Ok(mut solver) = threadSolver.lock() {
+						if solver.destroyed() {
+							break;
+						}
+						solver.update(STEP_DT);
+					}
+					std::thread::sleep(Duration::from_secs_f32(STEP_DT));
+				}
+			});
+		}
 
 		let mut sim = Viewport {
 			window,

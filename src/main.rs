@@ -13,12 +13,11 @@ use glutin::prelude::*;
 use glutin::surface::{Surface, WindowSurface};
 use glutin_winit::{DisplayBuilder, GlWindow};
 use raw_window_handle::HasWindowHandle;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use dear_imgui_glow::GlowRenderer;
 use dear_imgui_rs::Condition;
 use dear_imgui_winit::WinitPlatform;
-use glam::Vec2;
 use glow::HasContext;
 use log::{error, info};
 use winit::application::ApplicationHandler;
@@ -27,7 +26,6 @@ use winit::event::{DeviceEvent, DeviceId, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes, WindowId};
 use winit_input_helper::WinitInputHelper;
-use crate::simulation::SimpleSolver;
 use crate::window::*;
 
 const WIN_WIDTH: u32 = 800;
@@ -65,11 +63,10 @@ struct AppState {
 
 struct App {
 	state: Option<AppState>,
-	solver: Arc<Mutex<SimpleSolver>>,
 }
 
 impl AppState {
-	fn new(eventLoop: &ActiveEventLoop, solver: Arc<Mutex<SimpleSolver>>) -> Result<Self, Box<dyn Error>> {
+	fn new(eventLoop: &ActiveEventLoop) -> Result<Self, Box<dyn Error>> {
 		// Window
 		let attributes = WindowAttributes::default()
 			.with_inner_size(PhysicalSize::new(WIN_WIDTH, WIN_HEIGHT))
@@ -138,7 +135,7 @@ impl AppState {
 		info!("Imgui initialized");
 		
 		// Simulation
-		let viewport = Viewport::new(window.clone(), imgui.renderer.gl_context().unwrap().clone(), solver);
+		let viewport = Viewport::new(window.clone(), imgui.renderer.gl_context().unwrap().clone());
 		
 		Ok(AppState {
 			window,
@@ -260,7 +257,7 @@ impl ApplicationHandler for App {
 	
 	fn resumed(&mut self, eventLoop: &ActiveEventLoop) {
 		if self.state.is_none() {
-			match AppState::new(eventLoop, self.solver.clone()) {
+			match AppState::new(eventLoop) {
 				Ok(state) => {
 					state.window.request_redraw();
 					self.state = Some(state);
@@ -327,27 +324,5 @@ fn main() {
 	// panic!("hi");
 	
 	let eventLoop = EventLoop::new().unwrap();
-	
-	let mut app = App {
-		state: None,
-		solver: Arc::new(Mutex::new(SimpleSolver::new(Vec2::new(1000.0, 1000.0), 8))),
-	};
-	
-	{
-		let threadSolver = Arc::clone(&app.solver);
-		
-		std::thread::spawn(move || {
-			loop {
-				if let Ok(mut solver) = threadSolver.lock() {
-					if solver.destroyed() {
-						break;
-					}
-					solver.update(STEP_DT);
-				}
-				std::thread::sleep(Duration::from_secs_f32(STEP_DT));
-			}
-		});
-	}
-	
-	eventLoop.run_app(&mut app).expect("Failed to run event loop");
+	eventLoop.run_app(&mut App { state: None, }).expect("Failed to run event loop");
 }
