@@ -73,6 +73,7 @@ impl ViewportSim {
         renderer.getLineRenderer().enabled = false;
 
         let solver = Rc::new(RefCell::new(SimpleSolver::new(vec2(1000.0, 1000.0), 8)));
+		solver.borrow_mut().gravity.y = -400.0;
         renderer.addRenderable(solver.clone());
 
         // let obj = solver.borrow_mut().addObject(VerletObject {
@@ -232,7 +233,8 @@ impl Viewport for ViewportSim {
                 });
                 obj.borrow_mut().position.y = solver.worldSize.y * 0.25;
                 obj.borrow_mut().positionLast.y = solver.worldSize.y * 0.25;
-                obj.borrow_mut().setVelocity(vec2(100.0, 50.0), STEP_DT);
+				obj.borrow_mut().setVelocity(vec2(100.0, 50.0), STEP_DT);
+				// obj.borrow_mut().setVelocity(vec2(100.0 * (t * 0.5).cos(), 100.0 * (t * 0.5).sin()), STEP_DT);
             }
         }
 

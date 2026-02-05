@@ -27,7 +27,7 @@ pub struct SimpleSolver {
 impl SimpleSolver {
     pub fn new(worldSize: Vec2, subSteps: u32) -> Self {
         SimpleSolver {
-            gravity: vec2(0.0, -400.0),
+            gravity: vec2(0.0, 0.0),
             worldSize,
 
             objects: Vec::new(),
