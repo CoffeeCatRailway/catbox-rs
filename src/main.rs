@@ -16,7 +16,6 @@ use raw_window_handle::HasWindowHandle;
 use std::sync::Arc;
 use std::time::Instant;
 use dear_imgui_glow::GlowRenderer;
-use dear_imgui_rs::Condition;
 use dear_imgui_winit::WinitPlatform;
 use glow::HasContext;
 use log::{error, info};
@@ -179,7 +178,7 @@ impl AppState {
 		let ui = self.imgui.context.frame();
 		
 		ui.window("App Info")
-			.size([260.0, 200.0], Condition::FirstUseEver)
+			// .size([260.0, 200.0], Condition::FirstUseEver)
 			.build(|| {
 				let uiWidth = ui.window_width();
 				ui.text(format!("ImGUI FPS: {:.2}", ui.io().framerate()));

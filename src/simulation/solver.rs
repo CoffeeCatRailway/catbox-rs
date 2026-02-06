@@ -12,13 +12,13 @@ pub struct SimpleSolver {
 
     objects: Vec<Arc<Mutex<VerletObject>>>,
 
-    pub subSteps: u32,
+    subSteps: u32,
     totalSteps: u32,
 
     pub pause: bool,
-    btnStep: bool,
+    pub btnStep: bool,
 
-    time: f32,
+    toalTimeElapsed: f32,
     // frameDt: f32, // Use crate::TIME_STEP
     updateTime: f32,
 	destroyed: bool,
@@ -38,7 +38,7 @@ impl SimpleSolver {
             pause: false,
             btnStep: false,
 
-            time: 0.0,
+            toalTimeElapsed: 0.0,
             updateTime: 0.0,
 			destroyed: false,
         }
@@ -100,7 +100,7 @@ impl SimpleSolver {
         if !self.pause || self.btnStep {
             let then = Instant::now();
 
-            self.time += dt;
+            self.toalTimeElapsed += dt;
             let stepDt = dt / self.subSteps as f32;
             for _ in 0..self.subSteps {
                 self.step(stepDt);
@@ -125,15 +125,22 @@ impl SimpleSolver {
     pub fn getObjectCount(&self) -> usize {
         self.objects.len()
     }
+	
+	pub fn getSubSteps(&self) -> u32 {
+		self.subSteps
+	}
 
     pub fn getTotalSteps(&self) -> u32 {
         self.totalSteps
     }
 
-	#[allow(unused)]
-    pub fn getTimeElapsed(&self) -> f32 {
-        self.time
+    pub fn getTotalTimeElapsed(&self) -> f32 {
+        self.toalTimeElapsed
     }
+	
+	pub fn getUpdateTime(&self) -> f32 {
+		self.updateTime
+	}
 }
 
 impl Renderable for SimpleSolver {

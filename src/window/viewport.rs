@@ -150,7 +150,7 @@ impl Viewport {
             eventLoop.exit();
         }
         if input.key_pressed(KeyCode::Digit1) {
-            if let Ok(mut solver) = self.solver.lock() {
+			if let Ok(mut solver) = self.solver.lock() {
 				solver.pause = !solver.pause;
 			}
 		}
@@ -239,8 +239,6 @@ impl Viewport {
 					solver.addObject(Arc::new(Mutex::new(obj)));
 				}
 			}
-			
-			// solver.update(dt);
 		}
 	}
 	
@@ -252,8 +250,31 @@ impl Viewport {
         self.renderer.render(dt, &pvm);
     }
 	
-	pub fn gui(&mut self, _ui: &mut Ui) {
-	
+	pub fn gui(&mut self, ui: &mut Ui) {
+		if let Ok(mut solver) = self.solver.lock() {
+			ui.window("Solver")
+			  .build(|| {
+				  ui.input_float2("Gravity", solver.gravity.as_mut()).build();
+				  ui.separator();
+				  
+				  ui.text(format!("Objects: {}", solver.getObjectCount()));
+				  ui.separator();
+				  
+				  ui.text(format!("Sub steps: {}\tTotal steps: {}", solver.getSubSteps(), solver.getTotalSteps()));
+				  ui.text(format!("Step dt: {}", (STEP_DT / solver.getSubSteps() as f32)));
+				  ui.checkbox("Pause", &mut solver.pause);
+				  if solver.pause {
+					  ui.same_line();
+					  if ui.small_button("Step") {
+						  solver.btnStep = true;
+					  }
+				  }
+				  ui.separator();
+				  
+				  ui.text(format!("Total time elapsed: {}", solver.getTotalTimeElapsed()));
+				  ui.text(format!("Last update time: {}", solver.getUpdateTime()));
+			  });
+		}
 	}
 
     pub fn destroy(&mut self) {
