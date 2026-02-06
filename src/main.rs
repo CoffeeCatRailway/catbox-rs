@@ -10,11 +10,11 @@ use glutin::config::ConfigTemplateBuilder;
 use glutin::context::{ContextApi, ContextAttributesBuilder, PossiblyCurrentContext};
 use glutin::display::GetGlDisplay;
 use glutin::prelude::*;
-use glutin::surface::{Surface, WindowSurface};
+use glutin::surface::{Surface, SwapInterval, WindowSurface};
 use glutin_winit::{DisplayBuilder, GlWindow};
 use raw_window_handle::HasWindowHandle;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use dear_imgui_glow::GlowRenderer;
 use dear_imgui_rs::Condition;
 use dear_imgui_winit::WinitPlatform;
@@ -30,9 +30,6 @@ use crate::window::*;
 
 const WIN_WIDTH: u32 = 800;
 const WIN_HEIGHT: u32 = 600;
-
-const TARGET_FPS: u32 = 60;
-const FRAME_DT: f32 = 1.0 / TARGET_FPS as f32;
 
 const TARGET_UPS: u32 = 60;
 const STEP_DT: f32 = 1.0 / TARGET_UPS as f32;
@@ -52,13 +49,7 @@ struct AppState {
 	
 	imgui: ImguiWrapper,
 	input: WinitInputHelper,
-	lastUpdate: Instant,
-	
-	requestRedraw: bool,
-	waitCancelled: bool,
 	viewport: Viewport,
-	
-	sinceSync: u32,
 }
 
 struct App {
@@ -105,7 +96,9 @@ impl AppState {
 			
 			let context = notCurrentGlContext.make_current(&surface)?;
 			let gl = glow::Context::from_loader_function_cstr(|s| display.get_proc_address(s));
-			// glSurface.set_swap_interval(&glContext, SwapInterval::Wait(NonZeroU32::new(1).unwrap())).unwrap();
+			
+			surface.set_swap_interval(&context, SwapInterval::Wait(NonZeroU32::new(1).unwrap()))?;
+			// surface.set_swap_interval(&context, SwapInterval::DontWait)?;
 			
 			(gl, surface, context)
 		};
@@ -144,18 +137,11 @@ impl AppState {
 			
 			imgui,
 			input: WinitInputHelper::new(),
-			lastUpdate: Instant::now(),
-			
-			requestRedraw: false,
-			waitCancelled: false,
 			viewport,
-			
-			sinceSync: 0,
 		})
 	}
 	
 	fn resize(&mut self, size: PhysicalSize<u32>) {
-		self.requestRedraw = true;
 		let (width, height) = (size.width.max(1), size.height.max(1));
 		self.surface.resize(&self.context, NonZeroU32::new(width).unwrap(), NonZeroU32::new(height).unwrap());
 		self.viewport.resize(width, height);
@@ -164,25 +150,14 @@ impl AppState {
 	fn update(&mut self, eventLoop: &ActiveEventLoop) {
 		self.input.end_step();
 		
-		let dt = self.lastUpdate.elapsed().as_secs_f32();
-		self.lastUpdate = Instant::now();
+		let dt = if let Some(dt) = self.input.delta_time() {
+			dt.as_secs_f32()
+		} else {
+			STEP_DT
+		};
 		// info!("Delta time: {}s", dt);
 		self.viewport.handleInput(dt, &self.input, eventLoop);
-		
-		if self.requestRedraw && !self.waitCancelled {
-			self.window.request_redraw();
-			self.requestRedraw = false;
-			
-			let dt = STEP_DT; //self.instant.elapsed().as_secs_f32();
-			// info!("Delta time: {}s", dt);
-			self.viewport.update(dt, eventLoop);
-		}
-		
-		if !self.waitCancelled {
-			let now = Instant::now();
-			eventLoop.set_control_flow(ControlFlow::WaitUntil(now + Duration::from_secs_f32(FRAME_DT)));
-			self.requestRedraw = true;
-		}
+		self.viewport.update(STEP_DT, eventLoop);
 	}
 	
 	fn render(&mut self) -> Result<(), Box<dyn Error>> {
@@ -194,7 +169,6 @@ impl AppState {
 		
 		// Render simulation
 		let dt = self.imgui.lastFrame.elapsed().as_secs_f32();
-		// info!("{}", dt);
 		self.viewport.render(dt);
 		
 		// UI
@@ -243,15 +217,9 @@ impl AppState {
 }
 
 impl ApplicationHandler for App {
-	fn new_events(&mut self, _eventLoop: &ActiveEventLoop, cause: StartCause) {
+	fn new_events(&mut self, _eventLoop: &ActiveEventLoop, _cause: StartCause) {
 		if let Some(ref mut state) = self.state {
 			state.input.step();
-			
-			state.waitCancelled = match cause {
-				StartCause::WaitCancelled { .. } => true,
-				_ => false,
-			};
-			// info!("{}", state.waitCancelled);
 		}
 	}
 	
@@ -289,6 +257,7 @@ impl ApplicationHandler for App {
 					if let Err(e) = state.render() {
 						error!("Error rendering AppState: {}", e);
 					}
+					state.window.request_redraw();
 				},
 				_ => (),
 			}
@@ -304,7 +273,6 @@ impl ApplicationHandler for App {
 	fn about_to_wait(&mut self, eventLoop: &ActiveEventLoop) {
 		if let Some(ref mut state) = self.state {
 			state.update(eventLoop);
-			state.sinceSync += 1;
 		}
 	}
 	
@@ -324,5 +292,6 @@ fn main() {
 	// panic!("hi");
 	
 	let eventLoop = EventLoop::new().unwrap();
+	eventLoop.set_control_flow(ControlFlow::Poll);
 	eventLoop.run_app(&mut App { state: None, }).expect("Failed to run event loop");
 }
