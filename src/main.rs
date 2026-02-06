@@ -285,8 +285,16 @@ impl ApplicationHandler for App {
 }
 
 fn main() {
-	env_logger::builder().filter_level(log::LevelFilter::Info).init();
-	log_panics::init();
+	tracing_subscriber::fmt::fmt()
+		.with_ansi(true)
+		.with_target(false)
+		.with_file(true)
+		.with_line_number(true)
+		.with_thread_names(true)
+		.with_thread_ids(false)
+		.compact()
+		.with_max_level(tracing::Level::INFO)
+		.init();
 	
 	info!("Hello, world!");
 	// panic!("hi");

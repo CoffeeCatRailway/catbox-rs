@@ -65,20 +65,25 @@ impl Viewport {
 		let solver = Arc::new(Mutex::new(solver));
 		renderer.addRenderable(solver.clone());
 		{
+			use std::thread;
+			
 			info!("Starting solver thread");
 			let threadSolver = Arc::clone(&solver);
 			
-			std::thread::spawn(move || {
-				loop {
-					if let Ok(mut solver) = threadSolver.lock() {
-						if solver.destroyed() {
-							break;
+			thread::Builder::new()
+				.name("solver".to_string())
+				.spawn(move || {
+					info!("hi");
+					loop {
+						if let Ok(mut solver) = threadSolver.lock() {
+							if solver.destroyed() {
+								break;
+							}
+							solver.update(STEP_DT);
 						}
-						solver.update(STEP_DT);
+						thread::sleep(Duration::from_secs_f32(STEP_DT));
 					}
-					std::thread::sleep(Duration::from_secs_f32(STEP_DT));
-				}
-			});
+				}).expect("Failed to spawn solver thread!");
 		}
 
 		let mut sim = Viewport {
