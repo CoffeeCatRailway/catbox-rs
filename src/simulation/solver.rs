@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 use glam::{vec2, Mat4, Vec2, Vec3};
 use crate::graphics::{LineRenderer, Renderable, ShapeRenderer};
@@ -48,40 +48,61 @@ impl SimpleSolver {
         self.objects.push(object);
     }
 	
-	fn worldCollision(&mut self, _dt: f32, obj: &mut Arc<Mutex<VerletObject>>, worldSize: Vec2) {
-		if let Ok(mut obj) = obj.lock() {
-			let halfSize = worldSize * 0.5 - obj.radius;
-			let velocity = obj.getVelocity(1.0) * obj.elasticity;
-			if obj.position.x < -halfSize.x {
-				obj.position.x = -halfSize.x;
-				obj.positionLast.x = obj.position.x + velocity.x;
-			} else if obj.position.x > halfSize.x {
-				obj.position.x = halfSize.x;
-				obj.positionLast.x = obj.position.x + velocity.x;
-			}
-			
-			if obj.position.y < -halfSize.y {
-				obj.position.y = -halfSize.y;
-				obj.positionLast.y = obj.position.y + velocity.y;
-			} else if obj.position.y > halfSize.y {
-				obj.position.y = halfSize.y;
-				obj.positionLast.y = obj.position.y + velocity.y;
-			}
+	fn solveObjectObjectCollision(&self, _obj1: &mut MutexGuard<VerletObject>, _obj2: &mut MutexGuard<VerletObject>) {
+	
+	}
+	
+	fn worldCollision(&self, _dt: f32, obj: &mut MutexGuard<VerletObject>) {
+		let halfSize = self.worldSize * 0.5 - obj.radius;
+		let velocity = obj.getVelocity(1.0) * obj.elasticity;
+		if obj.position.x < -halfSize.x {
+			obj.position.x = -halfSize.x;
+			obj.positionLast.x = obj.position.x + velocity.x;
+		} else if obj.position.x > halfSize.x {
+			obj.position.x = halfSize.x;
+			obj.positionLast.x = obj.position.x + velocity.x;
+		}
+		
+		if obj.position.y < -halfSize.y {
+			obj.position.y = -halfSize.y;
+			obj.positionLast.y = obj.position.y + velocity.y;
+		} else if obj.position.y > halfSize.y {
+			obj.position.y = halfSize.y;
+			obj.positionLast.y = obj.position.y + velocity.y;
 		}
 	}
 	
-	fn handleCollision(&mut self, dt: f32) {
-        let mut objects = self.objects.clone();
-		for obj in objects.iter_mut() {
-			// object-object
-			// object-line
-			self.worldCollision(dt, obj, self.worldSize);
+	fn handleCollision(&self, dt: f32) {
+		let mut i: usize = 0;
+		for obj1 in self.objects.iter() {
+			i += 1;
+			if let Ok(mut obj1) = obj1.lock() {
+				for obj2 in self.objects.iter().skip(i) {
+					if let Ok(mut obj2) = obj2.lock() {
+						if (obj2.position.x - obj2.radius) > (obj1.position.x + obj1.radius) {
+							break;
+						}
+						self.solveObjectObjectCollision(&mut obj1, &mut obj2);
+					}
+				}
+				
+				self.worldCollision(dt, &mut obj1);
+			}
 		}
-        self.objects = objects;
+		
+        // let objects = self.objects.clone();
+		// for obj in &objects {
+		// 	if let Ok(mut obj) = obj.lock() {
+		//
+		// 		// object-line
+		// 		self.worldCollision(dt, &mut obj, self.worldSize);
+		// 	}
+		// }
+        // self.objects = objects;
 	}
 
-    fn updateObjects(&mut self, dt: f32) {
-        for obj in &self.objects {
+    fn updateObjects(&self, dt: f32) {
+        for obj in self.objects.iter() {
 			if let Ok(mut obj) = obj.lock() {
 				obj.accelerate(self.gravity);
 				obj.update(dt);
@@ -89,7 +110,7 @@ impl SimpleSolver {
         }
     }
 
-    fn step(&mut self, dt: f32) {
+    fn step(&self, dt: f32) {
         // sort
         self.handleCollision(dt);
         // constrain
@@ -144,11 +165,11 @@ impl SimpleSolver {
 }
 
 impl Renderable for SimpleSolver {
-    fn render(&mut self, dt: f32, pvMatrix: &Mat4, shapeRenderer: &mut ShapeRenderer, lineRenderer: &mut LineRenderer) {
+    fn render(&self, dt: f32, pvMatrix: &Mat4, shapeRenderer: &mut ShapeRenderer, lineRenderer: &mut LineRenderer) {
         shapeRenderer.pushBox(Vec2::ZERO, Vec3::splat(0.15), self.worldSize, 0.0, 10.0);
 		
-		for obj in &self.objects {
-			if let Ok(mut obj) = obj.lock() {
+		for obj in self.objects.iter() {
+			if let Ok(obj) = obj.lock() {
 				obj.render(dt, pvMatrix, shapeRenderer, lineRenderer);
 			}
 		}

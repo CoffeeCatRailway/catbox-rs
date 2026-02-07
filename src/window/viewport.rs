@@ -66,10 +66,10 @@ impl Viewport {
 		renderer.addRenderable(solver.clone());
 		{
 			use std::thread;
-			
+		
 			info!("Starting solver thread");
 			let threadSolver = Arc::clone(&solver);
-			
+		
 			thread::Builder::new()
 				.name("solver".to_string())
 				.spawn(move || {
@@ -107,18 +107,6 @@ impl Viewport {
 		let windowSize = self.window.inner_size();
 		let windowAspect = windowSize.width as f32 / windowSize.height as f32;
 		
-		// Doesn't work if worldSize is not square
-		// let solverSize = self.solver.borrow().worldSize;
-		// let solverAspect = solverSize.x / solverSize.y;
-		//
-		// let projection = if windowAspect >= solverAspect {
-		// 	let aspect = windowAspect / solverAspect;
-		// 	Projection::Orthographic(aspect * -1.0, aspect * 1.0, -1.0, 1.0)
-		// } else {
-		// 	let aspect = solverAspect / windowAspect;
-		// 	Projection::Orthographic(-1.0, 1.0, aspect * -1.0, aspect * 1.0)
-		// };
-		
 		let projection = Projection::Orthographic(windowAspect * -1.0, windowAspect * 1.0, -1.0, 1.0);
 		self.projectionMatrix = self.camera.getProjectionMatrix(projection);
 	}
@@ -138,7 +126,6 @@ impl Viewport {
 	}
 	
     pub fn resize(&mut self, width: u32, height: u32) {
-        // #[cfg(not(target_os = "linux"))]
         unsafe {
             self.gl.viewport(0, 0, width as i32, height as i32);
         }
@@ -215,8 +202,6 @@ impl Viewport {
     }
 
     pub fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop) {
-        // self.renderer.getShapeRenderer().pushBox(Vec2::ZERO, Vec3::splat(0.15), self.solver.borrow().worldSize, 0.0, 10.0);
-		
 		if let Ok(mut solver) = self.solver.lock() {
 			if !solver.pause {
 				if solver.getTotalSteps() % 2 == 0 && solver.getObjectCount() <= 2000 {
@@ -239,6 +224,8 @@ impl Viewport {
 					solver.addObject(Arc::new(Mutex::new(obj)));
 				}
 			}
+			
+			// solver.update(dt);
 		}
 	}
 	

@@ -186,11 +186,11 @@ impl AppState {
 				// fps/ups
 				
 				let mousePos = if let Some(cursor) = self.input.cursor() {
-					<[f32; 2]>::from(cursor)
+					cursor
 				} else {
-					ui.io().mouse_pos()
+					(0.0, 0.0)
 				};
-				ui.text(format!("Mouse Position: ({:.2},{:.2})", mousePos[0], mousePos[1]));
+				ui.text(format!("Mouse Position: ({:.2},{:.2})", mousePos.0, mousePos.1));
 				
 				let windowSize = self.window.inner_size();
 				ui.text(format!("Window Size: ({},{})", windowSize.width, windowSize.height));

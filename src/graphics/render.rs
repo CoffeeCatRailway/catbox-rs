@@ -8,7 +8,7 @@ use log::info;
 use crate::graphics::{LineRenderer, ShapeRenderer};
 
 pub trait Renderable {
-    fn render(&mut self, dt: f32, pvMatrix: &Mat4, shapeRenderer: &mut ShapeRenderer, lineRenderer: &mut LineRenderer);
+    fn render(&self, dt: f32, pvMatrix: &Mat4, shapeRenderer: &mut ShapeRenderer, lineRenderer: &mut LineRenderer);
 }
 
 pub struct Renderer {
@@ -53,7 +53,7 @@ impl Renderer {
 
     pub fn render(&mut self, dt: f32, pvMatrix: &Mat4) {
         for renderable in &self.renderables {
-			if let Ok(mut renderable) = renderable.lock() {
+			if let Ok(renderable) = renderable.lock() {
 				renderable.render(dt, pvMatrix, &mut self.shapeRenderer, &mut self.lineRenderer);
 			}
         }
