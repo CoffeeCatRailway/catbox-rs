@@ -1,7 +1,10 @@
 #![allow(non_snake_case)]
 
+use std::thread;
 use glam::{Mat4, Vec2, Vec3};
+use log::info;
 use crate::graphics::{LineRenderer, Renderable, ShapeRenderer};
+use crate::STEP_DT;
 
 pub struct VerletObject {
     pub position: Vec2,
@@ -18,6 +21,7 @@ pub struct VerletObject {
 
 impl Default for VerletObject {
     fn default() -> Self {
+		info!("{}", thread::current().name().unwrap());
         VerletObject {
             position: Vec2::ZERO,
             positionLast: Vec2::ZERO,
@@ -31,6 +35,9 @@ impl Default for VerletObject {
         }
     }
 }
+
+unsafe impl Send for VerletObject {}
+unsafe impl Sync for VerletObject {}
 
 impl VerletObject {
     pub fn update(&mut self, dt: f32) {
@@ -72,11 +79,11 @@ impl VerletObject {
 }
 
 impl Renderable for VerletObject {
-    fn render(&self, dt: f32, _pvMatrix: &Mat4, shapeRenderer: &mut ShapeRenderer, lineRenderer: &mut LineRenderer) {
+    fn render(&self, _dt: f32, _pvMatrix: &Mat4, shapeRenderer: &mut ShapeRenderer, lineRenderer: &mut LineRenderer) {
         if self.visible {
             shapeRenderer.pushCircle(self.position, self.color, self.radius, 0.0);
 
-            let velocity = self.getVelocity(dt);
+            let velocity = self.getVelocity(STEP_DT);
             let color = 1.0 - self.color;
             lineRenderer.pushLine2(self.position, color, self.position + velocity, color);
         }

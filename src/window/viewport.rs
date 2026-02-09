@@ -3,11 +3,12 @@
 use std::rc::Rc;
 use crate::graphics::Renderer;
 use crate::simulation::camera::{Camera, Direction, Frustum, Projection};
-use crate::simulation::{SimpleSolver, Transform, VerletObject};
+use crate::simulation::{SimpleSolver, Transform};
 use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
 use log::info;
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Duration;
 use dear_imgui_rs::Ui;
 use winit::event::MouseButton;
@@ -57,22 +58,20 @@ impl Viewport {
 			..Camera::default()
 		};
         let mut renderer = Renderer::new(gl.clone());
-        renderer.getLineRenderer().enabled = false;
+        // renderer.getLineRenderer().enabled = false;
 		
 		let mut solver = SimpleSolver::new(Vec2::splat(1000.0), 8);
 		solver.gravity.y = -400.0;
 		
-		let solver = Arc::new(Mutex::new(solver));
-		renderer.addRenderable(solver.clone());
-		{
-			use std::thread;
-		
-			info!("Starting solver thread");
-			let threadSolver = Arc::clone(&solver);
-		
-			thread::Builder::new()
-				.name("solver".to_string())
-				.spawn(move || {
+		let mut solver = Arc::new(Mutex::new(solver));
+		thread::Builder::new()
+			.name("solver".to_string())
+			.spawn({
+				info!("Starting solver thread");
+				let threadSolver = solver;
+				solver = threadSolver.clone();
+				
+				move || {
 					info!("hi");
 					loop {
 						if let Ok(mut solver) = threadSolver.lock() {
@@ -83,8 +82,10 @@ impl Viewport {
 						}
 						thread::sleep(Duration::from_secs_f32(STEP_DT));
 					}
-				}).expect("Failed to spawn solver thread!");
-		}
+					info!("Exiting solver thread")
+				}
+			}).expect("Failed to spawn solver thread!");
+		renderer.addRenderable(solver.clone());
 
 		let mut sim = Viewport {
 			window,
@@ -201,30 +202,39 @@ impl Viewport {
         }
     }
 
-    pub fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop) {
+    pub fn update(&mut self, _dt: f32, _eventLoop: &ActiveEventLoop) {
 		if let Ok(mut solver) = self.solver.lock() {
-			if !solver.pause {
-				if solver.getTotalSteps() % 2 == 0 && solver.getObjectCount() <= 2000 {
-					// info!("{}", solver.getObjectCount());
-					let t = solver.getObjectCount() as f32 * 0.5;
-					let color = vec3(
-						t.sin() * 0.5 + 0.5,
-						t.cos() * 0.5 + 0.5,
-						(t + t.cos()).cos() * 0.5 + 0.5,
-					);
-					let mut obj = VerletObject {
-						color,
-						elasticity: 1.0,
-						..VerletObject::default()
-					};
-					obj.position.y = solver.worldSize.y * 0.25;
-					obj.positionLast.y = solver.worldSize.y * 0.25;
-					obj.setVelocity(vec2(100.0, 50.0), dt);
-					// obj.setVelocity(vec2(100.0 * (t * 0.5).cos(), 100.0 * (t * 0.5).sin()), dt);
-					solver.addObject(Arc::new(Mutex::new(obj)));
+			if !solver.pause || solver.btnStep {
+				if solver.getTotalSteps() % 2 == 0 && solver.getObjectCount() < 1000 {
+					// let t = solver.getObjectCount() as f32 * 0.5;
+					// let color = vec3(
+					// 	t.sin() * 0.5 + 0.5,
+					// 	t.cos() * 0.5 + 0.5,
+					// 	(t + t.cos()).cos() * 0.5 + 0.5,
+					// );
+					
+					let obj = solver.newObject();
+					obj.lock().unwrap().elasticity = 0.5;
+					obj.lock().unwrap().setVelocity(vec2(200.0, 0.0), STEP_DT);
+					// obj.lock().unwrap().positionLast.x = (solver.getTotalSteps() as f32).cos();
+					// obj.lock().unwrap().positionLast.y = (solver.getTotalSteps() as f32).sin();
+					// obj.lock().unwrap().color = color;
+					// solver.spawnObject();
+					
+					// let mut obj = VerletObject::default();
+					// if let Ok(mut obj) = obj.lock() { //
+					// 	obj.color = color;
+					// 	obj.elasticity = 1.0;
+					//
+					// 	obj.position.y = solver.worldSize.y * 0.25;
+					// 	obj.positionLast.y = solver.worldSize.y * 0.25;
+					// 	obj.setVelocity(vec2(100.0, 50.0), dt);
+					// 	// obj.setVelocity(vec2(100.0 * (t * 0.5).cos(), 100.0 * (t * 0.5).sin()), dt);
+					// }
+					// solver.addObject(Arc::new(Mutex::new(obj)));
 				}
 			}
-			
+		
 			// solver.update(dt);
 		}
 	}
@@ -258,8 +268,8 @@ impl Viewport {
 				  }
 				  ui.separator();
 				  
-				  ui.text(format!("Total time elapsed: {}", solver.getTotalTimeElapsed()));
-				  ui.text(format!("Last update time: {}", solver.getUpdateTime()));
+				  ui.text(format!("Total time elapsed: {}s", solver.getTotalTimeElapsed()));
+				  ui.text(format!("Last update time: {}ms", solver.getUpdateTime() * 1000.0));
 			  });
 		}
 	}
