@@ -223,8 +223,7 @@ impl SimpleSolver {
 				  hovered |= ui.is_item_hovered();
 				  
 				  if hovered {
-					  let combined = (self.stepTime + self.sortTime + self.collisionTime + self.objUpdateTime) * 1000.0;
-					  ui.tooltip_text(format!("Averaged out over sub steps\nCombined averages: {}ms", combined));
+					  ui.tooltip_text("Averaged out over sub steps");
 				  }
 			  }
 		  });
