@@ -12,7 +12,7 @@ This is also a continuation of my Java attempt [CatBox](https://github.com/Coffe
 - [x] Collide with world boundaries
 - [x] Imgui
 - [x] Separate solver thread
-- [ ] Collide with other objects
+- [x] Collide with other objects
 - [ ] Constraints (Fixed distance & Spring)
 - [ ] Constraint collision (Box)
 - [ ] Editor/Interface to interact with and add/remove objects
