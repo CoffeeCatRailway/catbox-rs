@@ -14,7 +14,7 @@ use glutin::surface::{Surface, SwapInterval, WindowSurface};
 use glutin_winit::{DisplayBuilder, GlWindow};
 use raw_window_handle::HasWindowHandle;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use dear_imgui_glow::GlowRenderer;
 use dear_imgui_winit::WinitPlatform;
 use glow::HasContext;
@@ -49,6 +49,9 @@ struct AppState {
 	imgui: ImguiWrapper,
 	input: WinitInputHelper,
 	viewport: Viewport,
+	
+	requestRedraw: bool,
+	waitCancelled: bool,
 }
 
 struct App {
@@ -137,10 +140,14 @@ impl AppState {
 			imgui,
 			input: WinitInputHelper::new(),
 			viewport,
+			
+			requestRedraw: false,
+			waitCancelled: false,
 		})
 	}
 	
 	fn resize(&mut self, size: PhysicalSize<u32>) {
+		self.requestRedraw = true;
 		let (width, height) = (size.width.max(1), size.height.max(1));
 		self.surface.resize(&self.context, NonZeroU32::new(width).unwrap(), NonZeroU32::new(height).unwrap());
 		self.viewport.resize(width, height);
@@ -156,7 +163,19 @@ impl AppState {
 		};
 		// info!("Delta time: {}s", dt);
 		self.viewport.handleInput(dt, &self.input, eventLoop);
-		self.viewport.update(STEP_DT, eventLoop);
+		
+		if self.requestRedraw && !self.waitCancelled {
+			self.window.request_redraw();
+			self.requestRedraw = false;
+			
+			self.viewport.update(STEP_DT, eventLoop);
+		}
+		
+		if !self.waitCancelled {
+			let now = Instant::now();
+			eventLoop.set_control_flow(ControlFlow::WaitUntil(now + Duration::from_secs_f32(STEP_DT)));
+			self.requestRedraw = true;
+		}
 	}
 	
 	fn render(&mut self) -> Result<(), Box<dyn Error>> {
@@ -182,6 +201,7 @@ impl AppState {
 			.build(|| {
 				let uiWidth = ui.window_width();
 				ui.text(format!("ImGUI FPS: {:.2}", ui.io().framerate()));
+				ui.text(format!("ImGUI dt: {}", dt));
 				// total frames
 				// fps/ups
 				
@@ -216,9 +236,14 @@ impl AppState {
 }
 
 impl ApplicationHandler for App {
-	fn new_events(&mut self, _eventLoop: &ActiveEventLoop, _cause: StartCause) {
+	fn new_events(&mut self, _eventLoop: &ActiveEventLoop, cause: StartCause) {
 		if let Some(ref mut state) = self.state {
 			state.input.step();
+			
+			state.waitCancelled = match cause {
+				StartCause::WaitCancelled { .. } => true,
+				_ => false,
+			};
 		}
 	}
 	
@@ -256,7 +281,7 @@ impl ApplicationHandler for App {
 					if let Err(e) = state.render() {
 						error!("Error rendering AppState: {}", e);
 					}
-					state.window.request_redraw();
+					// state.window.request_redraw();
 				},
 				_ => (),
 			}
@@ -299,6 +324,6 @@ fn main() {
 	// panic!("hi");
 	
 	let eventLoop = EventLoop::new().unwrap();
-	eventLoop.set_control_flow(ControlFlow::Poll);
+	// eventLoop.set_control_flow(ControlFlow::Poll);
 	eventLoop.run_app(&mut App { state: None, }).expect("Failed to run event loop");
 }

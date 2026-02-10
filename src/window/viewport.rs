@@ -8,7 +8,7 @@ use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
 use log::info;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+// use std::time::Duration;
 use dear_imgui_rs::Ui;
 use winit::event::MouseButton;
 use winit::event_loop::ActiveEventLoop;
@@ -64,27 +64,27 @@ impl Viewport {
 		
 		let solver = Arc::new(Mutex::new(solver));
 		renderer.addRenderable(solver.clone());
-		{
-			use std::thread;
-		
-			info!("Starting solver thread");
-			let threadSolver = Arc::clone(&solver);
-		
-			thread::Builder::new()
-				.name("solver".to_string())
-				.spawn(move || {
-					info!("hi");
-					loop {
-						if let Ok(mut solver) = threadSolver.lock() {
-							if solver.destroyed() {
-								break;
-							}
-							solver.update(STEP_DT);
-						}
-						thread::sleep(Duration::from_secs_f32(STEP_DT));
-					}
-				}).expect("Failed to spawn solver thread!");
-		}
+		// {
+		// 	use std::thread;
+		//
+		// 	info!("Starting solver thread");
+		// 	let threadSolver = Arc::clone(&solver);
+		//
+		// 	thread::Builder::new()
+		// 		.name("solver".to_string())
+		// 		.spawn(move || {
+		// 			info!("hi");
+		// 			loop {
+		// 				if let Ok(mut solver) = threadSolver.lock() {
+		// 					if solver.destroyed() {
+		// 						break;
+		// 					}
+		// 					solver.update(STEP_DT);
+		// 				}
+		// 				thread::sleep(Duration::from_secs_f32(STEP_DT));
+		// 			}
+		// 		}).expect("Failed to spawn solver thread!");
+		// }
 
 		let mut sim = Viewport {
 			window,
@@ -204,7 +204,7 @@ impl Viewport {
     pub fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop) {
 		if let Ok(mut solver) = self.solver.lock() {
 			if !solver.pause {
-				if solver.getTotalSteps() % 2 == 0 && solver.getObjectCount() <= 2000 {
+				if solver.getTotalSteps() % 2 == 0 && solver.getObjectCount() < 1000 {
 					// info!("{}", solver.getObjectCount());
 					let t = solver.getObjectCount() as f32 * 0.5;
 					let color = vec3(
@@ -214,18 +214,18 @@ impl Viewport {
 					);
 					let mut obj = VerletObject {
 						color,
-						elasticity: 1.0,
+						elasticity: 0.5,
 						..VerletObject::default()
 					};
 					obj.position.y = solver.worldSize.y * 0.25;
 					obj.positionLast.y = solver.worldSize.y * 0.25;
-					obj.setVelocity(vec2(100.0, 50.0), dt);
+					obj.setVelocity(vec2(100.0, -50.0), dt);
 					// obj.setVelocity(vec2(100.0 * (t * 0.5).cos(), 100.0 * (t * 0.5).sin()), dt);
 					solver.addObject(Arc::new(Mutex::new(obj)));
 				}
 			}
 			
-			// solver.update(dt);
+			solver.update(dt);
 		}
 	}
 	

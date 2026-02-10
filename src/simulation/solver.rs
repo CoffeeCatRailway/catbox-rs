@@ -48,8 +48,37 @@ impl SimpleSolver {
         self.objects.push(object);
     }
 	
-	fn solveObjectObjectCollision(&self, _obj1: &mut MutexGuard<VerletObject>, _obj2: &mut MutexGuard<VerletObject>) {
+	fn sortObjects(&mut self) {
+		self.objects.sort_by(|o1, o2| {
+			let o1 = o1.lock().unwrap();
+			let o2 = o2.lock().unwrap();
+			let o1 = o1.position.x - o1.radius;
+			let o2 = o2.position.x - o2.radius;
+			o1.total_cmp(&o2)
+		});
+	}
 	
+	fn solveObjectObjectCollision(&self, obj1: &mut MutexGuard<VerletObject>, obj2: &mut MutexGuard<VerletObject>) {
+		let dir = obj1.position - obj2.position;
+		let dist = dir.length();
+		let minDist = obj1.radius + obj2.radius;
+		if dist < minDist {
+			let mut dir = dir.normalize();
+			if dist <= f32::EPSILON {
+				dir = Vec2::X;
+			}
+			
+			let massRatio1 = obj1.radius / minDist;
+			let massRatio2 = obj2.radius / minDist;
+			let force = 0.5 * ((obj1.elasticity + obj2.elasticity) * 0.5) * (dist - minDist);
+			
+			if !obj1.fixed {
+				obj1.position -= dir * massRatio2 * force;
+			}
+			if !obj2.fixed {
+				obj2.position += dir * massRatio1 * force;
+			}
+		}
 	}
 	
 	fn worldCollision(&self, _dt: f32, obj: &mut MutexGuard<VerletObject>) {
@@ -76,42 +105,29 @@ impl SimpleSolver {
 		let mut i: usize = 0;
 		for obj1 in self.objects.iter() {
 			i += 1;
-			if let Ok(mut obj1) = obj1.lock() {
-				for obj2 in self.objects.iter().skip(i) {
-					if let Ok(mut obj2) = obj2.lock() {
-						if (obj2.position.x - obj2.radius) > (obj1.position.x + obj1.radius) {
-							break;
-						}
-						self.solveObjectObjectCollision(&mut obj1, &mut obj2);
-					}
+			let mut obj1 = obj1.lock().unwrap();
+			for obj2 in self.objects.iter().skip(i) {
+				let mut obj2 = obj2.lock().unwrap();
+				if (obj2.position.x - obj2.radius) > (obj1.position.x + obj1.radius) {
+					break;
 				}
-				
-				self.worldCollision(dt, &mut obj1);
+				self.solveObjectObjectCollision(&mut obj1, &mut obj2);
 			}
+			
+			self.worldCollision(dt, &mut obj1);
 		}
-		
-        // let objects = self.objects.clone();
-		// for obj in &objects {
-		// 	if let Ok(mut obj) = obj.lock() {
-		//
-		// 		// object-line
-		// 		self.worldCollision(dt, &mut obj, self.worldSize);
-		// 	}
-		// }
-        // self.objects = objects;
 	}
 
     fn updateObjects(&self, dt: f32) {
         for obj in self.objects.iter() {
-			if let Ok(mut obj) = obj.lock() {
-				obj.accelerate(self.gravity);
-				obj.update(dt);
-			}
+			let mut obj = obj.lock().unwrap();
+			obj.accelerate(self.gravity);
+			obj.update(dt);
         }
     }
 
-    fn step(&self, dt: f32) {
-        // sort
+    fn step(&mut self, dt: f32) {
+        self.sortObjects();
         self.handleCollision(dt);
         // constrain
         self.updateObjects(dt);
@@ -119,7 +135,7 @@ impl SimpleSolver {
 
     pub fn update(&mut self, dt: f32) {
         if !self.pause || self.btnStep {
-            let then = Instant::now();
+            let start = Instant::now();
 
             self.toalTimeElapsed += dt;
             let stepDt = dt / self.subSteps as f32;
@@ -127,7 +143,7 @@ impl SimpleSolver {
                 self.step(stepDt);
             }
 
-            let elapsed = then.elapsed().as_secs_f32();
+            let elapsed = start.elapsed().as_secs_f32();
             self.updateTime = elapsed;
 
             self.totalSteps += 1;
@@ -138,10 +154,6 @@ impl SimpleSolver {
     pub fn destroy(&mut self) {
 		self.destroyed = true;
     }
-	
-	pub fn destroyed(&self) -> bool {
-		self.destroyed
-	}
 
     pub fn getObjectCount(&self) -> usize {
         self.objects.len()
@@ -169,9 +181,7 @@ impl Renderable for SimpleSolver {
         shapeRenderer.pushBox(Vec2::ZERO, Vec3::splat(0.15), self.worldSize, 0.0, 10.0);
 		
 		for obj in self.objects.iter() {
-			if let Ok(obj) = obj.lock() {
-				obj.render(dt, pvMatrix, shapeRenderer, lineRenderer);
-			}
+			obj.lock().unwrap().render(dt, pvMatrix, shapeRenderer, lineRenderer);
 		}
 	}
 }
