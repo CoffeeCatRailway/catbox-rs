@@ -8,14 +8,14 @@ use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
 use glow::{Context, HasContext};
 use log::info;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 // use std::time::Duration;
-use dear_imgui_rs::Ui;
+use dear_imgui_rs::{TreeNodeFlags, Ui, WindowFlags};
 use winit::event::MouseButton;
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
-use crate::STEP_DT;
 
 pub struct Viewport {
     window: Arc<Window>,
@@ -28,6 +28,9 @@ pub struct Viewport {
     renderer: Renderer,
 	
 	solver: Arc<Mutex<SimpleSolver>>,
+	
+	updateTime: f32,
+	renderTime: f32,
 }
 
 impl Viewport {
@@ -97,6 +100,9 @@ impl Viewport {
             renderer,
 			
 			solver,
+			
+			updateTime: 0.0,
+			renderTime: 0.0,
 		};
 		sim.updateProjectionMatrix();
 		info!("Viewport initialized");
@@ -202,11 +208,12 @@ impl Viewport {
     }
 
     pub fn update(&mut self, dt: f32, _eventLoop: &ActiveEventLoop) {
+		let start = Instant::now();
+		
 		if let Ok(mut solver) = self.solver.lock() {
 			if !solver.pause {
 				if solver.getTotalSteps() % 2 == 0 && solver.getObjectCount() < 1000 {
-					// info!("{}", solver.getObjectCount());
-					let t = solver.getObjectCount() as f32 * 0.5;
+					let t = solver.getObjectCount() as f32 * 0.1;
 					let color = vec3(
 						t.sin() * 0.5 + 0.5,
 						t.cos() * 0.5 + 0.5,
@@ -227,40 +234,44 @@ impl Viewport {
 			
 			solver.update(dt);
 		}
+		
+		self.updateTime = start.elapsed().as_secs_f32();
 	}
 	
 	pub fn render(&mut self, dt: f32) {
+		let start = Instant::now();
+		
 		let projection = self.projectionMatrix;
 		self.viewMatrix = self.camera.getViewMatrix();
 		
 		let pvm = projection * self.viewMatrix;
         self.renderer.render(dt, &pvm);
+		
+		self.renderTime = start.elapsed().as_secs_f32();
     }
 	
 	pub fn gui(&mut self, ui: &mut Ui) {
-		if let Ok(mut solver) = self.solver.lock() {
-			ui.window("Solver")
-			  .build(|| {
-				  ui.input_float2("Gravity", solver.gravity.as_mut()).build();
-				  ui.separator();
+		ui.window("Viewport")
+		  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
+		  .build(|| {
+			  if ui.collapsing_header("Camera", TreeNodeFlags::COLLAPSING_HEADER) {
+				  ui.text(format!("Position: ({}, {})", self.camera.transform.position.x, self.camera.transform.position.y));
+				  ui.text(format!("Zoom: {}", self.camera.frustum.fov));
 				  
-				  ui.text(format!("Objects: {}", solver.getObjectCount()));
-				  ui.separator();
-				  
-				  ui.text(format!("Sub steps: {}\tTotal steps: {}", solver.getSubSteps(), solver.getTotalSteps()));
-				  ui.text(format!("Step dt: {}", (STEP_DT / solver.getSubSteps() as f32)));
-				  ui.checkbox("Pause", &mut solver.pause);
-				  if solver.pause {
-					  ui.same_line();
-					  if ui.small_button("Step") {
-						  solver.btnStep = true;
-					  }
+				  if ui.small_button("Reset") {
+					  self.camera.transform.position = Vec3::ZERO;
+					  self.camera.frustum.fov = 500.0;
+					  self.updateProjectionMatrix();
 				  }
-				  ui.separator();
-				  
-				  ui.text(format!("Total time elapsed: {}", solver.getTotalTimeElapsed()));
-				  ui.text(format!("Last update time: {}", solver.getUpdateTime()));
-			  });
+			  }
+			  ui.separator();
+			  
+			  ui.text(format!("Update time: {}s", self.updateTime));
+			  ui.text(format!("Render time: {}s", self.renderTime));
+		  });
+		
+		if let Ok(mut solver) = self.solver.lock() {
+			solver.gui(ui);
 		}
 	}
 

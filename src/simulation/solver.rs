@@ -2,9 +2,11 @@
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
+use dear_imgui_rs::{TreeNodeFlags, Ui, WindowFlags};
 use glam::{vec2, Mat4, Vec2, Vec3};
 use crate::graphics::{LineRenderer, Renderable, ShapeRenderer};
 use crate::simulation::VerletObject;
+use crate::STEP_DT;
 
 pub struct SimpleSolver {
     pub gravity: Vec2,
@@ -18,9 +20,13 @@ pub struct SimpleSolver {
     pub pause: bool,
     pub btnStep: bool,
 
-    toalTimeElapsed: f32,
-    // frameDt: f32, // Use crate::TIME_STEP
-    updateTime: f32,
+    totalTimeElapsed: f32,
+    fullUpdateTime: f32,
+	stepTime: f32,
+	sortTime: f32,
+	collisionTime: f32,
+	objUpdateTime: f32,
+	
 	destroyed: bool,
 }
 
@@ -35,11 +41,16 @@ impl SimpleSolver {
             subSteps,
             totalSteps: 0,
 
-            pause: false,
+            pause: true,
             btnStep: false,
 
-            toalTimeElapsed: 0.0,
-            updateTime: 0.0,
+            totalTimeElapsed: 0.0,
+            fullUpdateTime: 0.0,
+			stepTime: 0.0,
+			sortTime: 0.0,
+			collisionTime: 0.0,
+			objUpdateTime: 0.0,
+			
 			destroyed: false,
         }
     }
@@ -127,29 +138,97 @@ impl SimpleSolver {
     }
 
     fn step(&mut self, dt: f32) {
+		let mut start = Instant::now();
         self.sortObjects();
+		self.sortTime += start.elapsed().as_secs_f32();
+		
+		start = Instant::now();
         self.handleCollision(dt);
+		self.collisionTime += start.elapsed().as_secs_f32();
+		
         // constrain
+		
+		start = Instant::now();
         self.updateObjects(dt);
+		self.objUpdateTime += start.elapsed().as_secs_f32();
     }
 
     pub fn update(&mut self, dt: f32) {
         if !self.pause || self.btnStep {
+			self.stepTime = 0.0;
+			self.sortTime = 0.0;
+			self.collisionTime = 0.0;
+			self.objUpdateTime = 0.0;
+			
             let start = Instant::now();
 
-            self.toalTimeElapsed += dt;
+            self.totalTimeElapsed += dt;
             let stepDt = dt / self.subSteps as f32;
             for _ in 0..self.subSteps {
+				let start = Instant::now();
                 self.step(stepDt);
+				self.stepTime += start.elapsed().as_secs_f32();
             }
-
-            let elapsed = start.elapsed().as_secs_f32();
-            self.updateTime = elapsed;
+			
+			let elapsed = start.elapsed().as_secs_f32();
+			self.fullUpdateTime = elapsed;
+			
+			let recip = 1.0 / (self.subSteps as f32);
+			self.stepTime *= recip;
+			self.sortTime *= recip;
+			self.collisionTime *= recip;
+			self.objUpdateTime *= recip;
 
             self.totalSteps += 1;
             self.btnStep = false;
         }
     }
+	
+	pub fn gui(&mut self, ui: &mut Ui) {
+		ui.window("Solver")
+		  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
+		  .build(|| {
+			  ui.input_float2("Gravity", self.gravity.as_mut()).build();
+			  ui.separator();
+			  
+			  ui.text(format!("Objects: {}", self.getObjectCount()));
+			  ui.separator();
+			  
+			  ui.text(format!("Sub steps: {}\tTotal steps: {}", self.subSteps, self.totalSteps));
+			  ui.text(format!("Update dt: {}", STEP_DT));
+			  ui.text(format!("Step dt: {}", STEP_DT / self.subSteps as f32));
+			  ui.checkbox("Pause", &mut self.pause);
+			  if self.pause {
+				  ui.same_line();
+				  if ui.small_button("Step") {
+					  self.btnStep = true;
+				  }
+			  }
+			  ui.separator();
+			  
+			  if ui.collapsing_header("Times", TreeNodeFlags::COLLAPSING_HEADER) {
+				  ui.text(format!("Total time elapsed: {}s", self.totalTimeElapsed));
+				  ui.text(format!("Full update time: {}ms", self.fullUpdateTime * 1000.0));
+				  
+				  ui.text(format!("Step time (avg): {}ms", self.stepTime * 1000.0));
+				  let mut hovered = ui.is_item_hovered();
+				  
+				  ui.text(format!("Sort time (avg): {}ms", self.sortTime * 1000.0));
+				  hovered |= ui.is_item_hovered();
+				  
+				  ui.text(format!("Collision time (avg): {}ms", self.collisionTime * 1000.0));
+				  hovered |= ui.is_item_hovered();
+				  
+				  ui.text(format!("Obj update time (avg): {}ms", self.objUpdateTime * 1000.0));
+				  hovered |= ui.is_item_hovered();
+				  
+				  if hovered {
+					  let combined = (self.stepTime + self.sortTime + self.collisionTime + self.objUpdateTime) * 1000.0;
+					  ui.tooltip_text(format!("Averaged out over sub steps\nCombined averages: {}ms", combined));
+				  }
+			  }
+		  });
+	}
 
     pub fn destroy(&mut self) {
 		self.destroyed = true;
@@ -158,22 +237,10 @@ impl SimpleSolver {
     pub fn getObjectCount(&self) -> usize {
         self.objects.len()
     }
-	
-	pub fn getSubSteps(&self) -> u32 {
-		self.subSteps
-	}
 
     pub fn getTotalSteps(&self) -> u32 {
         self.totalSteps
     }
-
-    pub fn getTotalTimeElapsed(&self) -> f32 {
-        self.toalTimeElapsed
-    }
-	
-	pub fn getUpdateTime(&self) -> f32 {
-		self.updateTime
-	}
 }
 
 impl Renderable for SimpleSolver {

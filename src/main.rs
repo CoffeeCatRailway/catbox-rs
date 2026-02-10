@@ -197,28 +197,29 @@ impl AppState {
 		let ui = self.imgui.context.frame();
 		
 		ui.window("App Info")
-			// .size([260.0, 200.0], Condition::FirstUseEver)
-			.build(|| {
-				let uiWidth = ui.window_width();
-				ui.text(format!("ImGUI FPS: {:.2}", ui.io().framerate()));
-				ui.text(format!("ImGUI dt: {}", dt));
-				// total frames
-				// fps/ups
-				
-				let mousePos = if let Some(cursor) = self.input.cursor() {
-					cursor
-				} else {
-					(0.0, 0.0)
-				};
-				ui.text(format!("Mouse Position: ({:.2},{:.2})", mousePos.0, mousePos.1));
-				
-				let windowSize = self.window.inner_size();
-				ui.text(format!("Window Size: ({},{})", windowSize.width, windowSize.height));
-				
-				let itemWidth = ui.push_item_width(uiWidth * 0.6);
-				ui.color_edit4("Clear Color", &mut self.imgui.clearColor);
-				itemWidth.end();
-			});
+		  .build(|| {
+			  let uiWidth = ui.window_width();
+			  ui.text(format!("ImGUI FPS: {:.2}", ui.io().framerate()));
+			  ui.text(format!("ImGUI dt: {}", dt));
+			  // total frames
+			  // fps/ups
+			  ui.separator();
+			  
+			  let mousePos = if let Some(cursor) = self.input.cursor() {
+				  cursor
+			  } else {
+				  (0.0, 0.0)
+			  };
+			  ui.text(format!("Mouse Position: ({:.2},{:.2})", mousePos.0, mousePos.1));
+			  
+			  let windowSize = self.window.inner_size();
+			  ui.text(format!("Window Size: ({},{})", windowSize.width, windowSize.height));
+			  ui.separator();
+			  
+			  let itemWidth = ui.push_item_width(uiWidth * 0.6);
+			  ui.color_edit4("Clear Color", &mut self.imgui.clearColor);
+			  itemWidth.end();
+		  });
 		self.viewport.gui(ui);
 		
 		// Render UI

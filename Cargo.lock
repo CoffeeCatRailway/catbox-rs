@@ -196,7 +196,7 @@ dependencies = [
 
 [[package]]
 name = "catbox-rs"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "bytemuck",
  "dear-imgui-glow",
