@@ -227,7 +227,6 @@ impl Viewport {
 					obj.position.y = solver.worldSize.y * 0.25;
 					obj.positionLast.y = solver.worldSize.y * 0.25;
 					obj.setVelocity(vec2(100.0, -50.0), dt);
-					// obj.setVelocity(vec2(100.0 * (t * 0.5).cos(), 100.0 * (t * 0.5).sin()), dt);
 					solver.addObject(Arc::new(Mutex::new(obj)));
 				}
 			}
@@ -254,9 +253,32 @@ impl Viewport {
 		ui.window("Viewport")
 		  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 		  .build(|| {
+			  ui.text(format!("Update time: {}s", self.updateTime));
+			  ui.separator();
+			  
+			  ui.text(format!("Render time: {}s", self.renderTime));
+			  if ui.collapsing_header("Shape Renderer", TreeNodeFlags::COLLAPSING_HEADER) {
+				  let shapeRenderer = self.renderer.getShapeRenderer();
+				  ui.checkbox("Enabled##shape", &mut shapeRenderer.enabled);
+				  ui.text(format!("Buffer capacity: {}", shapeRenderer.getBufferCapacity()));
+				  ui.text(format!("Last floats pushed: {}", shapeRenderer.getLastFloatsPushed()));
+			  }
+			  if ui.collapsing_header("Line Renderer", TreeNodeFlags::COLLAPSING_HEADER) {
+				  let lineRenderer = self.renderer.getLineRenderer();
+				  ui.checkbox("Enabled##line", &mut lineRenderer.enabled);
+				  ui.text(format!("Buffer capacity: {}", lineRenderer.getBufferCapacity()));
+				  ui.text(format!("Last floats pushed: {}", lineRenderer.getLastFloatsPushed()));
+			  }
+			  ui.separator();
+			  
 			  if ui.collapsing_header("Camera", TreeNodeFlags::COLLAPSING_HEADER) {
 				  ui.text(format!("Position: ({}, {})", self.camera.transform.position.x, self.camera.transform.position.y));
-				  ui.text(format!("Zoom: {}", self.camera.frustum.fov));
+				  let uiWidth = ui.window_width();
+				  let itemWidth = ui.push_item_width(uiWidth * 0.6);
+				  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
+					  self.updateProjectionMatrix();
+				  }
+				  itemWidth.end();
 				  
 				  if ui.small_button("Reset") {
 					  self.camera.transform.position = Vec3::ZERO;
@@ -264,10 +286,6 @@ impl Viewport {
 					  self.updateProjectionMatrix();
 				  }
 			  }
-			  ui.separator();
-			  
-			  ui.text(format!("Update time: {}s", self.updateTime));
-			  ui.text(format!("Render time: {}s", self.renderTime));
 		  });
 		
 		if let Ok(mut solver) = self.solver.lock() {

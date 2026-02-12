@@ -16,6 +16,7 @@ use raw_window_handle::HasWindowHandle;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use dear_imgui_glow::GlowRenderer;
+use dear_imgui_rs::WindowFlags;
 use dear_imgui_winit::WinitPlatform;
 use glow::HasContext;
 use log::{error, info};
@@ -27,8 +28,8 @@ use winit::window::{Window, WindowAttributes, WindowId};
 use winit_input_helper::WinitInputHelper;
 use crate::window::*;
 
-const WIN_WIDTH: u32 = 800;
-const WIN_HEIGHT: u32 = 600;
+const WIN_WIDTH: u32 = 1600;
+const WIN_HEIGHT: u32 = 900;
 
 const TARGET_UPS: u32 = 60;
 const STEP_DT: f32 = 1.0 / TARGET_UPS as f32;
@@ -197,8 +198,8 @@ impl AppState {
 		let ui = self.imgui.context.frame();
 		
 		ui.window("App Info")
+		  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 		  .build(|| {
-			  let uiWidth = ui.window_width();
 			  ui.text(format!("ImGUI FPS: {:.2}", ui.io().framerate()));
 			  ui.text(format!("ImGUI dt: {}", dt));
 			  // total frames
@@ -216,6 +217,7 @@ impl AppState {
 			  ui.text(format!("Window Size: ({},{})", windowSize.width, windowSize.height));
 			  ui.separator();
 			  
+			  let uiWidth = ui.window_width();
 			  let itemWidth = ui.push_item_width(uiWidth * 0.6);
 			  ui.color_edit4("Clear Color", &mut self.imgui.clearColor);
 			  itemWidth.end();

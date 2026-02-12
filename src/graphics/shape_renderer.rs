@@ -257,6 +257,14 @@ impl ShapeRenderer {
 		}
 		self.destroyed = true;
 	}
+	
+	pub fn getBufferCapacity(&self) -> usize {
+		self.vec.capacity()
+	}
+	
+	pub fn getLastFloatsPushed(&self) -> usize {
+		self.lastFloatsPushed
+	}
 }
 
 impl Drop for ShapeRenderer {

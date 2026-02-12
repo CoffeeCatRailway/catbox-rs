@@ -163,6 +163,18 @@ impl LineRenderer {
 		}
 		self.destroyed = true;
 	}
+	
+	pub fn getBufferSize(&self) -> usize {
+		self.vec.len()
+	}
+	
+	pub fn getBufferCapacity(&self) -> usize {
+		self.vec.capacity()
+	}
+	
+	pub fn getLastFloatsPushed(&self) -> usize {
+		self.lastFloatsPushed
+	}
 }
 
 impl Drop for LineRenderer {
