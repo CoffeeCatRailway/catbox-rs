@@ -100,7 +100,7 @@ impl AppState {
 			let context = notCurrentGlContext.make_current(&surface)?;
 			let gl = glow::Context::from_loader_function_cstr(|s| display.get_proc_address(s));
 			
-			surface.set_swap_interval(&context, SwapInterval::Wait(NonZeroU32::new(1).unwrap()))?;
+			// surface.set_swap_interval(&context, SwapInterval::Wait(NonZeroU32::new(1).unwrap()))?;
 			// surface.set_swap_interval(&context, SwapInterval::DontWait)?;
 			
 			(gl, surface, context)
