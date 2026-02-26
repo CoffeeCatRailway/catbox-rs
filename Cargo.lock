@@ -76,6 +76,7 @@ dependencies = [
  "bytemuck",
  "dear-imgui-glow",
  "dear-imgui-rs",
+ "dear-imgui-sdl3",
  "glam",
  "glow",
  "sdl3",
@@ -161,6 +162,21 @@ dependencies = [
  "thiserror",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "dear-imgui-sdl3"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27d04a752c98d38eb6ea095bfc2a5585e089c4e67cf1ae80c83df231351f75f9"
+dependencies = [
+ "cc",
+ "dear-imgui-rs",
+ "dear-imgui-sys",
+ "pkg-config",
+ "sdl3",
+ "sdl3-sys",
+ "thiserror",
 ]
 
 [[package]]
@@ -360,6 +376,12 @@ name = "pin-project-lite"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b3cff922bd51709b605d9ead9aa71031d81447142d828eb4a6eba76fe619f9b"
+
+[[package]]
+name = "pkg-config"
+version = "0.3.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "prettyplease"

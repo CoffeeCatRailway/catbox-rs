@@ -5,8 +5,8 @@ use std::sync::Arc;
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
-use sdl3::video::GLProfile;
-use tracing::info;
+use sdl3::video::{GLProfile, SwapInterval};
+use tracing::{info, warn};
 use sdl3::timer;
 
 const FPS: u64 = 60;
@@ -62,7 +62,7 @@ fn createSdl3GlContext(title: &str, width: u32, height: u32) -> Result<(
 	
 	glAttributes.set_context_profile(GLProfile::Core);
 	glAttributes.set_context_version(4, 3);
-	// glAttributes.set_context_flags().forward_compatible().set();
+	glAttributes.set_depth_size(0);
 	
 	info!("Creating window and GL context");
 	let window = video.window(title, width, height)
@@ -72,14 +72,12 @@ fn createSdl3GlContext(title: &str, width: u32, height: u32) -> Result<(
 		.build()?;
 	let glContext = window.gl_create_context()?;
 	window.gl_make_current(&glContext)?;
+	let _ = video.gl_set_swap_interval(SwapInterval::Immediate);
 	
 	let gl = unsafe {
-		glow::Context::from_loader_function(|s| {
-			if let Some(ptr) = video.gl_get_proc_address(s) {
-				ptr as *const _
-			} else {
-				std::ptr::null()
-			}
+		use std::ffi::c_void;
+		glow::Context::from_loader_function(|name| {
+			video.gl_get_proc_address(name).map(|f| f as *const c_void).unwrap_or(std::ptr::null())
 		})
 	};
 	let eventLoop = sdl.event_pump()?;
@@ -104,7 +102,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 		for event in eventLoop.poll_iter() {
 			match event {
 				Event::Quit { .. } | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-					info!("Exiting main loop");
+					warn!("Exiting main loop");
 					break 'main
 				},
 				Event::Window { win_event, .. } => match win_event {

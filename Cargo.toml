@@ -22,6 +22,7 @@ bytemuck = { version = "1.25.0", features = ["derive"] }
 #raw-window-handle = "0.6.2"
 
 dear-imgui-rs = { version = "0.10.2", features = ["glam"] }
+dear-imgui-sdl3 = "0.10.2"
 dear-imgui-glow = "0.10.2"
 
 tracing = "0.1.44"
