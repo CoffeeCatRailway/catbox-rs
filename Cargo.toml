@@ -15,16 +15,14 @@ glow = "0.16.0"
 glam = "0.32.0"
 bytemuck = { version = "1.25.0", features = ["derive"] }
 
-#glutin = "0.32.3"
-#glutin-winit = "0.5.0"
-#winit = { version = "0.30.12", features = ["rwh_06"] }
-#winit_input_helper = "0.17.0"
-#raw-window-handle = "0.6.2"
-
-dear-imgui-rs = { version = "0.10.2", features = ["glam", "multi-viewport"] }
-dear-imgui-sdl3 = { version = "0.10.2", features = ["multi-viewport"] }
-dear-imgui-glow = { version = "0.10.2", features = ["multi-viewport"] }
+dear-imgui-rs = { version = "0.10", features = ["glam"] }
+dear-imgui-sdl3 = { version = "0.10" }
+dear-imgui-glow = { version = "0.10" }
 
 tracing = "0.1.44"
 tracing-subscriber = "0.3.22"
 #log = "0.4.29"
+
+[features]
+default = []
+multi-viewport = ["dear-imgui-rs/multi-viewport", "dear-imgui-sdl3/multi-viewport", "dear-imgui-glow/multi-viewport"]

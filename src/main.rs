@@ -3,10 +3,9 @@
 use std::error::Error;
 use std::rc::Rc;
 use std::sync::Arc;
-use dear_imgui_glow::{
-	GlowRenderer,
-	multi_viewport as glow_mvp
-};
+use dear_imgui_glow::GlowRenderer;
+#[cfg(feature = "multi-viewport")]
+use dear_imgui_glow::multi_viewport as glow_mvp;
 use dear_imgui_rs::{
 	ConfigFlags,
 	Context as ImguiContext,
@@ -30,8 +29,6 @@ const OPTIMAL_WAIT_TIME: u64 = 1000 / FPS;
 const WIN_TITLE: &str = "Physics CatBox";
 const WIN_WIDTH: u32 = 800;
 const WIN_HEIGHT: u32 = 600;
-
-const IMGUI_VIEWPORTS: bool = true;
 
 struct ImGui {
 	context: ImguiContext,
@@ -112,9 +109,8 @@ fn initializeImGui(gl: GlowContext, window: &SdlWindow, glContext: &SdlGLContext
 		let io = imgui.io_mut();
 		let mut flags= io.config_flags();
 		flags.insert(ConfigFlags::DOCKING_ENABLE);
-		if IMGUI_VIEWPORTS {
-			flags.insert(ConfigFlags::VIEWPORTS_ENABLE);
-		}
+		#[cfg(feature = "multi-viewport")]
+		flags.insert(ConfigFlags::VIEWPORTS_ENABLE);
 		io.set_config_flags(flags);
 	}
 
@@ -129,10 +125,10 @@ fn initializeImGui(gl: GlowContext, window: &SdlWindow, glContext: &SdlGLContext
 	}
 
 	info!("Creating ImGui/Glow renderer");
+	#[allow(unused_mut)]
 	let mut renderer = GlowRenderer::new(gl, &mut imgui)?;
-	if IMGUI_VIEWPORTS {
-		glow_mvp::enable(&mut renderer, &mut imgui);
-	}
+	#[cfg(feature = "multi-viewport")]
+	glow_mvp::enable(&mut renderer, &mut imgui);
 
 	Ok((renderer.gl_context().unwrap().clone(), ImGui {
 		context: imgui,
@@ -223,8 +219,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 		imgui.renderer.new_frame()?;
 		imgui.renderer.render(drawData)?;
-
-		if IMGUI_VIEWPORTS {
+		
+		#[cfg(feature = "multi-viewport")]
+		{
 			let ioFlags = imgui.context.io().config_flags();
 			if ioFlags.contains(ConfigFlags::VIEWPORTS_ENABLE) {
 				imgui.context.update_platform_windows();
@@ -258,9 +255,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 	
 	// destroy
 	info!("Cleaning up");
-	if IMGUI_VIEWPORTS {
-		glow_mvp::shutdown_multi_viewport_support(&mut imgui.context);
-	}
+	#[cfg(feature = "multi-viewport")]
+	glow_mvp::shutdown_multi_viewport_support(&mut imgui.context);
 	dear_imgui_sdl3::shutdown(&mut imgui.context);
 	
 	Ok(())
