@@ -106,8 +106,7 @@ fn createSdl3GlContext(title: &str, width: u32, height: u32) -> Result<(
 }
 
 fn initializeImGui(gl: GlowContext, window: &SdlWindow, glContext: &SdlGLContext) -> Result<(Rc<GlowContext>, ImGui), Box<dyn Error>> {
-	info!("Initializing ImGui");
-	// Build ImGui context
+	info!("Creating ImGui context");
 	let mut imgui = ImguiContext::create();
 	{
 		let io = imgui.io_mut();
@@ -129,7 +128,7 @@ fn initializeImGui(gl: GlowContext, window: &SdlWindow, glContext: &SdlGLContext
 		style.set_font_scale_dpi(windowScale);
 	}
 
-	// Initialize Glow renderer
+	info!("Creating ImGui/Glow renderer");
 	let mut renderer = GlowRenderer::new(gl, &mut imgui)?;
 	if IMGUI_VIEWPORTS {
 		glow_mvp::enable(&mut renderer, &mut imgui);
@@ -188,13 +187,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 		ui.dockspace_over_main_viewport();
 
-		ui.window("Main")
+		ui.window("App Info")
 			.flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 			.build(|| {
 				ui.text(format!("ImGUI FPS: {:.2}", ui.io().framerate()));
 				// ui.text(format!("ImGUI dt: {}", idt));
 				// total frames
-				ui.text(format!("Calculted dt: {}", dt));
+				ui.text(format!("Delta Time: {}", dt));
 				ui.separator();
 
 				// let mousePos = if let Some(cursor) = self.input.cursor() {
