@@ -11,6 +11,7 @@ use dear_imgui_rs::{
 	Context as ImguiContext,
 	WindowFlags
 };
+use glam::Vec2;
 use glow::{Context as GlowContext, HasContext};
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
@@ -143,6 +144,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let (gl, mut window, glContext) = createSdl3GlContext(WIN_TITLE, WIN_WIDTH, WIN_HEIGHT)?;
 	let (gl, mut imgui) = initializeImGui(gl, &window, &glContext)?;
 
+	let mut clearColor = [0.27, 0.59, 0.27, 1.0];
+	let mut mousePos = Vec2::ZERO;
+	
 	info!("Starting main loop");
 	let mut fps: u64 = 0;
 	let mut lastTick: u64 = 0;
@@ -166,6 +170,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 						gl.viewport(0, 0, w.max(1), h.max(1));
 					}
 					_ => {},
+				},
+				Event::MouseMotion { x, y, .. } => {
+					mousePos.x = x;
+					mousePos.y = y;
 				}
 				_ => {},
 			}
@@ -186,27 +194,22 @@ fn main() -> Result<(), Box<dyn Error>> {
 		ui.window("App Info")
 			.flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 			.build(|| {
-				ui.text(format!("ImGUI FPS: {:.2}", ui.io().framerate()));
+				ui.text(format!("ImGUI FPS: {:.3}", ui.io().framerate()));
 				// ui.text(format!("ImGUI dt: {}", idt));
 				// total frames
 				ui.text(format!("Delta Time: {}", dt));
 				ui.separator();
 
-				// let mousePos = if let Some(cursor) = self.input.cursor() {
-				// 	cursor
-				// } else {
-				// 	(0.0, 0.0)
-				// };
-				// ui.text(format!("Mouse Position: ({:.2},{:.2})", mousePos.0, mousePos.1));
+				ui.text(format!("Mouse Position: ({:.2},{:.2})", mousePos.x, mousePos.y));
 
 				let windowSize = window.size();
 				ui.text(format!("Window Size: ({},{})", windowSize.0, windowSize.1));
 				ui.separator();
 
-				// let uiWidth = ui.window_width();
-				// let itemWidth = ui.push_item_width(uiWidth * 0.6);
-				// ui.color_edit4("Clear Color", &mut clearColor);
-				// itemWidth.end();
+				let uiWidth = ui.window_width();
+				let itemWidth = ui.push_item_width(uiWidth * 0.6);
+				ui.color_edit4("Clear Color", &mut clearColor);
+				itemWidth.end();
 			});
 
 		let drawData = imgui.context.render();
@@ -214,7 +217,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 		// render
 		unsafe {
 			gl.clear(glow::COLOR_BUFFER_BIT);
-			gl.clear_color(0.27, 0.59, 0.27, 1.0);
+			gl.clear_color(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
 		}
 
 		imgui.renderer.new_frame()?;
