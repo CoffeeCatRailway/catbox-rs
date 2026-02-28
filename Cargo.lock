@@ -132,14 +132,12 @@ dependencies = [
 [[package]]
 name = "dear-imgui-build-support"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d014b703039da7b7e20bb0ced0022fc3c173444b1ebf9e58528d6b1aa57d4453"
+source = "git+https://github.com/Latias94/dear-imgui-rs?tag=v0.10.3#28132b0e639a9b1316458c525643eecbb460a344"
 
 [[package]]
 name = "dear-imgui-glow"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7705affb4329b003c2ba53e7be2b2f402e15140eacdf12534e5afb9aa4f5978a"
+version = "0.10.3"
+source = "git+https://github.com/Latias94/dear-imgui-rs?tag=v0.10.3#28132b0e639a9b1316458c525643eecbb460a344"
 dependencies = [
  "dear-imgui-rs",
  "glow",
@@ -149,9 +147,8 @@ dependencies = [
 
 [[package]]
 name = "dear-imgui-rs"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "724c95cf9ac88f0607ec869eb7af8ec473d60846bc863e2da59e711598de423f"
+version = "0.10.3"
+source = "git+https://github.com/Latias94/dear-imgui-rs?tag=v0.10.3#28132b0e639a9b1316458c525643eecbb460a344"
 dependencies = [
  "bitflags",
  "cfg-if",
@@ -166,9 +163,8 @@ dependencies = [
 
 [[package]]
 name = "dear-imgui-sdl3"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27d04a752c98d38eb6ea095bfc2a5585e089c4e67cf1ae80c83df231351f75f9"
+version = "0.10.3"
+source = "git+https://github.com/Latias94/dear-imgui-rs?tag=v0.10.3#28132b0e639a9b1316458c525643eecbb460a344"
 dependencies = [
  "cc",
  "dear-imgui-rs",
@@ -181,9 +177,8 @@ dependencies = [
 
 [[package]]
 name = "dear-imgui-sys"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f516a322865aa7049202403b156dc78b4e58c2492d577e55ba655dbb0ab7b277"
+version = "0.10.3"
+source = "git+https://github.com/Latias94/dear-imgui-rs?tag=v0.10.3#28132b0e639a9b1316458c525643eecbb460a344"
 dependencies = [
  "bindgen",
  "cc",
