@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+mod graphics;
+
 use std::error::Error;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -11,7 +13,7 @@ use dear_imgui_rs::{
 	Context as ImguiContext,
 	WindowFlags
 };
-use glam::Vec2;
+use glam::{Mat4, Vec2, Vec3};
 use glow::{Context as GlowContext, HasContext};
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
@@ -23,6 +25,7 @@ use sdl3::video::{
 };
 use tracing::{info, warn};
 use sdl3::timer;
+use crate::graphics::LineRenderer;
 
 const FPS: u64 = 60;
 const OPTIMAL_WAIT_TIME: u64 = 1000 / FPS;
@@ -147,6 +150,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut clearColor = [0.27, 0.59, 0.27, 1.0];
 	let mut mousePos = Vec2::ZERO;
 	
+	let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
+	lineRenderer.enable();
+	
 	info!("Starting main loop");
 	let mut fps: u64 = 0;
 	let mut lastTick: u64 = 0;
@@ -168,13 +174,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 				Event::Window { win_event, .. } => match win_event {
 					WindowEvent::Resized(w, h) => unsafe {
 						gl.viewport(0, 0, w.max(1), h.max(1));
-					}
+					},
 					_ => {},
 				},
 				Event::MouseMotion { x, y, .. } => {
 					mousePos.x = x;
 					mousePos.y = y;
-				}
+				},
 				_ => {},
 			}
 		}
@@ -219,6 +225,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 			gl.clear(glow::COLOR_BUFFER_BIT);
 			gl.clear_color(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
 		}
+		
+		lineRenderer.pushLine2(Vec2::new(0.0, 0.0), Vec3::splat(0.0), Vec2::new(1.0, 1.0), Vec3::splat(1.0));
+		
+		lineRenderer.drawFlush(&Mat4::IDENTITY);
 
 		imgui.renderer.new_frame()?;
 		imgui.renderer.render(drawData)?;
@@ -258,6 +268,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 	
 	// destroy
 	info!("Cleaning up");
+	lineRenderer.destroy();
 	#[cfg(feature = "multi-viewport")]
 	glow_mvp::shutdown_multi_viewport_support(&mut imgui.context);
 	dear_imgui_sdl3::shutdown(&mut imgui.context);
