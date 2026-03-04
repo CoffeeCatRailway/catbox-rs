@@ -1,8 +1,8 @@
-use std::rc::Rc;
 use bool_flags::Flags8;
 use glam::{Mat4, Vec2, Vec3, Vec4};
-use glow::{Context, HasContext, Program};
+use glow::{HasContext, Program};
 use tracing::{error, info, warn};
+use crate::types::GlRef;
 
 type GlowShader = glow::Shader;
 
@@ -18,7 +18,7 @@ pub enum ShaderType {
 }
 
 pub struct Shader {
-	gl: Rc<Context>,
+	gl: GlRef,
 	program: Program,
 	flags: Flags8,
 	shaders: Vec<GlowShader>,
@@ -38,7 +38,7 @@ impl Shader {
 		true
 	}
 	
-	pub fn new(gl: Rc<Context>) -> Self {
+	pub fn new(gl: GlRef) -> Self {
 		unsafe {
 			info!("Creating shader program");
 			let program = gl.create_program().expect("Failed to create shader program");

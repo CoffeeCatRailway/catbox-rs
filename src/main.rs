@@ -1,46 +1,16 @@
 #![allow(non_snake_case)]
 
 mod graphics;
+mod catbox;
+mod types;
 
 use std::error::Error;
-use std::rc::Rc;
-use std::sync::Arc;
-use dear_imgui_glow::GlowRenderer;
-#[cfg(feature = "multi-viewport")]
-use dear_imgui_glow::multi_viewport as glow_mvp;
-use dear_imgui_rs::{
-	ConfigFlags,
-	Context as ImguiContext,
-	WindowFlags
-};
-use glam::{Mat4, Vec2, Vec3};
-use glow::{Context as GlowContext, HasContext};
-use sdl3::event::{Event, WindowEvent};
-use sdl3::keyboard::Keycode;
-use sdl3::video::{
-	GLProfile,
-	GLContext as SdlGLContext,
-	SwapInterval,
-	Window as SdlWindow
-};
-use tracing::{info, warn};
-use sdl3::timer;
-use crate::graphics::LineRenderer;
-
-const FPS: u64 = 60;
-const OPTIMAL_WAIT_TIME: u64 = 1000 / FPS;
-
-const WIN_TITLE: &str = "Physics CatBox";
-const WIN_WIDTH: u32 = 800;
-const WIN_HEIGHT: u32 = 600;
-
-struct ImGui {
-	context: ImguiContext,
-	renderer: GlowRenderer,
-}
+use tracing::info;
+use crate::catbox::CatBox;
 
 fn initializeTracing() -> Result<(), Box<dyn Error>> {
 	use std::fs::File;
+	use std::sync::Arc;
 	use tracing_subscriber::{fmt, filter, prelude::*};
 	
 	// console
@@ -72,206 +42,12 @@ fn initializeTracing() -> Result<(), Box<dyn Error>> {
 	Ok(())
 }
 
-fn createSdl3GlContext(title: &str, width: u32, height: u32) -> Result<(
-	GlowContext,
-	SdlWindow,
-	SdlGLContext,
-), Box<dyn Error>> {
-	info!("Creating SDL3 context");
-	let sdl = sdl3::init()?;
-	let video = sdl.video()?;
-	let glAttributes = video.gl_attr();
-	
-	glAttributes.set_context_profile(GLProfile::Core);
-	glAttributes.set_context_version(4, 3);
-	glAttributes.set_depth_size(0);
-	
-	info!("Creating window and GL context");
-	let window = video.window(title, width, height)
-		.opengl()
-		.resizable()
-		.position_centered()
-		.build()?;
-	let glContext = window.gl_create_context()?;
-	window.gl_make_current(&glContext)?;
-	let _ = video.gl_set_swap_interval(SwapInterval::Immediate);
-	
-	let gl = unsafe {
-		use std::ffi::c_void;
-		glow::Context::from_loader_function(|name| {
-			video.gl_get_proc_address(name).map(|f| f as *const c_void).unwrap_or(std::ptr::null())
-		})
-	};
-	
-	Ok((gl, window, glContext))
-}
-
-fn initializeImGui(gl: GlowContext, window: &SdlWindow, glContext: &SdlGLContext) -> Result<(Rc<GlowContext>, ImGui), Box<dyn Error>> {
-	info!("Creating ImGui context");
-	let mut imgui = ImguiContext::create();
-	{
-		let io = imgui.io_mut();
-		let mut flags= io.config_flags();
-		flags.insert(ConfigFlags::DOCKING_ENABLE);
-		#[cfg(feature = "multi-viewport")]
-		flags.insert(ConfigFlags::VIEWPORTS_ENABLE);
-		io.set_config_flags(flags);
-	}
-
-	// Initial SDL3 platform backend
-	dear_imgui_sdl3::init_platform_for_opengl(&mut imgui, &window, &glContext)?;
-
-	// Basic style scaling
-	let windowScale = window.display_scale();
-	{
-		let style = imgui.style_mut();
-		style.set_font_scale_dpi(windowScale);
-	}
-
-	info!("Creating ImGui/Glow renderer");
-	#[allow(unused_mut)]
-	let mut renderer = GlowRenderer::new(gl, &mut imgui)?;
-	#[cfg(feature = "multi-viewport")]
-	glow_mvp::enable(&mut renderer, &mut imgui);
-
-	Ok((renderer.gl_context().unwrap().clone(), ImGui {
-		context: imgui,
-		renderer,
-	}))
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
-	// initialize
 	initializeTracing()?;
 
-	let (gl, mut window, glContext) = createSdl3GlContext(WIN_TITLE, WIN_WIDTH, WIN_HEIGHT)?;
-	let (gl, mut imgui) = initializeImGui(gl, &window, &glContext)?;
-
-	let mut clearColor = [0.27, 0.59, 0.27, 1.0];
-	let mut mousePos = Vec2::ZERO;
-	
-	let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
-	lineRenderer.enable();
-	
-	info!("Starting main loop");
-	let mut fps: u64 = 0;
-	let mut lastTick: u64 = 0;
-	let mut dt: f32 = OPTIMAL_WAIT_TIME as f32 / 1000.0;
-	// let mut lastFrame = Instant::now();
-	'main: loop {
-		let startTick = timer::ticks();
-		
-		// events
-		while let Some(raw) = dear_imgui_sdl3::sdl3_poll_event_ll() {
-			let _ = dear_imgui_sdl3::process_sys_event(&raw);
-
-			let event = Event::from_ll(raw);
-			match event {
-				Event::Quit { .. } | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-					warn!("Exiting main loop");
-					break 'main
-				},
-				Event::Window { win_event, .. } => match win_event {
-					WindowEvent::Resized(w, h) => unsafe {
-						gl.viewport(0, 0, w.max(1), h.max(1));
-					},
-					_ => {},
-				},
-				Event::MouseMotion { x, y, .. } => {
-					mousePos.x = x;
-					mousePos.y = y;
-				},
-				_ => {},
-			}
-		}
-
-		// update
-		// let now = Instant::now();
-		// let idt = (now - lastFrame).as_secs_f32();
-		// lastFrame = now;
-		imgui.context.io_mut().set_delta_time(dt);
-		
-		// Imgui
-		dear_imgui_sdl3::sdl3_new_frame(&mut imgui.context);
-		let ui = imgui.context.frame();
-
-		ui.dockspace_over_main_viewport();
-
-		ui.window("App Info")
-			.flags(WindowFlags::ALWAYS_AUTO_RESIZE)
-			.build(|| {
-				ui.text(format!("ImGUI FPS: {:.3}", ui.io().framerate()));
-				// ui.text(format!("ImGUI dt: {}", idt));
-				// total frames
-				ui.text(format!("Delta Time: {}", dt));
-				ui.separator();
-
-				ui.text(format!("Mouse Position: ({:.2},{:.2})", mousePos.x, mousePos.y));
-
-				let windowSize = window.size();
-				ui.text(format!("Window Size: ({},{})", windowSize.0, windowSize.1));
-				ui.separator();
-
-				let uiWidth = ui.window_width();
-				let itemWidth = ui.push_item_width(uiWidth * 0.6);
-				ui.color_edit4("Clear Color", &mut clearColor);
-				itemWidth.end();
-			});
-
-		let drawData = imgui.context.render();
-
-		// render
-		unsafe {
-			gl.clear(glow::COLOR_BUFFER_BIT);
-			gl.clear_color(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
-		}
-		
-		lineRenderer.pushLine2(Vec2::new(0.0, 0.0), Vec3::splat(0.0), Vec2::new(1.0, 1.0), Vec3::splat(1.0));
-		
-		lineRenderer.drawFlush(&Mat4::IDENTITY);
-
-		imgui.renderer.new_frame()?;
-		imgui.renderer.render(drawData)?;
-		
-		#[cfg(feature = "multi-viewport")]
-		{
-			let ioFlags = imgui.context.io().config_flags();
-			if ioFlags.contains(ConfigFlags::VIEWPORTS_ENABLE) {
-				imgui.context.update_platform_windows();
-				imgui.context.render_platform_windows_default();
-				// Restore main GL context
-				let _ = window.gl_make_current(&glContext);
-			}
-		}
-		
-		window.gl_swap_window();
-		
-		// fps counter
-		fps += 1;
-		if startTick > lastTick + 1000 {
-			let newTitle = format!("{} - FPS: {}", WIN_TITLE, fps);
-			window.set_title(&newTitle)?;
-			
-			lastTick = startTick;
-			fps = 0;
-		}
-		
-		// timing
-		let elapsedTicks = timer::ticks() - startTick;
-		let waitTime = OPTIMAL_WAIT_TIME.saturating_sub(elapsedTicks);
-		dt = waitTime as f32 / 1000.0;
-		if waitTime > 0 {
-			// info!("{}", waitTime);
-			timer::delay(waitTime as u32);
-		}
-	}
-	
-	// destroy
-	info!("Cleaning up");
-	lineRenderer.destroy();
-	#[cfg(feature = "multi-viewport")]
-	glow_mvp::shutdown_multi_viewport_support(&mut imgui.context);
-	dear_imgui_sdl3::shutdown(&mut imgui.context);
+	let mut catBox = CatBox::new()?;
+	catBox.run()?;
+	catBox.destroy();
 	
 	Ok(())
 }

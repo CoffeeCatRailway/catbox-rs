@@ -1,15 +1,15 @@
-use std::rc::Rc;
 use bool_flags::Flags8;
 use glam::{Mat4, Vec2, Vec3};
-use glow::{Buffer, Context, HasContext, VertexArray};
+use glow::{Buffer, HasContext, VertexArray};
 use tracing::{info, warn};
-use crate::graphics::{Shader, ShaderType};
+use crate::graphics::shader::{Shader, ShaderType};
+use crate::types::GlRef;
 
 const F_ENABLED: u8 = 	0;
 const F_DESTROYED: u8 = 1;
 
 pub struct LineRenderer {
-	gl: Rc<Context>,
+	gl: GlRef,
 	vec: Vec<f32>,
 	shader: Shader,
 	vao: VertexArray,
@@ -37,7 +37,7 @@ const SHADER_FRAG: &str = include_str!("../../resources/shaders/line_renderer.fr
 
 #[allow(unused)]
 impl LineRenderer {
-	pub fn new(gl: Rc<Context>, capacity: usize) -> Result<Self, String> {
+	pub fn new(gl: GlRef, capacity: usize) -> Result<Self, String> {
 		unsafe {
 			info!("Creating line renderer");
 			let vec = Vec::with_capacity(capacity);
