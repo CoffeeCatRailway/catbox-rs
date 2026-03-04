@@ -39,7 +39,7 @@ pub struct CatBox {
 	flags: Flags8,
 	
 	gl: GlRef,
-	#[allow(unused)]
+	#[cfg_attr(not(feature = "multi-viewport"), allow(unused))]
 	glContext: GLContext,
 	window: SdlWindowRef,
 	
@@ -91,7 +91,10 @@ impl CatBox {
 			let mut flags= io.config_flags();
 			flags.insert(ConfigFlags::DOCKING_ENABLE);
 			#[cfg(feature = "multi-viewport")]
-			flags.insert(ConfigFlags::VIEWPORTS_ENABLE);
+			{
+				info!("Feature: Imgui multi-viewport");
+				flags.insert(ConfigFlags::VIEWPORTS_ENABLE);
+			}
 			io.set_config_flags(flags);
 		}
 		
@@ -106,7 +109,7 @@ impl CatBox {
 		}
 		
 		info!("Imgui glow renderer");
-		#[allow(unused_mut)]
+		#[cfg_attr(not(feature = "multi-viewport"), allow(unused))]
 		let mut renderer = GlowRenderer::new(gl, &mut imgui)?;
 		#[cfg(feature = "multi-viewport")]
 		glow_mvp::enable(&mut renderer, &mut imgui);
@@ -137,17 +140,26 @@ impl CatBox {
 		})
 	}
 	
+	fn requestClose(&mut self) {
+		warn!("CatBox loop exit requested");
+		self.flags.clear(F_RUNNING);
+	}
+	
 	fn handleEvents(&mut self, event: Event) {
 		match event {
 			Event::Quit { .. } | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-				warn!("CatBox loop exit requested");
-				self.flags.clear(F_RUNNING);
+				self.requestClose();
 			},
-			Event::Window { win_event, .. } => match win_event {
+			Event::Window { win_event, window_id, .. } => match win_event {
 				WindowEvent::Resized(newWidth, newHeight) => unsafe {
 					self.gl.viewport(0, 0, newWidth.max(1), newHeight.max(1));
 					self.width = newWidth as u32;
 					self.height = newHeight as u32;
+				},
+				WindowEvent::CloseRequested => {
+					if window_id == self.window.borrow().id() {
+						self.requestClose();
+					}
 				},
 				_ => {},
 			},
@@ -228,7 +240,7 @@ impl CatBox {
 					self.imgui.context.update_platform_windows();
 					self.imgui.context.render_platform_windows_default();
 					// Restore main GL context
-					let _ = self.window.gl_make_current(&self.glContext);
+					let _ = self.window.borrow().gl_make_current(&self.glContext);
 				}
 			}
 			
