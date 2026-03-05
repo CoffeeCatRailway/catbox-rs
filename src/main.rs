@@ -45,9 +45,9 @@ fn initializeTracing() -> Result<(), Box<dyn Error>> {
 fn main() -> Result<(), Box<dyn Error>> {
 	initializeTracing()?;
 
-	let mut catBox = CatBox::new()?;
-	catBox.run()?;
-	catBox.destroy();
+	let mut catbox = CatBox::new()?;
+	catbox.run()?;
+	catbox.destroy();
 	
 	Ok(())
 }

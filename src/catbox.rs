@@ -86,6 +86,7 @@ impl CatBox {
 		
 		info!("Imgui context");
 		let mut imgui = ImguiContext::create();
+		imgui.set_ini_filename(Some("imgui.ini"))?;
 		{
 			let io = imgui.io_mut();
 			let mut flags= io.config_flags();
@@ -111,6 +112,7 @@ impl CatBox {
 		info!("Imgui glow renderer");
 		#[cfg_attr(not(feature = "multi-viewport"), allow(unused))]
 		let mut renderer = GlowRenderer::new(gl, &mut imgui)?;
+		renderer.set_framebuffer_srgb_enabled(false);
 		#[cfg(feature = "multi-viewport")]
 		glow_mvp::enable(&mut renderer, &mut imgui);
 		
@@ -151,10 +153,11 @@ impl CatBox {
 				self.requestClose();
 			},
 			Event::Window { win_event, window_id, .. } => match win_event {
-				WindowEvent::Resized(newWidth, newHeight) => unsafe {
-					self.gl.viewport(0, 0, newWidth.max(1), newHeight.max(1));
-					self.width = newWidth as u32;
-					self.height = newHeight as u32;
+				WindowEvent::Resized(width, height) => unsafe {
+					let (width, height) = (width.max(1), height.max(1));
+					self.gl.viewport(0, 0, width, height);
+					self.width = width as u32;
+					self.height = height as u32;
 				},
 				WindowEvent::CloseRequested => {
 					if window_id == self.window.borrow().id() {
@@ -175,9 +178,10 @@ impl CatBox {
 		info!("Starting CatBox loop");
 		self.flags.set(F_RUNNING);
 		
-		let mut fps: u64 = 0;
+		let mut fps: u32 = 0;
 		let mut lastTick: u64 = 0;
 		let mut dt: f32 = OPTIMAL_DT;
+		let mut totalFrames: u64 = 0;
 		while self.flags.get(F_RUNNING) {
 			let startTick = timer::ticks();
 			
@@ -202,8 +206,8 @@ impl CatBox {
 			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 			  .build(|| {
 				  ui.text(format!("ImGUI FPS: {:.3}", ui.io().framerate()));
-				  // total frames
 				  ui.text(format!("Delta Time: {}", dt));
+				  ui.text(format!("Total frames: {}", totalFrames));
 				  ui.separator();
 				  
 				  ui.text(format!("Mouse Position: ({:.2},{:.2})", self.mousePos.x, self.mousePos.y));
@@ -247,7 +251,8 @@ impl CatBox {
 			self.window.borrow().gl_swap_window();
 			
 			// fps counter
-			fps += 1;
+			fps = fps.saturating_add(1);
+			totalFrames = totalFrames.saturating_add(1);
 			if startTick >= lastTick + 1000 {
 				let newTitle = format!("{} - FPS: {}", WIN_TITLE, fps);
 				self.window.borrow_mut().set_title(&newTitle)?;
