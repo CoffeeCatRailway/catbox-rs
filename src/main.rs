@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 mod graphics;
+mod simulation;
 mod catbox;
 mod types;
 

@@ -8,17 +8,21 @@ use dear_imgui_rs::{
 	Context as ImguiContext,
 	WindowFlags
 };
-use glam::{Mat4, Vec2, Vec3};
+use glam::{vec2, vec3, Mat4, Vec2, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
-use sdl3::timer;
+use sdl3::mouse::MouseButton;
+use sdl3::{timer, EventPump};
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::graphics::line_renderer::LineRenderer;
+use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
+use crate::simulation::transform::Transform;
 use crate::types::{newLineRendererRef, newSdlWindowRef, GlRef, LineRendererRef, SdlWindowRef};
 
 const F_RUNNING: u8 = 0;
+const F_MOUSE_MIDDLE_JUST_PRESSED: u8 = 1;
 
 const WIN_TITLE: &str = "Physics CatBox";
 const WIN_WIDTH: u32 = 800;
@@ -37,6 +41,7 @@ pub struct CatBox {
 	width: u32,
 	height: u32,
 	flags: Flags8,
+	sdlEventPump: EventPump,
 	
 	gl: GlRef,
 	#[cfg_attr(not(feature = "multi-viewport"), allow(unused))]
@@ -48,6 +53,11 @@ pub struct CatBox {
 	lineRenderer: LineRendererRef,
 	clearColor: [f32; 4],
 	mousePos: Vec2,
+	lastMousePos: Vec2,
+	
+	camera: Camera,
+	projectionMatrix: Mat4,
+	viewMatrix: Mat4,
 }
 
 impl CatBox {
@@ -58,6 +68,7 @@ impl CatBox {
 		info!("SDL3 context");
 		let sdl = sdl3::init()?;
 		let video = sdl.video()?;
+		let sdlEventPump = sdl.event_pump()?;
 		let glAttributes = video.gl_attr();
 		
 		glAttributes.set_context_profile(GLProfile::Core);
@@ -121,11 +132,25 @@ impl CatBox {
 		info!("Initializing locals");
 		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
 		lineRenderer.enable();
+		
+		let camera = Camera {
+			frustum: Frustum {
+				fov: 500.0,
+				fovMax: 1000.0,
+				..Frustum::default()
+			},
+			transform: Transform {
+				position: vec3(0.0, 0.0, 5.0),
+				..Transform::default()
+			},
+			..Camera::default()
+		};
 	
-		Ok(CatBox {
+		let mut catbox = CatBox {
 			width: WIN_WIDTH,
 			height: WIN_HEIGHT,
 			flags,
+			sdlEventPump,
 			
 			gl,
 			glContext,
@@ -139,10 +164,29 @@ impl CatBox {
 			lineRenderer: newLineRendererRef(lineRenderer),
 			clearColor: [0.27, 0.59, 0.27, 1.0],
 			mousePos: Vec2::ZERO,
-		})
+			lastMousePos: Vec2::ZERO,
+			
+			camera,
+			projectionMatrix: Mat4::IDENTITY,
+			viewMatrix: Mat4::IDENTITY,
+		};
+		catbox.updateProjectionMatrix();
+		Ok(catbox)
+	}
+	
+	fn updateProjectionMatrix(&mut self) {
+		let windowSize = self.window.borrow().size();
+		let windowAspect = windowSize.0 as f32 / windowSize.1 as f32;
+		
+		let projection = Projection::Orthographic(windowAspect * -1.0, windowAspect * 1.0, -1.0, 1.0);
+		self.projectionMatrix = self.camera.getProjectionMatrix(projection);
 	}
 	
 	fn requestClose(&mut self) {
+		if !self.flags.get(F_RUNNING)
+		{
+			return;
+		}
 		warn!("CatBox loop exit requested");
 		self.flags.clear(F_RUNNING);
 	}
@@ -158,6 +202,7 @@ impl CatBox {
 					self.gl.viewport(0, 0, width, height);
 					self.width = width as u32;
 					self.height = height as u32;
+					self.updateProjectionMatrix();
 				},
 				WindowEvent::CloseRequested => {
 					if window_id == self.window.borrow().id() {
@@ -170,7 +215,32 @@ impl CatBox {
 				self.mousePos.x = x;
 				self.mousePos.y = y;
 			},
+			Event::MouseButtonDown { mouse_btn: MouseButton::Middle, .. } => {
+				self.lastMousePos = self.mousePos;
+				self.flags.set(F_MOUSE_MIDDLE_JUST_PRESSED);
+			},
+			Event::MouseButtonUp { mouse_btn: MouseButton::Middle, .. } => {
+				self.flags.clear(F_MOUSE_MIDDLE_JUST_PRESSED);
+			},
+			Event::MouseWheel { y, .. } => {
+				self.camera.frustum.zoom(-y * 10.0);
+				self.updateProjectionMatrix();
+			}
 			_ => {},
+		}
+		
+		let mouseState = self.sdlEventPump.mouse_state();
+		if mouseState.middle() && self.flags.get(F_MOUSE_MIDDLE_JUST_PRESSED) {
+			let mouseDiff = self.lastMousePos - self.mousePos;
+			if mouseDiff.length() > 0.0 {
+				let lastMouseWorld = screenToWorldSpace(self.lastMousePos, self.width, self.height, self.projectionMatrix, self.viewMatrix);
+				let mouseDiffWorld = screenToWorldSpace(self.lastMousePos + mouseDiff, self.width, self.height, self.projectionMatrix, self.viewMatrix);
+				
+				let worldDiff = lastMouseWorld - mouseDiffWorld;
+				self.camera.transform.position.x -= worldDiff.x;
+				self.camera.transform.position.y -= worldDiff.y;
+			}
+			self.lastMousePos = self.mousePos;
 		}
 	}
 	
@@ -230,9 +300,17 @@ impl CatBox {
 				self.gl.clear_color(self.clearColor[0], self.clearColor[1], self.clearColor[2], self.clearColor[3]);
 			}
 			
-			self.lineRenderer.borrow_mut().pushLine2(Vec2::new(0.0, 0.0), Vec3::splat(0.0), Vec2::new(1.0, 1.0), Vec3::splat(1.0));
+			self.lineRenderer.borrow_mut().pushLine2(vec2(-100.0, 100.0), Vec3::X, vec2(100.0, 100.0), Vec3::Y);
+			self.lineRenderer.borrow_mut().pushLine2(vec2(100.0, 100.0), Vec3::Y, vec2(100.0, -100.0), Vec3::Z);
+			self.lineRenderer.borrow_mut().pushLine2(vec2(100.0, -100.0), Vec3::Z, vec2(-100.0, -100.0), Vec3::ONE);
+			self.lineRenderer.borrow_mut().pushLine2(vec2(-100.0, -100.0), Vec3::ONE, vec2(-100.0, 100.0), Vec3::X);
 			
-			self.lineRenderer.borrow_mut().drawFlush(&Mat4::IDENTITY);
+			// calculate camera matrices
+			let projection = self.projectionMatrix;
+			self.viewMatrix = self.camera.getViewMatrix();
+			let pvm = projection * self.viewMatrix;
+			
+			self.lineRenderer.borrow_mut().drawFlush(&pvm);
 			
 			self.imgui.renderer.new_frame()?;
 			self.imgui.renderer.render(drawData)?;
