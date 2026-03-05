@@ -235,8 +235,9 @@ impl CatBox {
 			if mouseDiff.length() > 0.0 {
 				let lastMouseWorld = screenToWorldSpace(self.lastMousePos, self.width, self.height, self.projectionMatrix, self.viewMatrix);
 				let mouseDiffWorld = screenToWorldSpace(self.lastMousePos + mouseDiff, self.width, self.height, self.projectionMatrix, self.viewMatrix);
-				
 				let worldDiff = lastMouseWorld - mouseDiffWorld;
+				// println!("{}", worldDiff.z);
+				
 				self.camera.transform.position.x -= worldDiff.x;
 				self.camera.transform.position.y -= worldDiff.y;
 			}
