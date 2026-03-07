@@ -3,11 +3,7 @@ use bool_flags::Flags8;
 use dear_imgui_glow::GlowRenderer;
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
-use dear_imgui_rs::{
-	ConfigFlags,
-	Context as ImguiContext,
-	WindowFlags
-};
+use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
 use glam::{vec2, vec3, Mat4, Vec2, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
@@ -242,16 +238,6 @@ impl CatBox {
 			// update
 			self.imgui.context.io_mut().set_delta_time(dt);
 			
-			// if self.inputHelper.isKeyJustPressed(Keycode::A) {
-			// 	println!("key A just pressed");
-			// }
-			// if self.inputHelper.isKeyJustReleased(Keycode::A) {
-			// 	println!("key A just released");
-			// }
-			// if self.inputHelper.isKeyPressed(Keycode::A) {
-			// 	println!("key A pressed");
-			// }
-			
 			if self.inputHelper.isMouseJustPressed(MouseButton::Middle) {
 				self.lastMousePos = self.inputHelper.mousePos();
 			}
@@ -294,6 +280,53 @@ impl CatBox {
 				  ui.color_edit4("Clear Color", &mut self.clearColor);
 				  itemWidth.end();
 			  });
+			
+			let mut updateProjection = false;
+			ui.window("Controls")
+			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
+			  .build(|| {
+				  // ui.text(format!("Update time: {}s", self.updateTime));
+				  // ui.separator();
+				  
+				  // ui.text(format!("Render time: {}s", self.renderTime));
+				  // if ui.collapsing_header("Shape Renderer", TreeNodeFlags::COLLAPSING_HEADER) {
+					//   let shapeRenderer = self.renderer.getShapeRenderer();
+					//   ui.checkbox("Enabled##shape", &mut shapeRenderer.enabled);
+					//   ui.text(format!("Buffer capacity: {}", shapeRenderer.getBufferCapacity()));
+					//   ui.text(format!("Last floats pushed: {}", shapeRenderer.getLastFloatsPushed()));
+				  // }
+				  if ui.collapsing_header("Line Renderer", TreeNodeFlags::COLLAPSING_HEADER) {
+					  if ui.small_button("Enable##LineRenderer") {
+						  self.lineRenderer.borrow_mut().enable();
+					  }
+					  ui.same_line();
+					  if ui.small_button("Disable##LineRenderer") {
+						  self.lineRenderer.borrow_mut().disable();
+					  }
+					  ui.text(format!("Buffer capacity: {}", self.lineRenderer.borrow().getBufferCapacity()));
+					  ui.text(format!("Last floats pushed: {}", self.lineRenderer.borrow().getLastFloatsPushed()));
+				  }
+				  ui.separator();
+				  
+				  if ui.collapsing_header("Camera", TreeNodeFlags::COLLAPSING_HEADER) {
+					  ui.text(format!("Position: ({:.3}, {:.3})", self.camera.transform.position.x, self.camera.transform.position.y));
+					  let uiWidth = ui.window_width();
+					  let itemWidth = ui.push_item_width(uiWidth * 0.6);
+					  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
+						  updateProjection = true;
+					  }
+					  itemWidth.end();
+					  
+					  if ui.small_button("Reset") {
+						  self.camera.transform.position = Vec3::ZERO;
+						  self.camera.frustum.fov = 500.0;
+						  updateProjection = true;
+					  }
+				  }
+			  });
+			if updateProjection {
+				self.updateProjectionMatrix();
+			}
 			
 			let drawData = self.imgui.context.render();
 			
