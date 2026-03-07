@@ -2,12 +2,12 @@
 
 mod graphics;
 mod simulation;
-mod catbox;
 mod types;
+mod window;
 
 use std::error::Error;
 use tracing::info;
-use crate::catbox::CatBox;
+use crate::window::catbox::CatBox;
 
 fn initializeTracing() -> Result<(), Box<dyn Error>> {
 	use std::fs::File;
