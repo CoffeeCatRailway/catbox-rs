@@ -163,7 +163,7 @@ impl LineRenderer {
 			return;
 		}
 		warn!("Destroying line renderer");
-		self.shader.delete();
+		self.shader.destroy();
 		unsafe {
 			self.gl.delete_buffer(self.vbo);
 			self.gl.delete_vertex_array(self.vao);

@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use glam::{Mat4, Quat, Vec3};
 
 #[derive(Copy, Clone)]
@@ -18,9 +16,9 @@ impl Default for Transform {
 			position: Vec3::ZERO,
 			rotation: Quat::IDENTITY,
 			scale: Vec3::ONE,
-			frontLocal: Vec3::NEG_Z,  // Direction::Forward
-			rightLocal: Vec3::X, // Direction::Right
-			upLocal: Vec3::Y, // Direction::Up
+			frontLocal: Vec3::NEG_Z,
+			rightLocal: Vec3::X,
+			upLocal: Vec3::Y,
 		}
 	}
 }

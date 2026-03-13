@@ -9,7 +9,6 @@ type GlowShader = glow::Shader;
 const F_DESTROYED: u8 = 0;
 const F_LINKED: u8 = 	1;
 
-#[allow(unused)]
 pub enum ShaderType {
 	Vertex,
 	Fragment,
@@ -24,7 +23,6 @@ pub struct Shader {
 	shaders: Vec<GlowShader>,
 }
 
-#[allow(unused)]
 impl Shader {
 	fn checks(&self) -> bool {
 		if self.flags.get(F_DESTROYED) {
@@ -127,7 +125,7 @@ impl Shader {
 		}
 	}
 	
-	pub fn delete(&mut self) {
+	pub fn destroy(&mut self) {
 		if self.flags.get(F_DESTROYED) {
 			return;
 		}
@@ -233,6 +231,6 @@ impl Shader {
 
 impl Drop for Shader {
 	fn drop(&mut self) {
-		self.delete();
+		self.destroy();
 	}
 }

@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use glam::{vec2, vec4, Mat4, Quat, Vec2, Vec3};
 use crate::simulation::transform::Transform;
 

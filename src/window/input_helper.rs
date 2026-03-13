@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use std::collections::HashMap;
 use glam::Vec2;
 use sdl3::event::Event;
