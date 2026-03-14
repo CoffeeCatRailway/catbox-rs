@@ -2,6 +2,7 @@ use bool_flags::Flags8;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use glow::{HasContext, Program};
 use tracing::{error, info, warn};
+use crate::gl_check_error;
 use crate::types::GlRef;
 
 type GlowShader = glow::Shader;
@@ -40,6 +41,7 @@ impl Shader {
 		unsafe {
 			info!("Creating shader program");
 			let program = gl.create_program().expect("Failed to create shader program");
+			gl_check_error!(gl);
 			Shader {
 				gl,
 				program,
@@ -69,12 +71,15 @@ impl Shader {
 			let shader = self.gl.create_shader(typeGlow).expect(format!("Failed to create shader of type '{}'", typeStr).as_str());
 			self.gl.shader_source(shader, source);
 			self.gl.compile_shader(shader);
+			gl_check_error!(self.gl);
 			
 			if !self.gl.get_shader_compile_status(shader) {
 				let error = self.gl.get_shader_info_log(shader);
+				gl_check_error!(self.gl);
 				panic!("Failed to compile shader: {error}");
 			}
 			self.gl.attach_shader(self.program, shader);
+			gl_check_error!(self.gl);
 			self.shaders.push(shader);
 		}
 		self
@@ -91,16 +96,21 @@ impl Shader {
 		unsafe {
 			info!("Linking shader program {}...", self.program.0);
 			
-			self.gl.bind_frag_data_location(self.program, glow::COLOR_ATTACHMENT0, "o_color");
+			// self.gl.bind_frag_data_location(self.program, glow::COLOR_ATTACHMENT0, "o_color");
+			// gl_check_error!(self.gl);
 			self.gl.link_program(self.program);
+			gl_check_error!(self.gl);
+			
 			if !self.gl.get_program_link_status(self.program) {
 				let error = self.gl.get_program_info_log(self.program);
+				gl_check_error!(self.gl);
 				panic!("Failed to link shader: {}", error);
 			}
 			
 			for shader in self.shaders.iter() {
 				self.gl.detach_shader(self.program, *shader);
 				self.gl.delete_shader(*shader);
+				gl_check_error!(self.gl);
 			}
 			self.shaders = Vec::new(); // Clear and deallocate
 			self.flags.set(F_LINKED)
@@ -122,6 +132,7 @@ impl Shader {
 		}
 		unsafe {
 			self.gl.use_program(Some(self.program));
+			gl_check_error!(self.gl);
 		}
 	}
 	
@@ -153,6 +164,7 @@ impl Shader {
 		unsafe {
 			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
 			self.gl.uniform_1_i32(loc, value);
+			gl_check_error!(self.gl);
 		}
 	}
 	
@@ -163,6 +175,7 @@ impl Shader {
 		unsafe {
 			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
 			self.gl.uniform_1_u32(loc, value);
+			gl_check_error!(self.gl);
 		}
 	}
 	
@@ -173,6 +186,7 @@ impl Shader {
 		unsafe {
 			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
 			self.gl.uniform_1_f32(loc, value);
+			gl_check_error!(self.gl);
 		}
 	}
 	
@@ -187,6 +201,7 @@ impl Shader {
 		unsafe {
 			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
 			self.gl.uniform_2_f32(loc, x, y);
+			gl_check_error!(self.gl);
 		}
 	}
 	
@@ -201,6 +216,7 @@ impl Shader {
 		unsafe {
 			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
 			self.gl.uniform_3_f32(loc, x, y, z);
+			gl_check_error!(self.gl);
 		}
 	}
 	
@@ -215,6 +231,7 @@ impl Shader {
 		unsafe {
 			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
 			self.gl.uniform_4_f32(loc, x, y, z, w);
+			gl_check_error!(self.gl);
 		}
 	}
 	
@@ -225,6 +242,7 @@ impl Shader {
 		unsafe {
 			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
 			self.gl.uniform_matrix_4_f32_slice(loc, false, &mat.to_cols_array());
+			gl_check_error!(self.gl);
 		}
 	}
 }

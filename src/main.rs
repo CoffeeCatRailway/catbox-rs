@@ -16,6 +16,7 @@ use crate::window::catbox::CatBox;
 // any found errors with the source file and line number.
 pub fn gl_check_error_impl(gl: &GlRef, file: &'static str, line: u32) -> u32 {
 	let mut last_error = glow::NO_ERROR;
+	#[cfg(debug_assertions)] // Only compiles in dev
 	unsafe {
 		loop {
 			let err = gl.get_error();

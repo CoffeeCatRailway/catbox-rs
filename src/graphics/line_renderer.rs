@@ -2,6 +2,7 @@ use bool_flags::Flags8;
 use glam::{Mat4, Vec2, Vec3};
 use glow::{Buffer, HasContext, VertexArray};
 use tracing::{info, warn};
+use crate::gl_check_error;
 use crate::graphics::shader::{Shader, ShaderType};
 use crate::types::GlRef;
 
@@ -45,13 +46,15 @@ impl LineRenderer {
 				.attachFromSource(ShaderType::Fragment, SHADER_FRAG)
 				.link();
 			
-			let vao = gl.create_vertex_array().map_err(|e| format!("Failed to create vertex array: {}", e))?;
-			let vbo = gl.create_named_buffer().map_err(|e| format!("Failed to create buffer object: {}", e))?;
+			let vao = gl.create_vertex_array()?;
+			let vbo = gl.create_named_buffer()?;
 			gl.bind_vertex_array(Some(vao));
+			gl_check_error!(gl);
 			
 			gl.named_buffer_data_size(vbo, (capacity * FLOAT_SIZE) as i32, glow::DYNAMIC_DRAW);
 			// gl.named_buffer_data_u8_slice(vbo, bytemuck::cast_slice(&vec), glow::DYNAMIC_DRAW);
 			gl.vertex_array_vertex_buffer(vao, 0, Some(vbo), 0, (FLOATS * FLOAT_SIZE) as i32);
+			gl_check_error!(gl);
 			
 			let locPos = shader.getAttribLocation("i_position").unwrap();
 			let locCol = shader.getAttribLocation("i_color").unwrap();
@@ -59,14 +62,17 @@ impl LineRenderer {
 			let mut offset: usize = 0;
 			gl.vertex_array_attrib_format_f32(vao, locPos, 3, glow::FLOAT, false, offset as u32);
 			gl.vertex_array_attrib_binding_f32(vao, locPos, 0);
+			gl_check_error!(gl);
 			offset += 3 * FLOAT_SIZE;
 			
 			gl.vertex_array_attrib_format_f32(vao, locCol, 3, glow::FLOAT, false, offset as u32);
 			gl.vertex_array_attrib_binding_f32(vao, locCol, 0);
+			gl_check_error!(gl);
 			// offset += 3 * FLOAT_SIZE;
 			
 			gl.enable_vertex_array_attrib(vao, locPos);
 			gl.enable_vertex_array_attrib(vao, locCol);
+			gl_check_error!(gl);
 			
 			gl.bind_vertex_array(None);
 			
@@ -138,16 +144,19 @@ impl LineRenderer {
 		
 		unsafe {
 			self.gl.bind_vertex_array(Some(self.vao));
+			gl_check_error!(self.gl);
 			
 			if self.floatsPushed > self.lastFloatsPushed {
 				self.gl.named_buffer_data_u8_slice(self.vbo, bytemuck::cast_slice(&self.vec), glow::DYNAMIC_DRAW);
 			} else {
 				self.gl.named_buffer_sub_data_u8_slice(self.vbo, 0, bytemuck::cast_slice(&self.vec));
 			}
+			gl_check_error!(self.gl);
 			
 			let drawCount = self.vec.len() / FLOATS;
 			// info!("drawCount: {}", drawCount);
 			self.gl.draw_arrays(glow::LINES, 0, drawCount as i32);
+			gl_check_error!(self.gl);
 			
 			self.gl.bind_vertex_array(None);
 		}

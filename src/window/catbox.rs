@@ -12,6 +12,7 @@ use sdl3::mouse::MouseButton;
 use sdl3::timer;
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
+use crate::gl_check_error;
 use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::Mesh;
 use crate::graphics::renderer::Renderer;
@@ -259,6 +260,7 @@ impl CatBox {
 				WindowEvent::Resized(width, height) => unsafe {
 					let (width, height) = (width.max(1), height.max(1));
 					self.gl.viewport(0, 0, width, height);
+					gl_check_error!(self.gl);
 					self.width = width as u32;
 					self.height = height as u32;
 					self.updateProjectionMatrix();
@@ -398,6 +400,7 @@ impl CatBox {
 			unsafe {
 				self.gl.clear(glow::COLOR_BUFFER_BIT);
 				self.gl.clear_color(self.clearColor[0], self.clearColor[1], self.clearColor[2], self.clearColor[3]);
+				gl_check_error!(self.gl);
 			}
 			
 			self.lineRenderer.borrow_mut().pushLine2(vec2(-100.0, 100.0), Vec3::X, vec2(100.0, 100.0), Vec3::Y);
