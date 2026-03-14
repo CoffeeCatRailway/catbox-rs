@@ -19,7 +19,7 @@ use crate::graphics::shader::{Shader, ShaderType};
 use crate::simulation::ball::Ball;
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 use crate::simulation::transform::Transform;
-use crate::types::{newLineRendererRef, newRenderableRef, newSdlWindowRef, newShaderRef, newSimObjectRef, GlRef, LineRendererRef, SdlWindowRef};
+use crate::types::{newLineRendererRef, newRenderableRef, newSdlWindowRef, newShaderRef, GlRef, LineRendererRef, SdlWindowRef};
 use crate::window::input_helper::InputHelper;
 
 const F_RUNNING: u8 = 0;
