@@ -4,7 +4,7 @@ use dear_imgui_glow::GlowRenderer;
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
 use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
-use glam::{vec2, vec3, Mat4, Quat, Vec2, Vec3};
+use glam::{vec2, vec3, Mat4, Vec2, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
@@ -14,7 +14,7 @@ use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::Mesh;
-use crate::graphics::renderer::{Renderable, Renderer};
+use crate::graphics::renderer::Renderer;
 use crate::graphics::shader::{Shader, ShaderType};
 use crate::simulation::ball::Ball;
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};

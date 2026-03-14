@@ -81,7 +81,7 @@ impl Camera {
 		self.transform.rotation = Quat::look_to_rh(self.transform.frontLocal, self.transform.upLocal).normalize().inverse();
 	}
 	
-	pub fn turn(&mut self, mut xo: f32, mut yo: f32) {
+	pub fn turn(&mut self, xo: f32, yo: f32) {
 		self.yaw += xo * self.sensitivity;
 		self.pitch += yo * self.sensitivity;
 		

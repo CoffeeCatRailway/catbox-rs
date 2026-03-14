@@ -1,4 +1,3 @@
-use std::cell::{Ref, RefMut};
 use std::f32::consts::TAU;
 use std::rc::Rc;
 use glam::{vec3, Mat4, Vec2, Vec3};
@@ -6,9 +5,8 @@ use crate::graphics::instance_mesh::InstanceMesh;
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::graphics::renderer::Renderable;
 use crate::graphics::shader::Shader;
-use crate::graphics::single_mesh::SimpleMesh;
 use crate::simulation::transform::Transform;
-use crate::types::{GlRef, MeshRef, ShaderRef};
+use crate::types::{GlRef, ShaderRef};
 
 pub struct Ball {
 	pub mesh: InstanceMesh,
