@@ -4,7 +4,7 @@ use dear_imgui_glow::GlowRenderer;
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
 use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
-use glam::{vec2, vec3, Mat4, Vec2, Vec3};
+use glam::{vec2, vec3, Mat4, Quat, Vec2, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
@@ -13,9 +13,13 @@ use sdl3::timer;
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::graphics::line_renderer::LineRenderer;
+use crate::graphics::mesh::Mesh;
+use crate::graphics::renderer::{Renderable, Renderer};
+use crate::graphics::shader::{Shader, ShaderType};
+use crate::simulation::ball::Ball;
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 use crate::simulation::transform::Transform;
-use crate::types::{newLineRendererRef, newSdlWindowRef, GlRef, LineRendererRef, SdlWindowRef};
+use crate::types::{newLineRendererRef, newRenderableRef, newSdlWindowRef, newShaderRef, newSimObjectRef, GlRef, LineRendererRef, SdlWindowRef};
 use crate::window::input_helper::InputHelper;
 
 const F_RUNNING: u8 = 0;
@@ -47,6 +51,7 @@ pub struct CatBox {
 	imgui: Imgui,
 	
 	lineRenderer: LineRendererRef,
+	renderer: Renderer,
 	clearColor: [f32; 4],
 	lastMousePos: Vec2,
 	
@@ -68,7 +73,7 @@ impl CatBox {
 		let inputHelper = InputHelper::new();
 		
 		glAttributes.set_context_profile(GLProfile::Core);
-		glAttributes.set_context_version(4, 3);
+		glAttributes.set_context_version(4, 5);
 		glAttributes.set_depth_size(0);
 		
 		info!("Window and GL context");
@@ -118,21 +123,23 @@ impl CatBox {
 		
 		info!("Imgui glow renderer");
 		#[cfg_attr(not(feature = "multi-viewport"), allow(unused))]
-		let mut renderer = GlowRenderer::new(gl, &mut imgui)?;
-		renderer.set_framebuffer_srgb_enabled(false);
+		let mut imguiRenderer = GlowRenderer::new(gl, &mut imgui)?;
+		imguiRenderer.set_framebuffer_srgb_enabled(false);
 		#[cfg(feature = "multi-viewport")]
-		glow_mvp::enable(&mut renderer, &mut imgui);
+		glow_mvp::enable(&mut imguiRenderer, &mut imgui);
 		
-		let gl = renderer.gl_context().unwrap().clone();
+		let gl = imguiRenderer.gl_context().unwrap().clone();
 		
 		info!("Initializing locals");
 		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
 		lineRenderer.enable();
 		
+		let mut renderer = Renderer::new(gl.clone());
+		
 		let camera = Camera {
 			frustum: Frustum {
 				fov: 500.0,
-				fovMax: 1000.0,
+				fovMax: 10000.0,
 				..Frustum::default()
 			},
 			transform: Transform {
@@ -141,6 +148,62 @@ impl CatBox {
 			},
 			..Camera::default()
 		};
+		
+		// let baseShader = {
+		// 	let shader = Shader::new(gl.clone())
+		// 		.attachFromSource(ShaderType::Vertex, include_str!("../../resources/shaders/base.vert"))
+		// 		.attachFromSource(ShaderType::Fragment, include_str!("../../resources/shaders/base.frag"))
+		// 		.link();
+		// 	newShaderRef(shader)
+		// };
+		//
+		// let mut ball = Ball::new(gl.clone(), baseShader.clone());
+		// ball.mesh.upload(baseShader.clone())?;
+		// ball.transform.position.x += 100.0;
+		// ball.transform.rotation = Quat::from_rotation_z(1.0);
+		// ball.transform.scale *= 50.0;
+		// let ball = newSimObjectRef(ball);
+		// renderer.addRenderable(ball.clone());
+		//
+		// let mut ball1 = Ball::new(gl.clone(), baseShader.clone());
+		// ball1.mesh.upload(baseShader)?;
+		// ball1.transform.position.x -= 100.0;
+		// ball1.transform.rotation = Quat::from_rotation_z(-1.0);
+		// ball1.transform.scale *= 50.0;
+		// let ball1 = newSimObjectRef(ball1);
+		// renderer.addRenderable(ball1.clone());
+		
+		let instanceShader = {
+			let shader = Shader::new(gl.clone())
+				.attachFromSource(ShaderType::Vertex, include_str!("../../resources/shaders/instance.vert"))
+				.attachFromSource(ShaderType::Fragment, include_str!("../../resources/shaders/instance.frag"))
+				.link();
+			newShaderRef(shader)
+		};
+		
+		let mut modelMatrices = Vec::new();
+		let a: u32 = 1_000_000;
+		let sq = (a as f32).sqrt() as u32;
+		let s = 10.0;
+		for i in 0..a {
+			modelMatrices.push({
+				let mut transform = Transform::default();
+				let x = (i % sq) as f32;
+				let y = (i / sq) as f32;
+				transform.position.x = x * s - sq as f32 * s / 2.0;
+				transform.position.y = y * s - sq as f32 * s / 2.0;
+				transform.scale *= s / 2.0;
+				transform.getModelMatrix()
+			});
+		}
+		
+		// In simulation, each 'ball' won't have a renderable component, there will be a single renderable that maps the object list down to model matrices and color
+		let mut ball = Ball::new(gl.clone(), instanceShader.clone());
+		ball.mesh.uploadInstanceData(&modelMatrices)?;
+		ball.mesh.upload(instanceShader.clone())?;
+		
+		let ballRef = newRenderableRef(ball);
+		renderer.addRenderable(ballRef);
 	
 		let mut catbox = CatBox {
 			width: WIN_WIDTH,
@@ -154,10 +217,11 @@ impl CatBox {
 			
 			imgui: Imgui {
 				context: imgui,
-				renderer,
+				renderer: imguiRenderer,
 			},
 			
 			lineRenderer: newLineRendererRef(lineRenderer),
+			renderer,
 			clearColor: [0.27, 0.59, 0.27, 1.0],
 			lastMousePos: Vec2::ZERO,
 			
@@ -342,11 +406,12 @@ impl CatBox {
 			self.lineRenderer.borrow_mut().pushLine2(vec2(-100.0, -100.0), Vec3::ONE, vec2(-100.0, 100.0), Vec3::X);
 			
 			// calculate camera matrices
-			let projection = self.projectionMatrix;
 			self.viewMatrix = self.camera.getViewMatrix();
-			let pvm = projection * self.viewMatrix;
+			let projViewMat = self.projectionMatrix * self.viewMatrix;
 			
-			self.lineRenderer.borrow_mut().drawFlush(&pvm);
+			self.renderer.draw(&projViewMat, &self.camera);
+			
+			self.lineRenderer.borrow_mut().drawFlush(&projViewMat);
 			
 			self.imgui.renderer.new_frame()?;
 			self.imgui.renderer.render(drawData)?;

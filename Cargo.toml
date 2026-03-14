@@ -12,7 +12,7 @@ publish = false
 [dependencies]
 sdl3 = { version = "0.17", features = ["build-from-source"] }
 glow = "0.16"
-glam = "0.32"
+glam = { version = "0.32", features = ["bytemuck"] }
 bytemuck = { version = "1.25", features = ["derive"] }
 bool-flags = "0.1.1"
 

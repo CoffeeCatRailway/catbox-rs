@@ -25,7 +25,7 @@ impl Default for Transform {
 
 impl Transform {
 	pub fn getPositionMatrix(&self) -> Mat4 {
-		Mat4::from_translation(-self.position)
+		Mat4::from_translation(self.position)
 	}
 	
 	pub fn getRotationMatrix(&self) -> Mat4 {
@@ -42,6 +42,10 @@ impl Transform {
 	
 	pub fn getViewMatrix(&self) -> Mat4 {
 		self.getRotationMatrix() * self.getPositionMatrix()
+	}
+	
+	pub fn getModelMatrix(&self) -> Mat4 {
+		self.getPositionMatrix() * self.getRotationMatrix() * self.getScaleMatrix()
 	}
 	
 	pub fn calcFront(&self) -> Vec3 {

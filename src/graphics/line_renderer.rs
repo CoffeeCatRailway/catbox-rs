@@ -32,10 +32,9 @@ pub struct LineRenderer {
 const FLOATS: usize = 6;
 const FLOAT_SIZE: usize = size_of::<f32>();
 
-const SHADER_VERT: &str = include_str!("../../resources/shaders/line_renderer.vert");
-const SHADER_FRAG: &str = include_str!("../../resources/shaders/line_renderer.frag");
+const SHADER_VERT: &str = include_str!("../../resources/shaders/base.vert");
+const SHADER_FRAG: &str = include_str!("../../resources/shaders/base.frag");
 
-#[allow(unused)]
 impl LineRenderer {
 	pub fn new(gl: GlRef, capacity: usize) -> Result<Self, String> {
 		unsafe {
