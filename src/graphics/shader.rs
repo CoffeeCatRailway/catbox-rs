@@ -37,27 +37,28 @@ impl Shader {
 		true
 	}
 	
-	pub fn new(gl: GlRef) -> Self {
+	pub fn new(gl: GlRef) -> Result<Self, String> {
 		unsafe {
 			info!("Creating shader program");
-			let program = gl.create_program().expect("Failed to create shader program");
+			let program = gl.create_program()?;
 			gl_check_error!(gl);
-			Shader {
+			Ok(Shader {
 				gl,
 				program,
 				flags: Flags8::none(),
 				shaders: Vec::new(),
-			}
+			})
 		}
 	}
 	
-	pub fn attachFromSource(mut self, shaderType: ShaderType, source: &str) -> Self {
+	pub fn attachFromSource(mut self, shaderType: ShaderType, source: &str) -> Result<Self, String> {
 		if self.flags.get(F_DESTROYED) {
-			panic!("Shader program was destroyed before linking!");
+			// panic!("Shader program was destroyed before linking!");
+			return Err("Shader program was destroyed before linking!".to_string());
 		}
 		if self.flags.get(F_LINKED) {
-			error!("Shader program {} is already linked! Unable to attach other shaders!", self.program.0);
-			return self;
+			// error!("Shader program {} is already linked! Unable to attach other shaders!", self.program.0);
+			return Err(format!("Shader program {} is already linked! Unable to attach other shaders!", self.program.0));
 		}
 		unsafe {
 			let (typeStr, typeGlow) = match shaderType {
@@ -68,7 +69,7 @@ impl Shader {
 			};
 			info!("Attaching {} shader to program {}...", typeStr, self.program.0);
 			
-			let shader = self.gl.create_shader(typeGlow).expect(format!("Failed to create shader of type '{}'", typeStr).as_str());
+			let shader = self.gl.create_shader(typeGlow)?;
 			self.gl.shader_source(shader, source);
 			self.gl.compile_shader(shader);
 			gl_check_error!(self.gl);
@@ -76,22 +77,24 @@ impl Shader {
 			if !self.gl.get_shader_compile_status(shader) {
 				let error = self.gl.get_shader_info_log(shader);
 				gl_check_error!(self.gl);
-				panic!("Failed to compile shader: {error}");
+				// panic!("Failed to compile shader: {}", error);
+				return Err(format!("Failed to compile shader: {}", error));
 			}
 			self.gl.attach_shader(self.program, shader);
 			gl_check_error!(self.gl);
 			self.shaders.push(shader);
 		}
-		self
+		Ok(self)
 	}
 	
-	pub fn link(mut self) -> Self {
+	pub fn link(mut self) -> Result<Self, String> {
 		if self.flags.get(F_DESTROYED) {
-			panic!("Shader program was destroyed before linking!");
+			// panic!("Shader program was destroyed before linking!");
+			return Err("Shader program was destroyed before linking!".to_string());
 		}
 		if self.flags.get(F_LINKED) {
-			error!("Shader program {} is already linked!", self.program.0);
-			return self;
+			// error!("Shader program {} is already linked!", self.program.0);
+			return Err(format!("Shader program {} is already linked!", self.program.0));
 		}
 		unsafe {
 			info!("Linking shader program {}...", self.program.0);
@@ -104,7 +107,8 @@ impl Shader {
 			if !self.gl.get_program_link_status(self.program) {
 				let error = self.gl.get_program_info_log(self.program);
 				gl_check_error!(self.gl);
-				panic!("Failed to link shader: {}", error);
+				// panic!("Failed to link shader: {}", error);
+				return Err(format!("Failed to link shader: {}", error));
 			}
 			
 			for shader in self.shaders.iter() {
@@ -115,7 +119,7 @@ impl Shader {
 			self.shaders = Vec::new(); // Clear and deallocate
 			self.flags.set(F_LINKED)
 		}
-		self
+		Ok(self)
 	}
 	
 	pub fn program(&self) -> Option<&Program> {

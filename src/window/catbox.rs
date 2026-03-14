@@ -175,10 +175,10 @@ impl CatBox {
 		// renderer.addRenderable(ball1.clone());
 		
 		let instanceShader = {
-			let shader = Shader::new(gl.clone())
-				.attachFromSource(ShaderType::Vertex, include_str!("../../resources/shaders/instance.vert"))
-				.attachFromSource(ShaderType::Fragment, include_str!("../../resources/shaders/instance.frag"))
-				.link();
+			let shader = Shader::new(gl.clone())?
+				.attachFromSource(ShaderType::Vertex, include_str!("../../resources/shaders/instance.vert"))?
+				.attachFromSource(ShaderType::Fragment, include_str!("../../resources/shaders/instance.frag"))?
+				.link()?;
 			newShaderRef(shader)
 		};
 		

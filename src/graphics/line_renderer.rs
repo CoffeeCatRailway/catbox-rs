@@ -41,10 +41,10 @@ impl LineRenderer {
 		unsafe {
 			info!("Creating line renderer");
 			let vec = Vec::with_capacity(capacity);
-			let shader = Shader::new(gl.clone())
-				.attachFromSource(ShaderType::Vertex, SHADER_VERT)
-				.attachFromSource(ShaderType::Fragment, SHADER_FRAG)
-				.link();
+			let shader = Shader::new(gl.clone())?
+				.attachFromSource(ShaderType::Vertex, SHADER_VERT)?
+				.attachFromSource(ShaderType::Fragment, SHADER_FRAG)?
+				.link()?;
 			
 			let vao = gl.create_vertex_array()?;
 			let vbo = gl.create_named_buffer()?;
