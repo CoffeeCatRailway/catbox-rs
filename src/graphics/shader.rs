@@ -67,7 +67,7 @@ impl Shader {
 				ShaderType::Geometry => ("geometry", glow::GEOMETRY_SHADER),
 				ShaderType::Compute => ("compute", glow::COMPUTE_SHADER),
 			};
-			info!("Attaching {} shader to program {}...", typeStr, self.program.0);
+			info!("Attaching {} shader to program {}", typeStr, self.program.0);
 			
 			let shader = self.gl.create_shader(typeGlow)?;
 			self.gl.shader_source(shader, source);
@@ -97,7 +97,7 @@ impl Shader {
 			return Err(format!("Shader program {} is already linked!", self.program.0));
 		}
 		unsafe {
-			info!("Linking shader program {}...", self.program.0);
+			info!("Linking shader program {}", self.program.0);
 			
 			// self.gl.bind_frag_data_location(self.program, glow::COLOR_ATTACHMENT0, "o_color");
 			// gl_check_error!(self.gl);
@@ -145,7 +145,7 @@ impl Shader {
 			return;
 		}
 		unsafe {
-			warn!("Deleting shader program {}...", self.program.0);
+			warn!("Deleting shader program {}", self.program.0);
 			self.gl.delete_program(self.program);
 			self.flags.set(F_DESTROYED);
 		}

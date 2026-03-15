@@ -1,6 +1,6 @@
 use glow::{Buffer, HasContext, VertexArray};
 use bytemuck::{cast_slice, offset_of};
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 use crate::gl_check_error;
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::types::{GlRef, ShaderRef};
@@ -52,6 +52,7 @@ impl Mesh for SimpleMesh {
 			let vbo = self.gl.create_named_buffer()?;
 			self.gl.bind_vertex_array(Some(vao));
 			gl_check_error!(self.gl);
+			info!("Uploading simple mesh {:?}", vao.0);
 			
 			let stride = size_of::<Vertex>() as i32;
 			self.gl.named_buffer_data_u8_slice(vbo, cast_slice(&self.vertices), glow::STATIC_DRAW);
@@ -112,7 +113,7 @@ impl Mesh for SimpleMesh {
 	
 	fn destroy(&mut self) {
 		unsafe {
-			warn!("Destroying single mesh ({})", self.vao.unwrap().0);
+			warn!("Destroying simple mesh {}", self.vao.unwrap().0);
 			self.gl.delete_buffer(self.ibo.unwrap());
 			self.gl.delete_buffer(self.vbo.unwrap());
 			self.gl.delete_vertex_array(self.vao.unwrap());
