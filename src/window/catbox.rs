@@ -15,7 +15,7 @@ use tracing::{info, warn};
 use crate::gl_check_error;
 use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::Mesh;
-use crate::graphics::renderer::Renderer;
+use crate::graphics::render_manager::RenderManager;
 use crate::graphics::shader::{Shader, ShaderType};
 use crate::simulation::ball::Ball;
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
@@ -52,7 +52,7 @@ pub struct CatBox {
 	imgui: Imgui,
 	
 	lineRenderer: LineRendererRef,
-	renderer: Renderer,
+	renderManager: RenderManager,
 	clearColor: [f32; 4],
 	lastMousePos: Vec2,
 	
@@ -135,7 +135,7 @@ impl CatBox {
 		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
 		lineRenderer.enable();
 		
-		let mut renderer = Renderer::new(gl.clone());
+		let mut renderManager = RenderManager::new();
 		
 		let camera = Camera {
 			frustum: Frustum {
@@ -204,7 +204,7 @@ impl CatBox {
 		ball.mesh.upload(instanceShader.clone())?;
 		
 		let ballRef = newRenderableRef(ball);
-		renderer.addRenderable(ballRef);
+		renderManager.addRenderable(ballRef);
 	
 		let mut catbox = CatBox {
 			width: WIN_WIDTH,
@@ -222,7 +222,7 @@ impl CatBox {
 			},
 			
 			lineRenderer: newLineRendererRef(lineRenderer),
-			renderer,
+			renderManager,
 			clearColor: [0.27, 0.59, 0.27, 1.0],
 			lastMousePos: Vec2::ZERO,
 			
@@ -412,7 +412,7 @@ impl CatBox {
 			self.viewMatrix = self.camera.getViewMatrix();
 			let projViewMat = self.projectionMatrix * self.viewMatrix;
 			
-			self.renderer.draw(&projViewMat, &self.camera);
+			self.renderManager.draw(&projViewMat, &self.camera);
 			
 			self.lineRenderer.borrow_mut().drawFlush(&projViewMat);
 			

@@ -16,15 +16,13 @@ pub trait Renderable {
 	}
 }
 
-pub struct Renderer {
-	gl: GlRef,
+pub struct RenderManager {
 	pub renderables: Vec<RenderableRef>,
 }
 
-impl Renderer {
-	pub fn new(gl: GlRef) -> Self {
+impl RenderManager {
+	pub fn new() -> Self {
 		Self {
-			gl,
 			renderables: Vec::new(),
 		}
 	}

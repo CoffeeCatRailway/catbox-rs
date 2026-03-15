@@ -4,7 +4,7 @@ use glow::{Context as GlowContext};
 use sdl3::video::Window as SdlWindow;
 use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::Mesh;
-use crate::graphics::renderer::Renderable;
+use crate::graphics::render_manager::Renderable;
 use crate::graphics::shader::Shader;
 
 pub type SdlWindowRef = Rc<RefCell<SdlWindow>>;

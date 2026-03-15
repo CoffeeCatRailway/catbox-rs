@@ -3,7 +3,7 @@ use std::rc::Rc;
 use glam::{vec3, Mat4, Vec2, Vec3};
 use crate::graphics::instance_mesh::InstanceMesh;
 use crate::graphics::mesh::{Mesh, Vertex};
-use crate::graphics::renderer::Renderable;
+use crate::graphics::render_manager::Renderable;
 use crate::graphics::shader::Shader;
 use crate::simulation::transform::Transform;
 use crate::types::{GlRef, ShaderRef};
