@@ -5,9 +5,9 @@ pub struct Transform {
 	pub position: Vec3,
 	pub rotation: Quat,
 	pub scale: Vec3,
-	pub frontLocal: Vec3,
-	pub rightLocal: Vec3,
-	pub upLocal: Vec3,
+	pub localFront: Vec3,
+	pub localRight: Vec3,
+	pub localUp: Vec3,
 }
 
 impl Default for Transform {
@@ -16,9 +16,9 @@ impl Default for Transform {
 			position: Vec3::ZERO,
 			rotation: Quat::IDENTITY,
 			scale: Vec3::ONE,
-			frontLocal: Vec3::NEG_Z,
-			rightLocal: Vec3::X,
-			upLocal: Vec3::Y,
+			localFront: Vec3::NEG_Z,
+			localRight: Vec3::X,
+			localUp: Vec3::Y,
 		}
 	}
 }
@@ -48,37 +48,37 @@ impl Transform {
 		self.getPositionMatrix() * self.getRotationMatrix() * self.getScaleMatrix()
 	}
 	
-	pub fn calcFront(&self) -> Vec3 {
+	pub fn calculateLocalFront(&self) -> Vec3 {
 		self.rotation.mul_vec3(Vec3::NEG_Z)
 	}
 	
-	pub fn calcRight(&self) -> Vec3 {
+	pub fn calculateLocalRight(&self) -> Vec3 {
 		self.rotation.mul_vec3(Vec3::X)
 	}
 	
-	pub fn calcUp(&self) -> Vec3 {
+	pub fn calculateLocalUp(&self) -> Vec3 {
 		self.rotation.mul_vec3(Vec3::Y)
 	}
 	
-	pub fn updateLocalVectors(&mut self) {
-		self.frontLocal = self.calcFront();
-		self.rightLocal = self.calcRight();
-		self.upLocal = self.calcUp();
+	pub fn calculateLocalVectors(&mut self) {
+		self.localFront = self.calculateLocalFront();
+		self.localRight = self.calculateLocalRight();
+		self.localUp = self.calculateLocalUp();
 	}
 	
 	pub fn translateGlobal(&mut self, translation: Vec3) {
 		self.position += translation;
 	}
 	
-	pub fn forward(&mut self, delta: f32) {
-		self.position += self.frontLocal * delta;
+	pub fn translateLocalForward(&mut self, delta: Vec3) {
+		self.position += self.localFront * delta;
 	}
 	
-	pub fn right(&mut self, delta: f32) {
-		self.position += self.rightLocal * delta;
+	pub fn translateLocalRight(&mut self, delta: Vec3) {
+		self.position += self.localRight * delta;
 	}
 	
-	pub fn up(&mut self, delta: f32) {
-		self.position += self.upLocal * delta;
+	pub fn translateLocalUp(&mut self, delta: Vec3) {
+		self.position += self.localUp * delta;
 	}
 }

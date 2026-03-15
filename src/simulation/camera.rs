@@ -75,10 +75,10 @@ impl Camera {
 			y: self.pitch.to_radians().sin(),
 			z: self.yaw.to_radians().sin() * self.pitch.to_radians().cos(),
 		};
-		self.transform.frontLocal = front;
-		self.transform.rightLocal = self.transform.frontLocal.cross(Vec3::Y).normalize();
-		self.transform.upLocal = self.transform.rightLocal.cross(self.transform.frontLocal).normalize();
-		self.transform.rotation = Quat::look_to_rh(self.transform.frontLocal, self.transform.upLocal).normalize().inverse();
+		self.transform.localFront = front;
+		self.transform.localRight = self.transform.localFront.cross(Vec3::Y).normalize();
+		self.transform.localUp = self.transform.localRight.cross(self.transform.localFront).normalize();
+		self.transform.rotation = Quat::look_to_rh(self.transform.localFront, self.transform.localUp).normalize().inverse();
 	}
 	
 	pub fn turn(&mut self, xo: f32, yo: f32) {
@@ -104,6 +104,6 @@ impl Camera {
 	}
 	
 	pub fn getViewMatrix(&self) -> Mat4 {
-		Mat4::look_at_rh(self.transform.position, self.transform.position + self.transform.frontLocal, self.transform.upLocal)
+		Mat4::look_at_rh(self.transform.position, self.transform.position + self.transform.localFront, self.transform.localUp)
 	}
 }
