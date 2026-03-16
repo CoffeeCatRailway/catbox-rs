@@ -19,7 +19,7 @@ use crate::graphics::mesh::Mesh;
 use crate::graphics::render_manager::RenderManager;
 use crate::graphics::shader::{Shader, ShaderType};
 use crate::graphics::shader_strings;
-use crate::simulation::ball::Ball;
+use crate::simulation::ball::{Ball, BallRenderable};
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 use crate::simulation::transform::Transform;
 use crate::types::{newLineRendererRef, newRenderableRef, newSdlWindowRef, newShaderRef, GlRef, LineRendererRef, SdlWindowRef};
@@ -152,30 +152,6 @@ impl CatBox {
 			..Camera::default()
 		};
 		
-		// let baseShader = {
-		// 	let shader = Shader::new(gl.clone())
-		// 		.attachFromSource(ShaderType::Vertex, shader_strings::BASE_VERTEX)
-		// 		.attachFromSource(ShaderType::Fragment, shader_strings::BASE_FRAGMENT)
-		// 		.link();
-		// 	newShaderRef(shader)
-		// };
-		//
-		// let mut ball = Ball::new(gl.clone(), baseShader.clone());
-		// ball.mesh.upload(baseShader.clone())?;
-		// ball.transform.position.x += 100.0;
-		// ball.transform.rotation = Quat::from_rotation_z(1.0);
-		// ball.transform.scale *= 50.0;
-		// let ball = newSimObjectRef(ball);
-		// renderer.addRenderable(ball.clone());
-		//
-		// let mut ball1 = Ball::new(gl.clone(), baseShader.clone());
-		// ball1.mesh.upload(baseShader)?;
-		// ball1.transform.position.x -= 100.0;
-		// ball1.transform.rotation = Quat::from_rotation_z(-1.0);
-		// ball1.transform.scale *= 50.0;
-		// let ball1 = newSimObjectRef(ball1);
-		// renderer.addRenderable(ball1.clone());
-		
 		let instanceShader = {
 			let shader = Shader::new(gl.clone())?
 				.attachFromSource(ShaderType::Vertex, shader_strings::INSTANCE_VERTEX)?
@@ -204,11 +180,11 @@ impl CatBox {
 		}
 		
 		// In simulation, each 'ball' won't have a renderable component, there will be a single renderable that maps the object list down to model matrices and color
-		let mut ball = Ball::new(gl.clone(), instanceShader.clone());
-		ball.mesh.uploadInstanceData(&instanceData)?;
-		ball.mesh.upload(instanceShader.clone())?;
+		let mut ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone());
+		ballRenderable.mesh.uploadInstanceData(&instanceData)?;
+		ballRenderable.mesh.upload(instanceShader.clone())?;
 		
-		let ballRef = newRenderableRef(ball);
+		let ballRef = newRenderableRef(ballRenderable);
 		renderManager.addRenderable(ballRef);
 	
 		let mut catbox = CatBox {

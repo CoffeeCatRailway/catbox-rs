@@ -14,7 +14,7 @@ sdl3 = { version = "0.17", features = ["build-from-source"] }
 glow = "0.16"
 glam = { version = "0.32", features = ["bytemuck"] }
 bytemuck = { version = "1.25", features = ["derive"] }
-bool-flags = "0.1.1"
+bool-flags = "0.1"
 
 dear-imgui-rs = { git = "https://github.com/Latias94/dear-imgui-rs", tag = "v0.10.3", features = ["glam"] }
 dear-imgui-sdl3 = { git = "https://github.com/Latias94/dear-imgui-rs", tag = "v0.10.3" }

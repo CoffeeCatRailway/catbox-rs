@@ -14,6 +14,10 @@ pub trait Renderable {
 	fn modelMatrix(&self) -> Mat4 {
 		Mat4::IDENTITY
 	}
+	
+	fn visible(&self) -> bool {
+		true
+	}
 }
 
 pub struct RenderManager {
@@ -31,11 +35,12 @@ impl RenderManager {
 		self.renderables.push(renderable);
 	}
 	
-	// update
-	
 	pub fn draw(&mut self, projViewMat: &Mat4, _camera: &Camera) {
 		for renderable in &self.renderables {
 			let obj = renderable.borrow();
+			if !obj.visible() {
+				continue;
+			}
 			let mesh = obj.mesh();
 			let shader = obj.shader();
 			
