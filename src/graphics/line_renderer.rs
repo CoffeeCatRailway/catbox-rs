@@ -4,6 +4,7 @@ use glow::{Buffer, HasContext, VertexArray};
 use tracing::{info, warn};
 use crate::gl_check_error;
 use crate::graphics::shader::{Shader, ShaderType};
+use crate::graphics::shader_strings;
 use crate::types::GlRef;
 
 const F_ENABLED: u8 = 	0;
@@ -33,17 +34,14 @@ pub struct LineRenderer {
 const FLOATS: usize = 6;
 const FLOAT_SIZE: usize = size_of::<f32>();
 
-const SHADER_VERT: &str = include_str!("../../resources/shaders/base.vert");
-const SHADER_FRAG: &str = include_str!("../../resources/shaders/base.frag");
-
 impl LineRenderer {
 	pub fn new(gl: GlRef, capacity: usize) -> Result<Self, String> {
 		unsafe {
 			info!("Creating line renderer");
 			let vec = Vec::with_capacity(capacity);
 			let shader = Shader::new(gl.clone())?
-				.attachFromSource(ShaderType::Vertex, SHADER_VERT)?
-				.attachFromSource(ShaderType::Fragment, SHADER_FRAG)?
+				.attachFromSource(ShaderType::Vertex, shader_strings::BASE_VERTEX)?
+				.attachFromSource(ShaderType::Fragment, shader_strings::BASE_FRAGMENT)?
 				.link()?;
 			
 			let vao = gl.create_vertex_array()?;

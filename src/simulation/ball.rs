@@ -58,15 +58,12 @@ impl Ball {
 		let mut vertices = Vec::with_capacity(segments + 1);
 		let mut indices = Vec::with_capacity(8 * 3);
 		
-		vertices.push(Vertex {
-			color: vec3(0.5, 0.5, 0.0),
-			..Default::default()
-		});
+		vertices.push(Default::default());
 		for i in 0..segments {
 			let angle = i as f32 * TAU / segments as f32;
 			vertices.push(Vertex {
 				position: vec3(angle.cos(), angle.sin(), 0.0),
-				color: vec3(angle.cos() * 0.5 + 0.5, angle.sin() * 0.5 + 0.5, 0.0),
+				..Default::default()
 			});
 			
 			indices.push(0);

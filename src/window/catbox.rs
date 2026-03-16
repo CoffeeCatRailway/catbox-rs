@@ -4,7 +4,7 @@ use dear_imgui_glow::GlowRenderer;
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
 use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
-use glam::{vec2, vec3, Mat4, Vec2, Vec3};
+use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
@@ -13,10 +13,12 @@ use sdl3::timer;
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::gl_check_error;
+use crate::graphics::instance_mesh::InstanceMeshData;
 use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::Mesh;
 use crate::graphics::render_manager::RenderManager;
 use crate::graphics::shader::{Shader, ShaderType};
+use crate::graphics::shader_strings;
 use crate::simulation::ball::Ball;
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 use crate::simulation::transform::Transform;
@@ -152,8 +154,8 @@ impl CatBox {
 		
 		// let baseShader = {
 		// 	let shader = Shader::new(gl.clone())
-		// 		.attachFromSource(ShaderType::Vertex, include_str!("../../resources/shaders/base.vert"))
-		// 		.attachFromSource(ShaderType::Fragment, include_str!("../../resources/shaders/base.frag"))
+		// 		.attachFromSource(ShaderType::Vertex, shader_strings::BASE_VERTEX)
+		// 		.attachFromSource(ShaderType::Fragment, shader_strings::BASE_FRAGMENT)
 		// 		.link();
 		// 	newShaderRef(shader)
 		// };
@@ -176,31 +178,34 @@ impl CatBox {
 		
 		let instanceShader = {
 			let shader = Shader::new(gl.clone())?
-				.attachFromSource(ShaderType::Vertex, include_str!("../../resources/shaders/instance.vert"))?
-				.attachFromSource(ShaderType::Fragment, include_str!("../../resources/shaders/instance.frag"))?
+				.attachFromSource(ShaderType::Vertex, shader_strings::INSTANCE_VERTEX)?
+				.attachFromSource(ShaderType::Fragment, shader_strings::INSTANCE_FRAGMENT)?
 				.link()?;
 			newShaderRef(shader)
 		};
 		
-		let mut modelMatrices = Vec::new();
-		let a: u32 = 1_000_000;
+		let mut instanceData = Vec::new();
+		let a: u32 = 441; // 1_000_000
 		let sq = (a as f32).sqrt() as u32;
 		let s = 10.0;
 		for i in 0..a {
-			modelMatrices.push({
-				let mut transform = Transform::default();
-				let x = (i % sq) as f32;
-				let y = (i / sq) as f32;
-				transform.position.x = x * s - sq as f32 * s / 2.0;
-				transform.position.y = y * s - sq as f32 * s / 2.0;
-				transform.scale *= s / 2.0;
-				transform.getModelMatrix()
+			let x = (i % sq) as f32;
+			let y = (i / sq) as f32;
+			instanceData.push(InstanceMeshData {
+				matrix: {
+					let mut transform = Transform::default();
+					transform.position.x = x * s - sq as f32 * s / 2.0 + s / 2.0;
+					transform.position.y = y * s - sq as f32 * s / 2.0 + s / 2.0;
+					transform.scale *= s / 2.0;
+					transform.getModelMatrix()
+				},
+				color: vec4(x / sq as f32, y / sq as f32, 1.0 - i as f32 / a as f32, 1.0),
 			});
 		}
 		
 		// In simulation, each 'ball' won't have a renderable component, there will be a single renderable that maps the object list down to model matrices and color
 		let mut ball = Ball::new(gl.clone(), instanceShader.clone());
-		ball.mesh.uploadInstanceData(&modelMatrices)?;
+		ball.mesh.uploadInstanceData(&instanceData)?;
 		ball.mesh.upload(instanceShader.clone())?;
 		
 		let ballRef = newRenderableRef(ball);

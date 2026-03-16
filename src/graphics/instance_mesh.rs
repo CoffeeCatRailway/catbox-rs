@@ -1,4 +1,4 @@
-use bytemuck::{cast_slice, offset_of};
+use bytemuck::{cast_slice, offset_of, Pod, Zeroable};
 use glam::{Mat4, Vec4};
 use glow::{Buffer, HasContext, VertexArray};
 use tracing::{error, info, warn};
@@ -17,6 +17,13 @@ pub struct InstanceMesh {
 	
 	vertices: Vec<Vertex>,
 	indices: Vec<u32>,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Pod, Zeroable)]
+pub struct InstanceMeshData {
+	pub matrix: Mat4,
+	pub color: Vec4,
 }
 
 impl InstanceMesh {
@@ -50,7 +57,7 @@ impl InstanceMesh {
 		}
 	}
 	
-	pub fn uploadInstanceData(&mut self, modelMatrices: &Vec<Mat4>) -> Result<(), String> {
+	pub fn uploadInstanceData(&mut self, modelMatrices: &Vec<InstanceMeshData>) -> Result<(), String> {
 		unsafe {
 			let vbo = self.gl.create_named_buffer()?;
 			gl_check_error!(self.gl);
@@ -64,7 +71,7 @@ impl InstanceMesh {
 		}
 	}
 	
-	pub fn updateInstanceData(&mut self, modelMatrices: &Vec<Mat4>) -> Result<(), String> {
+	pub fn updateInstanceData(&mut self, modelMatrices: &Vec<InstanceMeshData>) -> Result<(), String> {
 		unsafe {
 			let instanceAmount = modelMatrices.len() as i32;
 			if instanceAmount > self.instanceAmount {
@@ -120,35 +127,36 @@ impl Mesh for InstanceMesh {
 			self.gl.vertex_array_attrib_binding_f32(vao, locPos, 0);
 			gl_check_error!(self.gl);
 			
-			self.gl.enable_vertex_array_attrib(vao, locCol);
-			self.gl.vertex_array_attrib_format_f32(vao, locCol, 3, glow::FLOAT, false, offset_of!(Vertex, color) as u32);
-			self.gl.vertex_array_attrib_binding_f32(vao, locCol, 0);
-			gl_check_error!(self.gl);
-			
-			// bind instance model matrix vbo
+			// instance model matrix
 			let vec4Size = size_of::<Vec4>() as u32;
-			self.gl.vertex_array_vertex_buffer(vao, 1, self.vboInstance, 0, vec4Size as i32 * 4);
+			self.gl.vertex_array_vertex_buffer(vao, 1, self.vboInstance, 0, vec4Size as i32 * 5);
 			gl_check_error!(self.gl);
 			
 			self.gl.enable_vertex_array_attrib(vao, locModel + 0);
 			self.gl.vertex_array_attrib_format_f32(vao, locModel + 0, 4, glow::FLOAT, false, vec4Size * 0);
-			gl_check_error!(self.gl);
 			self.gl.vertex_array_attrib_binding_f32(vao, locModel + 0, 1);
+			gl_check_error!(self.gl);
 			
 			self.gl.enable_vertex_array_attrib(vao, locModel + 1);
 			self.gl.vertex_array_attrib_format_f32(vao, locModel + 1, 4, glow::FLOAT, false, vec4Size * 1);
-			gl_check_error!(self.gl);
 			self.gl.vertex_array_attrib_binding_f32(vao, locModel + 1, 1);
+			gl_check_error!(self.gl);
 			
 			self.gl.enable_vertex_array_attrib(vao, locModel + 2);
 			self.gl.vertex_array_attrib_format_f32(vao, locModel + 2, 4, glow::FLOAT, false, vec4Size * 2);
-			gl_check_error!(self.gl);
 			self.gl.vertex_array_attrib_binding_f32(vao, locModel + 2, 1);
+			gl_check_error!(self.gl);
 			
 			self.gl.enable_vertex_array_attrib(vao, locModel + 3);
 			self.gl.vertex_array_attrib_format_f32(vao, locModel + 3, 4, glow::FLOAT, false, vec4Size * 3);
-			gl_check_error!(self.gl);
 			self.gl.vertex_array_attrib_binding_f32(vao, locModel + 3, 1);
+			gl_check_error!(self.gl);
+			
+			// instance color
+			self.gl.enable_vertex_array_attrib(vao, locCol);
+			self.gl.vertex_array_attrib_format_f32(vao, locCol, 4, glow::FLOAT, false, vec4Size * 4);
+			self.gl.vertex_array_attrib_binding_f32(vao, locCol, 1);
+			gl_check_error!(self.gl);
 			
 			self.gl.vertex_binding_divisor(1, 1);
 			gl_check_error!(self.gl);
