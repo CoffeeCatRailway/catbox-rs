@@ -461,7 +461,7 @@ impl CatBox {
 	}
 	
 	pub fn destroy(&mut self) {
-		info!("Destroying window");
+		warn!("Destroying window");
 		self.lineRenderer.borrow_mut().destroy();
 		#[cfg(feature = "multi-viewport")]
 		glow_mvp::shutdown_multi_viewport_support(&mut self.imgui.context);
