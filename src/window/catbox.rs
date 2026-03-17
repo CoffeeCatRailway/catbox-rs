@@ -1,6 +1,6 @@
 use std::error::Error;
 use bool_flags::Flags8;
-use dear_imgui_glow::GlowRenderer;
+use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
 use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
@@ -17,11 +17,11 @@ use crate::graphics::instance_mesh::InstanceMeshData;
 use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::Mesh;
 use crate::graphics::render_manager::RenderManager;
-use crate::graphics::shaders::instanceShader;
+use crate::graphics::shaders;
 use crate::simulation::ball::BallRenderable;
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 use crate::simulation::transform::Transform;
-use crate::types::{newLineRendererRef, newRenderableRef, newSdlWindowRef, GlRef, LineRendererRef, SdlWindowRef};
+use crate::types::{newGlRef, newLineRendererRef, newRenderableRef, newSdlWindowRef, GlRef, LineRendererRef, SdlWindowRef};
 use crate::window::input_helper::InputHelper;
 
 const F_RUNNING: u8 = 0;
@@ -93,11 +93,11 @@ impl CatBox {
 		
 		let gl = unsafe {
 			use std::ffi::c_void;
-			glow::Context::from_loader_function(|name| {
+			let gl = glow::Context::from_loader_function(|name| {
 				video.gl_get_proc_address(name).map(|f| f as *const c_void).unwrap_or(std::ptr::null())
-			})
+			});
+			newGlRef(gl)
 		};
-		// let gl = newGlRef(gl);
 		
 		info!("Imgui context");
 		let mut imgui = ImguiContext::create();
@@ -125,17 +125,14 @@ impl CatBox {
 		}
 		
 		info!("Imgui glow renderer");
-		#[cfg_attr(not(feature = "multi-viewport"), allow(unused))]
-		let mut imguiRenderer = GlowRenderer::new(gl, &mut imgui)?;
-		// let mut imguiRenderer = {
-		// 	let textureMap = Box::new(SimpleTextureMap::default());
-		// 	GlowRenderer::with_external_context(&gl, &mut imgui, textureMap)?
-		// };
+		// #[cfg_attr(not(feature = "multi-viewport"), allow(unused))] // What was this for??
+		let mut imguiRenderer = {
+			let textureMap = Box::new(SimpleTextureMap::default());
+			GlowRenderer::with_external_context(&gl, &mut imgui, textureMap)?
+		};
 		imguiRenderer.set_framebuffer_srgb_enabled(false);
 		#[cfg(feature = "multi-viewport")]
 		glow_mvp::enable(&mut imguiRenderer, &mut imgui);
-		
-		let gl = imguiRenderer.gl_context().unwrap().clone();
 		
 		info!("Initializing locals");
 		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
@@ -156,14 +153,7 @@ impl CatBox {
 			..Camera::default()
 		};
 		
-		// let instanceShader = {
-		// 	let shader = Shader::new(gl.clone())?
-		// 		.attachFromSource(ShaderType::Vertex, shaders::INSTANCE_VERTEX)?
-		// 		.attachFromSource(ShaderType::Fragment, shaders::INSTANCE_FRAGMENT)?
-		// 		.link()?;
-		// 	newShaderRef(shader)
-		// };
-		let instanceShader = instanceShader(gl.clone())?;
+		let instanceShader = shaders::instanceShader(gl.clone())?;
 		
 		let mut instanceData = Vec::new();
 		let a: u32 = 441; // 1_000_000
@@ -402,10 +392,8 @@ impl CatBox {
 			
 			self.lineRenderer.borrow_mut().drawFlush(&projViewMat);
 			
-			self.imgui.renderer.new_frame()?;
-			self.imgui.renderer.render(drawData)?;
-			// self.imgui.renderer.create_device_objects(&self.gl)?;
-			// self.imgui.renderer.render_with_context(&self.gl, drawData)?;
+			self.imgui.renderer.create_device_objects(&self.gl)?;
+			self.imgui.renderer.render_with_context(&self.gl, drawData)?;
 			
 			#[cfg(feature = "multi-viewport")]
 			{
@@ -449,12 +437,6 @@ impl CatBox {
 		#[cfg(feature = "multi-viewport")]
 		glow_mvp::shutdown_multi_viewport_support(&mut self.imgui.context);
 		dear_imgui_sdl3::shutdown(&mut self.imgui.context);
-		// self.imgui.renderer.destroy_device_objects(&self.gl);
+		self.imgui.renderer.destroy(&self.gl);
 	}
 }
-
-// impl Drop for CatBox {
-// 	fn drop(&mut self) {
-// 		self.destroy();
-// 	}
-// }

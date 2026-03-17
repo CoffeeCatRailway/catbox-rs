@@ -19,6 +19,7 @@ pub enum ShaderType {
 	Compute,
 }
 
+#[derive(Debug)]
 pub struct Shader {
 	gl: GlRef,
 	program: Program,

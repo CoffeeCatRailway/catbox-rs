@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 use glow::{Context as GlowContext};
 use sdl3::video::Window as SdlWindow;
 use crate::graphics::line_renderer::LineRenderer;
@@ -9,9 +10,9 @@ use crate::graphics::shader::Shader;
 
 pub type SdlWindowRef = Rc<RefCell<SdlWindow>>;
 
-pub type GlRef = Rc<GlowContext>;
+pub type GlRef = Arc<GlowContext>;
 
-pub type ShaderRef = Rc<Shader>;
+pub type ShaderRef = Arc<Shader>;
 
 pub type LineRendererRef = Rc<RefCell<LineRenderer>>;
 
@@ -24,12 +25,11 @@ pub fn newSdlWindowRef(window: SdlWindow) -> SdlWindowRef {
 }
 
 pub fn newGlRef(gl: GlowContext) -> GlRef {
-	Rc::new(gl)
+	Arc::new(gl)
 }
 
-
 pub fn newShaderRef(shader: Shader) -> ShaderRef {
-	Rc::new(shader)
+	Arc::new(shader)
 }
 
 pub fn newLineRendererRef(renderer: LineRenderer) -> LineRendererRef {

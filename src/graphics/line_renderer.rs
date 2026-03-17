@@ -3,7 +3,7 @@ use glam::{Mat4, Vec2, Vec3};
 use glow::{Buffer, HasContext, VertexArray};
 use tracing::{info, warn};
 use crate::gl_check_error;
-use crate::graphics::shaders::baseShader;
+use crate::graphics::shaders;
 use crate::types::{GlRef, ShaderRef};
 
 const F_ENABLED: u8 = 	0;
@@ -39,7 +39,7 @@ impl LineRenderer {
 		unsafe {
 			info!("Creating line renderer");
 			let vec = Vec::with_capacity(capacity);
-			let shader = baseShader(gl.clone())?;
+			let shader = shaders::baseShader(gl.clone())?;
 			
 			let vao = gl.create_vertex_array()?;
 			let vbo = gl.create_named_buffer()?;
