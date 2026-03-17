@@ -3,9 +3,8 @@ use glam::{Mat4, Vec2, Vec3};
 use glow::{Buffer, HasContext, VertexArray};
 use tracing::{info, warn};
 use crate::gl_check_error;
-use crate::graphics::shader::{Shader, ShaderType};
-use crate::graphics::shader_strings;
-use crate::types::GlRef;
+use crate::graphics::shaders::baseShader;
+use crate::types::{GlRef, ShaderRef};
 
 const F_ENABLED: u8 = 	0;
 const F_DESTROYED: u8 = 1;
@@ -13,7 +12,7 @@ const F_DESTROYED: u8 = 1;
 pub struct LineRenderer {
 	gl: GlRef,
 	vec: Vec<f32>,
-	shader: Shader,
+	shader: ShaderRef,
 	vao: VertexArray,
 	vbo: Buffer,
 	floatsPushed: usize,
@@ -39,10 +38,7 @@ impl LineRenderer {
 		unsafe {
 			info!("Creating line renderer");
 			let vec = Vec::with_capacity(capacity);
-			let shader = Shader::new(gl.clone())?
-				.attachFromSource(ShaderType::Vertex, shader_strings::BASE_VERTEX)?
-				.attachFromSource(ShaderType::Fragment, shader_strings::BASE_FRAGMENT)?
-				.link()?;
+			let shader = baseShader(gl.clone())?;
 			
 			let vao = gl.create_vertex_array()?;
 			let vbo = gl.create_named_buffer()?;
@@ -169,7 +165,6 @@ impl LineRenderer {
 			return;
 		}
 		warn!("Destroying line renderer");
-		self.shader.destroy();
 		unsafe {
 			self.gl.delete_buffer(self.vbo);
 			self.gl.delete_vertex_array(self.vao);
