@@ -16,6 +16,7 @@ pub struct SimpleMesh {
 }
 
 impl SimpleMesh {
+	#[allow(unused)]
 	pub fn withVertices(gl: GlRef, vertices: Vec<Vertex>) -> Self {
 		Self {
 			gl,

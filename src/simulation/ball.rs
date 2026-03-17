@@ -1,7 +1,7 @@
 use std::f32::consts::TAU;
 use std::rc::Rc;
 use bool_flags::Flags8;
-use glam::{vec3, Mat4, Vec3};
+use glam::{vec3, Vec3};
 use crate::graphics::instance_mesh::InstanceMesh;
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;

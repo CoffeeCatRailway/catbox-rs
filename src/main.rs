@@ -1,4 +1,4 @@
-#![allow(non_snake_case, unused)]
+#![allow(non_snake_case)]
 
 mod graphics;
 mod simulation;

@@ -13,7 +13,9 @@ const F_LINKED: u8 = 	1;
 pub enum ShaderType {
 	Vertex,
 	Fragment,
+	#[allow(unused)]
 	Geometry,
+	#[allow(unused)]
 	Compute,
 }
 
@@ -24,6 +26,7 @@ pub struct Shader {
 	shaders: Vec<GlowShader>,
 }
 
+#[allow(unused)]
 impl Shader {
 	fn checks(&self) -> bool {
 		if self.flags.get(F_DESTROYED) {

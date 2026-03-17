@@ -14,6 +14,7 @@ pub fn screenToWorldSpace(cursor: Vec2, width: u32, height: u32, projectionMatri
 	(viewMatrix.inverse() * eye).truncate() //.normalize()
 }
 
+#[allow(unused)]
 pub enum Projection {
 	Perspective(f32),
 	Orthographic(f32, f32, f32, f32),
@@ -49,9 +50,13 @@ impl Frustum {
 pub struct Camera {
 	pub frustum: Frustum,
 	pub transform: Transform,
+	#[allow(unused)]
 	pub yaw: f32,
+	#[allow(unused)]
 	pub pitch: f32,
+	#[allow(unused)]
 	pub pitchConstraint: f32,
+	#[allow(unused)]
 	pub sensitivity: f32,
 }
 
@@ -68,6 +73,7 @@ impl Default for Camera {
 	}
 }
 
+#[allow(unused)]
 impl Camera {
 	pub fn updateLocalVectors(&mut self) {
 		let front = Vec3 {

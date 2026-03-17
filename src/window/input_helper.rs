@@ -13,6 +13,7 @@ pub struct InputHelper {
 	mouseBtnsLast: HashMap<MouseButton, bool>,
 }
 
+#[allow(unused)]
 impl InputHelper {
 	pub fn new() -> Self {
 		InputHelper {

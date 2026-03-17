@@ -17,13 +17,11 @@ use crate::graphics::instance_mesh::InstanceMeshData;
 use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::Mesh;
 use crate::graphics::render_manager::RenderManager;
-use crate::graphics::shader::{Shader, ShaderType};
-use crate::graphics::shaders;
 use crate::graphics::shaders::instanceShader;
-use crate::simulation::ball::{Ball, BallRenderable};
+use crate::simulation::ball::BallRenderable;
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 use crate::simulation::transform::Transform;
-use crate::types::{newGlRef, newLineRendererRef, newRenderableRef, newSdlWindowRef, newShaderRef, GlRef, LineRendererRef, SdlWindowRef};
+use crate::types::{newLineRendererRef, newRenderableRef, newSdlWindowRef, GlRef, LineRendererRef, SdlWindowRef};
 use crate::window::input_helper::InputHelper;
 
 const F_RUNNING: u8 = 0;

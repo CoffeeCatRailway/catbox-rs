@@ -1,8 +1,4 @@
-use std::error::Error;
-use std::ptr::null;
-use std::sync::OnceLock;
 use crate::graphics::shader::{Shader, ShaderType};
-use crate::graphics::shaders;
 use crate::types::{newShaderRef, GlRef, ShaderRef};
 
 pub const BASE_VERTEX: &str = include_str!("../../resources/shaders/base.vert");

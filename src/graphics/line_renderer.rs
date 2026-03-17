@@ -33,6 +33,7 @@ pub struct LineRenderer {
 const FLOATS: usize = 6;
 const FLOAT_SIZE: usize = size_of::<f32>();
 
+#[allow(unused)]
 impl LineRenderer {
 	pub fn new(gl: GlRef, capacity: usize) -> Result<Self, String> {
 		unsafe {

@@ -6,6 +6,7 @@ pub struct Transform {
 	pub rotation: Quat,
 	pub scale: Vec3,
 	pub localFront: Vec3,
+	#[allow(unused)]
 	pub localRight: Vec3,
 	pub localUp: Vec3,
 }
@@ -23,6 +24,7 @@ impl Default for Transform {
 	}
 }
 
+#[allow(unused)]
 impl Transform {
 	pub fn getPositionMatrix(&self) -> Mat4 {
 		Mat4::from_translation(self.position)

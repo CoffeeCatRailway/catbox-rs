@@ -2,8 +2,9 @@ use glam::Mat4;
 use crate::graphics::mesh::Mesh;
 use crate::graphics::shader::Shader;
 use crate::simulation::camera::Camera;
-use crate::types::{GlRef, RenderableRef};
+use crate::types::RenderableRef;
 
+#[allow(unused)]
 pub trait Renderable {
 	fn mesh(&self) -> &dyn Mesh;
 	fn meshMut(&mut self) -> &mut dyn Mesh;
