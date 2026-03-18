@@ -1,16 +1,12 @@
 use glam::Mat4;
-use crate::graphics::mesh::Mesh;
-use crate::graphics::shader::Shader;
 use crate::simulation::camera::Camera;
-use crate::types::RenderableRef;
+use crate::types::{MeshRef, RenderableRef, ShaderRef};
 
 #[allow(unused)]
 pub trait Renderable {
-	fn mesh(&self) -> &dyn Mesh;
-	fn meshMut(&mut self) -> &mut dyn Mesh;
+	fn meshRef(&self) -> &MeshRef;
 	
-	fn shader(&self) -> &Shader;
-	fn shaderMut(&mut self) -> &mut Shader;
+	fn shaderRef(&self) -> &ShaderRef;
 	
 	fn modelMatrix(&self) -> Mat4 {
 		Mat4::IDENTITY
@@ -38,15 +34,14 @@ impl RenderManager {
 	
 	pub fn draw(&mut self, projViewMat: &Mat4, _camera: &Camera) {
 		for renderable in &self.renderables {
-			let obj = renderable.borrow();
-			if !obj.visible() {
+			if !renderable.visible() {
 				continue;
 			}
-			let mesh = obj.mesh();
-			let shader = obj.shader();
+			let mesh = renderable.meshRef().read().unwrap();
+			let shader = renderable.shaderRef().read().unwrap();
 			
 			shader.bind();
-			let pvm = projViewMat * obj.modelMatrix();
+			let pvm = projViewMat * renderable.modelMatrix();
 			shader.setMatrix4f("u_pvm", &pvm);
 			
 			mesh.draw();

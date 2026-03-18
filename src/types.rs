@@ -1,6 +1,4 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use glow::{Context as GlowContext};
 use sdl3::video::Window as SdlWindow;
 use crate::graphics::line_renderer::LineRenderer;
@@ -8,20 +6,20 @@ use crate::graphics::mesh::Mesh;
 use crate::graphics::render_manager::Renderable;
 use crate::graphics::shader::Shader;
 
-pub type SdlWindowRef = Rc<RefCell<SdlWindow>>;
+pub type SdlWindowRef = Arc<RwLock<SdlWindow>>;
 
 pub type GlRef = Arc<GlowContext>;
 
-pub type ShaderRef = Arc<Shader>;
+pub type ShaderRef = Arc<RwLock<Shader>>;
 
-pub type LineRendererRef = Rc<RefCell<LineRenderer>>;
+pub type LineRendererRef = Arc<RwLock<LineRenderer>>;
 
-pub type RenderableRef = Rc<RefCell<dyn Renderable>>;
+pub type RenderableRef = Arc<dyn Renderable>;
 
-pub type MeshRef = Rc<RefCell<dyn Mesh>>;
+pub type MeshRef = Arc<RwLock<Mesh>>;
 
 pub fn newSdlWindowRef(window: SdlWindow) -> SdlWindowRef {
-	Rc::new(RefCell::new(window))
+	Arc::new(RwLock::new(window))
 }
 
 pub fn newGlRef(gl: GlowContext) -> GlRef {
@@ -29,17 +27,19 @@ pub fn newGlRef(gl: GlowContext) -> GlRef {
 }
 
 pub fn newShaderRef(shader: Shader) -> ShaderRef {
-	Arc::new(shader)
+	Arc::new(RwLock::new(shader))
 }
 
 pub fn newLineRendererRef(renderer: LineRenderer) -> LineRendererRef {
-	Rc::new(RefCell::new(renderer))
+	Arc::new(RwLock::new(renderer))
 }
 
 pub fn newRenderableRef<T: Renderable + 'static>(renderable: T) -> RenderableRef {
-	Rc::new(RefCell::new(renderable))
+	Arc::new(renderable)
 }
 
-pub fn newMeshRef<T: Mesh + 'static>(mesh: T) -> MeshRef {
-	Rc::new(RefCell::new(mesh))
+pub fn newMeshRef(mesh: Mesh) -> MeshRef {
+	Arc::new(RwLock::new(mesh))
+}
+
 }

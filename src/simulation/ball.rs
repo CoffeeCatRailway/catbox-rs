@@ -1,30 +1,26 @@
 use std::f32::consts::TAU;
-use std::rc::Rc;
 use bool_flags::Flags8;
 use glam::{vec3, Vec3};
-use crate::graphics::instance_mesh::InstanceMesh;
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
-use crate::graphics::shader::Shader;
 use crate::simulation::transform::Transform;
-use crate::simulation::verlet_solver::Physical;
-use crate::types::{GlRef, ShaderRef};
+use crate::types::{newMeshRef, GlRef, MeshRef, ShaderRef};
 
 const F_FIXED: u8 = 0;
 const F_VISIBLE: u8 = 1;
 
 /// Instance renderable
 pub struct BallRenderable {
-	pub mesh: InstanceMesh,
-	pub shader: ShaderRef,
+	mesh: MeshRef,
+	shader: ShaderRef,
 }
 
 impl BallRenderable {
 	pub fn new(gl: GlRef, shader: ShaderRef) -> Self {
 		let (vertices, indices) = Self::data();
-		let mesh = InstanceMesh::withIndices(gl, vertices, indices);
+		let mesh = Mesh::instance(gl, vertices, Some(indices));
 		Self {
-			mesh,
+			mesh: newMeshRef(mesh),
 			shader,
 		}
 	}
@@ -57,20 +53,18 @@ impl BallRenderable {
 }
 
 impl Renderable for BallRenderable {
-	fn mesh(&self) -> &dyn Mesh {
+	fn meshRef(&self) -> &MeshRef {
 		&self.mesh
 	}
 	
-	fn meshMut(&mut self) -> &mut dyn Mesh {
-		&mut self.mesh
-	}
-	
-	fn shader(&self) -> &Shader {
+	fn shaderRef(&self) -> &ShaderRef {
 		&self.shader
 	}
-	
-	fn shaderMut(&mut self) -> &mut Shader {
-		Rc::get_mut(&mut self.shader).unwrap()
+}
+
+impl Drop for BallRenderable {
+	fn drop(&mut self) {
+		self.meshRef().write().unwrap().destroy();
 	}
 }
 

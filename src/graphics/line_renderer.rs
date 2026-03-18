@@ -51,8 +51,8 @@ impl LineRenderer {
 			gl.vertex_array_vertex_buffer(vao, 0, Some(vbo), 0, (FLOATS * FLOAT_SIZE) as i32);
 			gl_check_error!(gl);
 			
-			let locPos = shader.getAttribLocation("i_position").unwrap();
-			let locCol = shader.getAttribLocation("i_color").unwrap();
+			let locPos = shader.read().unwrap().getAttribLocation("i_position").unwrap();
+			let locCol = shader.read().unwrap().getAttribLocation("i_color").unwrap();
 			
 			let mut offset: usize = 0;
 			gl.vertex_array_attrib_format_f32(vao, locPos, 3, glow::FLOAT, false, offset as u32);
@@ -134,8 +134,8 @@ impl LineRenderer {
 			return;
 		}
 		
-		self.shader.bind();
-		self.shader.setMatrix4f("u_pvm", pvMatrix);
+		self.shader.read().unwrap().bind();
+		self.shader.read().unwrap().setMatrix4f("u_pvm", pvMatrix);
 		
 		unsafe {
 			self.gl.bind_vertex_array(Some(self.vao));

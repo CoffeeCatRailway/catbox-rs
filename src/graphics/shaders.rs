@@ -34,4 +34,7 @@ pub fn instanceShader(gl: GlRef) -> Result<ShaderRef, String> {
 	Ok(INSTANCE_SHADER_REF.get().unwrap().clone())
 }
 
-// todo: handle Shader::destroy
+pub fn destroyAllShaders() {
+	BASE_SHADER_REF.get().unwrap().write().unwrap().destroy();
+	INSTANCE_SHADER_REF.get().unwrap().write().unwrap().destroy();
+}
