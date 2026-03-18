@@ -128,6 +128,11 @@ impl Mesh {
 		if !self.isInstance() {
 			return Err("Can't update instance data to non-instance mesh!".to_string());
 		}
+		
+		if self.instanceAmount <= 0 {
+			return self.uploadInstanceData(modelMatrices);
+		}
+		
 		unsafe {
 			let instanceAmount = modelMatrices.len() as i32;
 			if instanceAmount > self.instanceAmount {
@@ -243,7 +248,7 @@ impl Mesh {
 			self.gl.bind_vertex_array(self.vao);
 			gl_check_error!(self.gl);
 			
-			if self.isInstance() {
+			if self.isInstance() && self.instanceAmount > 0 {
 				if let Some(indices) = &self.indices {
 					self.gl.draw_elements_instanced(glow::TRIANGLES, indices.len() as i32, glow::UNSIGNED_INT, 0, self.instanceAmount);
 				} else {
