@@ -1,10 +1,11 @@
 use std::f32::consts::TAU;
 use bool_flags::Flags8;
-use glam::{vec3, Vec3};
-use crate::graphics::mesh::{Mesh, Vertex};
+use glam::{vec3, Mat4, Vec3, Vec4};
+use crate::graphics::mesh::{InstanceMeshData, Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
 use crate::simulation::transform::Transform;
-use crate::types::{newMeshRef, GlRef, MeshRef, ShaderRef};
+use crate::simulation::verlet_solver::Physical;
+use crate::types::{newMeshRef, GlRef, MeshRef, ShaderRef, VerletSolverRef};
 
 const F_FIXED: u8 = 0;
 const F_VISIBLE: u8 = 1;
@@ -13,15 +14,17 @@ const F_VISIBLE: u8 = 1;
 pub struct BallRenderable {
 	mesh: MeshRef,
 	shader: ShaderRef,
+	verletSolver: VerletSolverRef,
 }
 
 impl BallRenderable {
-	pub fn new(gl: GlRef, shader: ShaderRef) -> Self {
+	pub fn new(gl: GlRef, shader: ShaderRef, verletSolver: VerletSolverRef) -> Self {
 		let (vertices, indices) = Self::data();
 		let mesh = Mesh::instance(gl, vertices, Some(indices));
 		Self {
 			mesh: newMeshRef(mesh),
 			shader,
+			verletSolver,
 		}
 	}
 	
@@ -60,6 +63,29 @@ impl Renderable for BallRenderable {
 	fn shaderRef(&self) -> &ShaderRef {
 		&self.shader
 	}
+	
+	fn render(&self, projViewMat: &Mat4, _dt: f32) -> Result<(), String> {
+		let mut mesh = self.meshRef().write().unwrap();
+		let shader = self.shaderRef().read().unwrap();
+		
+		shader.bind();
+		let pvm = projViewMat * self.modelMatrix();
+		shader.setMatrix4f("u_pvm", &pvm);
+		
+		let data: Vec<InstanceMeshData> = self.verletSolver.read().unwrap()
+			.getPhysicals().iter()
+			.map(|physical| {
+				let physical = physical.read().unwrap();
+				InstanceMeshData {
+					matrix: physical.transform().getModelMatrix(),
+					color: Vec4::ONE,
+				}
+			}).collect();
+		mesh.updateInstanceData(&data)?;
+		
+		mesh.draw();
+		Ok(())
+	}
 }
 
 impl Drop for BallRenderable {
@@ -70,29 +96,87 @@ impl Drop for BallRenderable {
 
 /// Physics object
 pub struct Ball {
-	pub transform: Transform,
-	pub lastTransform: Transform,
-	pub acceleration: Vec3,
-	pub color: Vec3,
-	pub radius: f32,
-	pub elasticity: f32,
+	transform: Transform,
+	lastTransform: Transform,
+	acceleration: Vec3,
+	color: Vec3,
+	elasticity: f32,
 	flags: Flags8,
 }
 
 impl Ball {
 	pub fn new() -> Self {
 		let mut flags = Flags8::none();
-		flags.set(F_FIXED);
+		// flags.set(F_FIXED);
 		flags.set(F_VISIBLE);
 		Self {
 			transform: Default::default(),
 			lastTransform: Default::default(),
 			acceleration: Vec3::ZERO,
 			color: Vec3::ONE,
-			radius: 1.0,
 			elasticity: 1.0,
 			flags,
 		}
 	}
 }
+
+impl Physical for Ball {
+	fn transform(&self) -> &Transform {
+		&self.transform
+	}
+	
+	fn transformMut(&mut self) -> &mut Transform {
+		&mut self.transform
+	}
+	
+	fn lastTransform(&self) -> &Transform {
+		&self.lastTransform
+	}
+	
+	fn lastTransformMut(&mut self) -> &mut Transform {
+		&mut self.lastTransform
+	}
+	
+	fn fixed(&self) -> bool {
+		self.flags.get(F_FIXED)
+	}
+	
+	fn elasticity(&self) -> f32 {
+		self.elasticity
+	}
+	
+	fn update(&mut self, dt: f32) {
+		if self.fixed() {
+			return;
+		}
+		let delta = self.transform.position - self.lastTransform.position;
+		self.lastTransform = self.transform;
+		self.transform.position += delta + self.acceleration * dt * dt;
+		self.acceleration = Vec3::ZERO;
+	}
+	
+	fn accelerate(&mut self, acceleration: Vec3) {
+		if self.fixed() {
+			return;
+		}
+		self.acceleration += acceleration;
+	}
+	
+	fn setVelocity(&mut self, velocity: Vec3, dt: f32) {
+		if self.fixed() {
+			return;
+		}
+		self.lastTransform.position = self.transform.position - velocity * dt;
+	}
+	
+	fn addVelocity(&mut self, velocity: Vec3, dt: f32) {
+		if self.fixed() {
+			return;
+		}
+		self.lastTransform.position -= velocity * dt;
+	}
+	
+	fn getVelocity(&self, dt: f32) -> Vec3 {
+		(self.transform.position - self.lastTransform.position) / dt
+	}
 }

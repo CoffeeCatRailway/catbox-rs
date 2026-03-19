@@ -105,32 +105,10 @@ impl Mesh {
 		Ok(())
 	}
 	
-	pub fn uploadInstanceData(&mut self, modelMatrices: &Vec<InstanceMeshData>) -> Result<(), String> {
-		self.checkDestroyed()?;
-		if !self.isInstance() {
-			return Err("Can't upload instance data to non-instance mesh!".to_string());
-		}
-		unsafe {
-			let vbo = self.gl.create_named_buffer()?;
-			gl_check_error!(self.gl);
-			
-			self.gl.named_buffer_data_u8_slice(vbo, cast_slice(modelMatrices), glow::STREAM_DRAW);
-			gl_check_error!(self.gl);
-			
-			self.vboInstance = Some(vbo);
-			self.instanceAmount = modelMatrices.len() as i32;
-			Ok(())
-		}
-	}
-	
 	pub fn updateInstanceData(&mut self, modelMatrices: &Vec<InstanceMeshData>) -> Result<(), String> {
 		self.checkDestroyed()?;
 		if !self.isInstance() {
 			return Err("Can't update instance data to non-instance mesh!".to_string());
-		}
-		
-		if self.instanceAmount <= 0 {
-			return self.uploadInstanceData(modelMatrices);
 		}
 		
 		unsafe {
@@ -183,12 +161,19 @@ impl Mesh {
 			gl_check_error!(self.gl);
 			
 			if self.isInstance() {
-				let locModel = shader.read().unwrap().getAttribLocation("i_model").unwrap();
-				
-				// instance model matrix
-				let vec4Size = size_of::<Vec4>() as u32;
-				self.gl.vertex_array_vertex_buffer(vao, 1, self.vboInstance, 0, vec4Size as i32 * 5);
+				let vbo = self.gl.create_named_buffer()?;
 				gl_check_error!(self.gl);
+				
+				let vec4Size = size_of::<Vec4>() as u32;
+				let stride = vec4Size as i32 * 5;
+				
+				self.gl.named_buffer_data_size(vbo, stride, glow::STREAM_DRAW);
+				self.gl.vertex_array_vertex_buffer(vao, 1, Some(vbo), 0, stride);
+				gl_check_error!(self.gl);
+				
+				self.vboInstance = Some(vbo);
+				
+				let locModel = shader.read().unwrap().getAttribLocation("i_model").unwrap();
 				
 				self.gl.enable_vertex_array_attrib(vao, locModel + 0);
 				self.gl.vertex_array_attrib_format_f32(vao, locModel + 0, 4, glow::FLOAT, false, vec4Size * 0);
@@ -210,7 +195,6 @@ impl Mesh {
 				self.gl.vertex_array_attrib_binding_f32(vao, locModel + 3, 1);
 				gl_check_error!(self.gl);
 				
-				// instance color
 				self.gl.enable_vertex_array_attrib(vao, locCol);
 				self.gl.vertex_array_attrib_format_f32(vao, locCol, 4, glow::FLOAT, false, vec4Size * 4);
 				self.gl.vertex_array_attrib_binding_f32(vao, locCol, 1);
@@ -248,11 +232,13 @@ impl Mesh {
 			self.gl.bind_vertex_array(self.vao);
 			gl_check_error!(self.gl);
 			
-			if self.isInstance() && self.instanceAmount > 0 {
-				if let Some(indices) = &self.indices {
-					self.gl.draw_elements_instanced(glow::TRIANGLES, indices.len() as i32, glow::UNSIGNED_INT, 0, self.instanceAmount);
-				} else {
-					self.gl.draw_arrays_instanced(glow::TRIANGLES, 0, self.vertices.len() as i32, self.instanceAmount);
+			if self.isInstance() {
+				if self.instanceAmount > 0 {
+					if let Some(indices) = &self.indices {
+						self.gl.draw_elements_instanced(glow::TRIANGLES, indices.len() as i32, glow::UNSIGNED_INT, 0, self.instanceAmount);
+					} else {
+						self.gl.draw_arrays_instanced(glow::TRIANGLES, 0, self.vertices.len() as i32, self.instanceAmount);
+					}
 				}
 			} else {
 				if let Some(indices) = &self.indices {

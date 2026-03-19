@@ -4,7 +4,7 @@ use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
 use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
-use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3};
+use glam::{vec2, vec3, Mat4, Vec2, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
@@ -14,13 +14,13 @@ use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::gl_check_error;
 use crate::graphics::line_renderer::LineRenderer;
-use crate::graphics::mesh::InstanceMeshData;
 use crate::graphics::render_manager::{RenderManager, Renderable};
 use crate::graphics::shaders;
-use crate::simulation::ball::BallRenderable;
+use crate::simulation::ball::{Ball, BallRenderable};
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 use crate::simulation::transform::Transform;
-use crate::types::{newGlRef, newLineRendererRef, newRenderableRef, newSdlWindowRef, GlRef, LineRendererRef, SdlWindowRef};
+use crate::simulation::verlet_solver::{Physical, VerletSolver};
+use crate::types::{newGlRef, newLineRendererRef, newPhysicalRef, newRenderableRef, newSdlWindowRef, newVerletSolverRef, GlRef, LineRendererRef, SdlWindowRef, VerletSolverRef};
 use crate::window::input_helper::InputHelper;
 
 const F_RUNNING: u8 = 0;
@@ -51,6 +51,7 @@ pub struct CatBox {
 	
 	imgui: Imgui,
 	
+	verletSolver: VerletSolverRef,
 	lineRenderer: LineRendererRef,
 	renderManager: RenderManager,
 	clearColor: [f32; 4],
@@ -137,6 +138,7 @@ impl CatBox {
 		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
 		lineRenderer.enable();
 		
+		let verletSolver = newVerletSolverRef(VerletSolver::new(Vec3::splat(1000.0)));
 		let mut renderManager = RenderManager::new();
 		
 		let camera = Camera {
@@ -154,32 +156,29 @@ impl CatBox {
 		
 		let instanceShader = shaders::instanceShader(gl.clone())?;
 		
-		let mut instanceData = Vec::new();
-		let a: u32 = 441; // 1_000_000
+		let a: u32 = 10_000; // 10_000 ~= 40 fps
 		let sq = (a as f32).sqrt() as u32;
 		let s = 10.0;
 		for i in 0..a {
 			let x = (i % sq) as f32;
 			let y = (i / sq) as f32;
-			instanceData.push(InstanceMeshData {
-				matrix: {
-					let mut transform = Transform::default();
-					transform.position.x = x * s - sq as f32 * s / 2.0 + s / 2.0;
-					transform.position.y = y * s - sq as f32 * s / 2.0 + s / 2.0;
-					transform.scale *= s / 2.0;
-					transform.getModelMatrix()
-				},
-				color: vec4(x / sq as f32, y / sq as f32, 1.0 - i as f32 / a as f32, 1.0),
-			});
+			let mut ball = Ball::new();
+			ball.transformMut().position.x = x * s - sq as f32 * s / 2.0 + s / 2.0;
+			ball.transformMut().position.y = y * s - sq as f32 * s / 2.0 + s / 2.0;
+			ball.lastTransformMut().position.x = x * s - sq as f32 * s / 2.0 + s / 2.0;
+			ball.lastTransformMut().position.y = y * s - sq as f32 * s / 2.0 + s / 2.0;
+			ball.transformMut().scale *= s / 2.0;
+			
+			let ball = newPhysicalRef(ball);
+			verletSolver.write().unwrap().addPhysical(ball);
 		}
 		
 		// In simulation, each 'ball' won't have a renderable component, there will be a single renderable that maps the object list down to model matrices and color
-		let ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone());
-		ballRenderable.meshRef().write().unwrap().uploadInstanceData(&instanceData)?;
+		let ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone(), verletSolver.clone());
 		ballRenderable.meshRef().write().unwrap().upload(instanceShader.clone())?;
 		
-		let ballRef = newRenderableRef(ballRenderable);
-		renderManager.addRenderable(ballRef.clone());
+		let ballRenderable = newRenderableRef(ballRenderable);
+		renderManager.addRenderable(ballRenderable.clone());
 		
 		let mut catbox = CatBox {
 			width: WIN_WIDTH,
@@ -196,6 +195,7 @@ impl CatBox {
 				renderer: imguiRenderer,
 			},
 			
+			verletSolver,
 			lineRenderer: newLineRendererRef(lineRenderer),
 			renderManager,
 			clearColor: [0.27, 0.59, 0.27, 1.0],
@@ -296,6 +296,8 @@ impl CatBox {
 				self.lastMousePos = self.inputHelper.mousePos();
 			}
 			
+			self.verletSolver.write().unwrap().update(OPTIMAL_DT);
+			
 			// Imgui
 			dear_imgui_sdl3::sdl3_new_frame(&mut self.imgui.context);
 			let ui = self.imgui.context.frame();
@@ -326,26 +328,17 @@ impl CatBox {
 			ui.window("Controls")
 			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 			  .build(|| {
-				  // ui.text(format!("Update time: {}s", self.updateTime));
-				  // ui.separator();
-				  
-				  // ui.text(format!("Render time: {}s", self.renderTime));
-				  // if ui.collapsing_header("Shape Renderer", TreeNodeFlags::COLLAPSING_HEADER) {
-					//   let shapeRenderer = self.renderer.getShapeRenderer();
-					//   ui.checkbox("Enabled##shape", &mut shapeRenderer.enabled);
-					//   ui.text(format!("Buffer capacity: {}", shapeRenderer.getBufferCapacity()));
-					//   ui.text(format!("Last floats pushed: {}", shapeRenderer.getLastFloatsPushed()));
-				  // }
 				  if ui.collapsing_header("Line Renderer", TreeNodeFlags::COLLAPSING_HEADER) {
+					  let mut lineRendererMut = self.lineRenderer.write().unwrap();
 					  if ui.small_button("Enable##LineRenderer") {
-						  self.lineRenderer.write().unwrap().enable();
+						  lineRendererMut.enable();
 					  }
 					  ui.same_line();
 					  if ui.small_button("Disable##LineRenderer") {
-						  self.lineRenderer.write().unwrap().disable();
+						  lineRendererMut.disable();
 					  }
-					  ui.text(format!("Buffer capacity: {}", self.lineRenderer.read().unwrap().getBufferCapacity()));
-					  ui.text(format!("Last floats pushed: {}", self.lineRenderer.read().unwrap().getLastFloatsPushed()));
+					  ui.text(format!("Buffer capacity: {}", lineRendererMut.getBufferCapacity()));
+					  ui.text(format!("Last floats pushed: {}", lineRendererMut.getLastFloatsPushed()));
 				  }
 				  ui.separator();
 				  
@@ -365,6 +358,9 @@ impl CatBox {
 					  }
 				  }
 			  });
+			
+			self.verletSolver.write().unwrap().gui(ui, OPTIMAL_DT);
+			
 			if updateProjection {
 				self.updateProjectionMatrix();
 			}
@@ -378,18 +374,19 @@ impl CatBox {
 				gl_check_error!(self.gl);
 			}
 			
-			self.lineRenderer.write().unwrap().pushLine2(vec2(-100.0, 100.0), Vec3::X, vec2(100.0, 100.0), Vec3::Y);
-			self.lineRenderer.write().unwrap().pushLine2(vec2(100.0, 100.0), Vec3::Y, vec2(100.0, -100.0), Vec3::Z);
-			self.lineRenderer.write().unwrap().pushLine2(vec2(100.0, -100.0), Vec3::Z, vec2(-100.0, -100.0), Vec3::ONE);
-			self.lineRenderer.write().unwrap().pushLine2(vec2(-100.0, -100.0), Vec3::ONE, vec2(-100.0, 100.0), Vec3::X);
+			let mut lineRendererMut = self.lineRenderer.write().unwrap();
+			lineRendererMut.pushLine2(vec2(-100.0, 100.0), Vec3::X, vec2(100.0, 100.0), Vec3::Y);
+			lineRendererMut.pushLine2(vec2(100.0, 100.0), Vec3::Y, vec2(100.0, -100.0), Vec3::Z);
+			lineRendererMut.pushLine2(vec2(100.0, -100.0), Vec3::Z, vec2(-100.0, -100.0), Vec3::ONE);
+			lineRendererMut.pushLine2(vec2(-100.0, -100.0), Vec3::ONE, vec2(-100.0, 100.0), Vec3::X);
 			
 			// calculate camera matrices
 			self.viewMatrix = self.camera.getViewMatrix();
 			let projViewMat = self.projectionMatrix * self.viewMatrix;
 			
-			self.renderManager.draw(&projViewMat, &self.camera);
+			self.renderManager.draw(&projViewMat, dt)?;
 			
-			self.lineRenderer.write().unwrap().drawFlush(&projViewMat);
+			lineRendererMut.drawFlush(&projViewMat);
 			
 			if self.imgui.renderer.is_destroyed {
 				self.imgui.renderer.create_device_objects(&self.gl)?;
@@ -425,7 +422,7 @@ impl CatBox {
 			let waitTime = OPTIMAL_WAIT_TIME.saturating_sub(elapsedTicks);
 			dt = waitTime as f32 / 1000.0;
 			if waitTime > 0 {
-				// info!("{}", waitTime);
+				info!("{}", waitTime);
 				timer::delay(waitTime as u32);
 			}
 		}

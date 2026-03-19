@@ -1,5 +1,4 @@
 use glam::Mat4;
-use crate::simulation::camera::Camera;
 use crate::types::{MeshRef, RenderableRef, ShaderRef};
 
 #[allow(unused)]
@@ -7,6 +6,18 @@ pub trait Renderable {
 	fn meshRef(&self) -> &MeshRef;
 	
 	fn shaderRef(&self) -> &ShaderRef;
+	
+	fn render(&self, projViewMat: &Mat4, dt: f32) -> Result<(), String> {
+		let mesh = self.meshRef().read().unwrap();
+		let shader = self.shaderRef().read().unwrap();
+		
+		shader.bind();
+		let pvm = projViewMat * self.modelMatrix();
+		shader.setMatrix4f("u_pvm", &pvm);
+		
+		mesh.draw();
+		Ok(())
+	}
 	
 	fn modelMatrix(&self) -> Mat4 {
 		Mat4::IDENTITY
@@ -18,7 +29,7 @@ pub trait Renderable {
 }
 
 pub struct RenderManager {
-	pub renderables: Vec<RenderableRef>,
+	renderables: Vec<RenderableRef>
 }
 
 impl RenderManager {
@@ -32,19 +43,12 @@ impl RenderManager {
 		self.renderables.push(renderable);
 	}
 	
-	pub fn draw(&mut self, projViewMat: &Mat4, _camera: &Camera) {
-		for renderable in &self.renderables {
-			if !renderable.visible() {
-				continue;
+	pub fn draw(&mut self, projViewMat: &Mat4, dt: f32) -> Result<(), String> {
+		for renderable in self.renderables.iter() {
+			if renderable.visible() {
+				renderable.render(projViewMat, dt)?;
 			}
-			let mesh = renderable.meshRef().read().unwrap();
-			let shader = renderable.shaderRef().read().unwrap();
-			
-			shader.bind();
-			let pvm = projViewMat * renderable.modelMatrix();
-			shader.setMatrix4f("u_pvm", &pvm);
-			
-			mesh.draw();
 		}
+		Ok(())
 	}
 }
