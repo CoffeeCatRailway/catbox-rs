@@ -96,11 +96,11 @@ impl Drop for BallRenderable {
 
 /// Physics object
 pub struct Ball {
-	transform: Transform,
-	lastTransform: Transform,
-	acceleration: Vec3,
-	color: Vec3,
-	elasticity: f32,
+	pub transform: Transform,
+	pub lastTransform: Transform,
+	pub acceleration: Vec3,
+	pub color: Vec3,
+	pub elasticity: f32,
 	flags: Flags8,
 }
 

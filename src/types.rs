@@ -15,7 +15,7 @@ pub type ShaderRef = Arc<RwLock<Shader>>;
 
 pub type LineRendererRef = Arc<RwLock<LineRenderer>>;
 
-pub type RenderableRef = Arc<dyn Renderable>;
+pub type RenderableRef = Arc<RwLock<dyn Renderable>>;
 
 pub type MeshRef = Arc<RwLock<Mesh>>;
 
@@ -40,7 +40,7 @@ pub fn newLineRendererRef(renderer: LineRenderer) -> LineRendererRef {
 }
 
 pub fn newRenderableRef<T: Renderable + 'static>(renderable: T) -> RenderableRef {
-	Arc::new(renderable)
+	Arc::new(RwLock::new(renderable))
 }
 
 pub fn newMeshRef(mesh: Mesh) -> MeshRef {

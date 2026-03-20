@@ -45,6 +45,7 @@ impl RenderManager {
 	
 	pub fn draw(&mut self, projViewMat: &Mat4, dt: f32) -> Result<(), String> {
 		for renderable in self.renderables.iter() {
+			let renderable = renderable.read().unwrap();
 			if renderable.visible() {
 				renderable.render(projViewMat, dt)?;
 			}

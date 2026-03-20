@@ -4,7 +4,7 @@ use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
 use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
-use glam::{vec2, vec3, Mat4, Vec2, Vec3};
+use glam::{vec3, Mat4, Vec2, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
@@ -138,8 +138,12 @@ impl CatBox {
 		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
 		lineRenderer.enable();
 		
-		let verletSolver = newVerletSolverRef(VerletSolver::new(Vec3::splat(1000.0)));
+		let baseShader = shaders::baseShader(gl.clone())?;
+		let instanceShader = shaders::instanceShader(gl.clone())?;
+		
+		let verletSolver = newVerletSolverRef(VerletSolver::new(Vec3::splat(1000.0), gl.clone(), baseShader)?);
 		let mut renderManager = RenderManager::new();
+		renderManager.addRenderable(verletSolver.clone());
 		
 		let camera = Camera {
 			frustum: Frustum {
@@ -154,20 +158,19 @@ impl CatBox {
 			..Camera::default()
 		};
 		
-		let instanceShader = shaders::instanceShader(gl.clone())?;
-		
 		let a: u32 = 441; // 10_000 ~= 40 fps
 		let sq = (a as f32).sqrt() as u32;
 		let s = 10.0;
+		let sh = s * 0.5;
 		for i in 0..a {
 			let x = (i % sq) as f32;
 			let y = (i / sq) as f32;
 			let mut ball = Ball::new();
-			ball.transformMut().position.x = x * s - sq as f32 * s / 2.0 + s / 2.0;
-			ball.transformMut().position.y = y * s - sq as f32 * s / 2.0 + s / 2.0;
-			ball.lastTransformMut().position.x = x * s - sq as f32 * s / 2.0 + s / 2.0;
-			ball.lastTransformMut().position.y = y * s - sq as f32 * s / 2.0 + s / 2.0;
-			ball.transformMut().scale *= s / 2.0;
+			ball.transform.position.x = x * s - sq as f32 * sh + sh;
+			ball.transform.position.y = y * s - sq as f32 * sh + sh;
+			ball.lastTransform.position = ball.transform.position;
+			ball.transform.scale *= s;
+			ball.elasticity = 0.5;
 			
 			let ball = newPhysicalRef(ball);
 			verletSolver.write().unwrap().addPhysical(ball);
@@ -374,19 +377,13 @@ impl CatBox {
 				gl_check_error!(self.gl);
 			}
 			
-			let mut lineRendererMut = self.lineRenderer.write().unwrap();
-			lineRendererMut.pushLine2(vec2(-100.0, 100.0), Vec3::X, vec2(100.0, 100.0), Vec3::Y);
-			lineRendererMut.pushLine2(vec2(100.0, 100.0), Vec3::Y, vec2(100.0, -100.0), Vec3::Z);
-			lineRendererMut.pushLine2(vec2(100.0, -100.0), Vec3::Z, vec2(-100.0, -100.0), Vec3::ONE);
-			lineRendererMut.pushLine2(vec2(-100.0, -100.0), Vec3::ONE, vec2(-100.0, 100.0), Vec3::X);
-			
 			// calculate camera matrices
 			self.viewMatrix = self.camera.getViewMatrix();
 			let projViewMat = self.projectionMatrix * self.viewMatrix;
 			
 			self.renderManager.draw(&projViewMat, dt)?;
 			
-			lineRendererMut.drawFlush(&projViewMat);
+			self.lineRenderer.write().unwrap().drawFlush(&projViewMat);
 			
 			if self.imgui.renderer.is_destroyed {
 				self.imgui.renderer.create_device_objects(&self.gl)?;

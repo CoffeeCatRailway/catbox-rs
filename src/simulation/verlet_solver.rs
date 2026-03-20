@@ -1,10 +1,12 @@
 use bool_flags::Flags8;
 use dear_imgui_rs::{Ui, WindowFlags};
-use glam::Vec3;
+use glam::{vec3, Mat4, Vec3};
+use crate::graphics::mesh::{Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
 use crate::simulation::transform::Transform;
-use crate::types::{MeshRef, PhysicalRef, ShaderRef};
+use crate::types::{newMeshRef, GlRef, MeshRef, PhysicalRef, ShaderRef};
 
+#[allow(unused)]
 pub trait Physical {
 	fn transform(&self) -> &Transform;
 	
@@ -34,6 +36,9 @@ const F_PAUSED: u8 = 1;
 const F_FORCE_STEP: u8 = 2;
 
 pub struct VerletSolver {
+	mesh: MeshRef,
+	shader: ShaderRef,
+	
 	pub gravity: Vec3,
 	pub worldSize: Vec3,
 	
@@ -46,10 +51,38 @@ pub struct VerletSolver {
 }
 
 impl VerletSolver {
-	pub fn new(worldSize: Vec3) -> VerletSolver {
+	pub fn new(worldSize: Vec3, gl: GlRef, shader: ShaderRef) -> Result<VerletSolver, String> {
+		let mesh = {
+			let vertices = vec![
+				Vertex {
+					position: vec3(-0.5, 0.5, 0.0),
+					color: Vec3::splat(0.15),
+				},
+				Vertex {
+					position: vec3(0.5, 0.5, 0.0),
+					color: Vec3::splat(0.15),
+				},
+				Vertex {
+					position: vec3(0.5, -0.5, 0.0),
+					color: Vec3::splat(0.15),
+				},
+				Vertex {
+					position: vec3(-0.5, -0.5, 0.0),
+					color: Vec3::splat(0.15),
+				}
+			];
+			let indices = vec![0, 1, 2, 2, 3, 0];
+			let mut mesh = Mesh::simple(gl, vertices, Some(indices));
+			mesh.upload(shader.clone())?;
+			newMeshRef(mesh)
+		};
+		
 		let mut flags = Flags8::none();
 		flags.set(F_PAUSED);
-		Self {
+		Ok(Self {
+			mesh,
+			shader,
+			
 			gravity: Vec3::ZERO,
 			worldSize,
 			
@@ -59,7 +92,7 @@ impl VerletSolver {
 			updatesDone: 0,
 			
 			flags,
-		}
+		})
 	}
 	
 	pub fn isDestroyed(&self) -> bool {
@@ -94,7 +127,33 @@ impl VerletSolver {
 		self.physicals.push(physical);
 	}
 	
-	fn collide(&self, dt: f32) {}
+	fn collideWithBoundary(&self, _dt: f32, physical: &PhysicalRef) {
+		let mut physical = physical.write().unwrap();
+		let halfSize = (self.worldSize - physical.transform().scale.x) * 0.5;
+		let velocity = physical.getVelocity(1.0) * physical.elasticity();
+		
+		if physical.transform().position.x < -halfSize.x {
+			physical.transformMut().position.x = -halfSize.x;
+			physical.lastTransformMut().position.x = -halfSize.x + velocity.x;
+		} else if physical.transform().position.x > halfSize.x {
+			physical.transformMut().position.x = halfSize.x;
+			physical.lastTransformMut().position.x = halfSize.x + velocity.x;
+		}
+		
+		if physical.transform().position.y < -halfSize.y {
+			physical.transformMut().position.y = -halfSize.y;
+			physical.lastTransformMut().position.y = -halfSize.y + velocity.y;
+		} else if physical.transform().position.y > halfSize.y {
+			physical.transformMut().position.y = halfSize.y;
+			physical.lastTransformMut().position.y = halfSize.y + velocity.y;
+		}
+	}
+	
+	fn collide(&self, dt: f32) {
+		for physical in self.physicals.iter() {
+			self.collideWithBoundary(dt, physical);
+		}
+	}
 	
 	fn updatePhysicals(&self, dt: f32) {
 		for physical in self.physicals.iter() {
@@ -155,10 +214,14 @@ impl VerletSolver {
 
 impl Renderable for VerletSolver {
 	fn meshRef(&self) -> &MeshRef {
-		todo!()
+		&self.mesh
 	}
 	
 	fn shaderRef(&self) -> &ShaderRef {
-		todo!()
+		&self.shader
+	}
+	
+	fn modelMatrix(&self) -> Mat4 {
+		Mat4::from_scale(self.worldSize)
 	}
 }
