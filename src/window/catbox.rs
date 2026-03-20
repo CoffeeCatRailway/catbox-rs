@@ -156,7 +156,7 @@ impl CatBox {
 		
 		let instanceShader = shaders::instanceShader(gl.clone())?;
 		
-		let a: u32 = 10_000; // 10_000 ~= 40 fps
+		let a: u32 = 441; // 10_000 ~= 40 fps
 		let sq = (a as f32).sqrt() as u32;
 		let s = 10.0;
 		for i in 0..a {
@@ -422,7 +422,7 @@ impl CatBox {
 			let waitTime = OPTIMAL_WAIT_TIME.saturating_sub(elapsedTicks);
 			dt = waitTime as f32 / 1000.0;
 			if waitTime > 0 {
-				info!("{}", waitTime);
+				// info!("{}", waitTime);
 				timer::delay(waitTime as u32);
 			}
 		}
