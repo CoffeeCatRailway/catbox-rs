@@ -37,7 +37,7 @@ impl BallRenderable {
 		for i in 0..segments {
 			let angle = i as f32 * TAU / segments as f32;
 			vertices.push(Vertex {
-				position: vec3(angle.cos(), angle.sin(), 0.0),
+				position: vec3(angle.cos(), angle.sin(), 0.0) * 0.5,
 				..Default::default()
 			});
 			
