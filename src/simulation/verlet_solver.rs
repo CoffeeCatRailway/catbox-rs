@@ -30,10 +30,10 @@ pub trait Physical {
 	
 	fn getVelocity(&self, dt: f32) -> Vec3;
 	
-	fn getColor(&self) -> Vec3;
+	fn getColor(&self) -> Vec3; // todo: move shape and collision to separate components
 }
 
-const F_DESTROYED: u8 = 0;
+// const F_DESTROYED: u8 = 0;
 const F_PAUSED: u8 = 1;
 const F_FORCE_STEP: u8 = 2;
 
@@ -97,9 +97,9 @@ impl VerletSolver {
 		})
 	}
 	
-	pub fn isDestroyed(&self) -> bool {
-		self.flags.get(F_DESTROYED)
-	}
+	// pub fn isDestroyed(&self) -> bool {
+	// 	self.flags.get(F_DESTROYED)
+	// }
 	
 	pub fn isPaused(&self) -> bool {
 		self.flags.get(F_PAUSED)
@@ -223,7 +223,7 @@ impl VerletSolver {
 		}
 	}
 	
-	fn step(&mut self, dt: f32) {
+	fn subStep(&mut self, dt: f32) {
 		self.sortPhysicals();
 		self.collide(dt);
 		self.updatePhysicals(dt);
@@ -231,9 +231,9 @@ impl VerletSolver {
 	
 	pub fn update(&mut self, dt: f32) {
 		if !self.isPaused() || self.isForceStep() {
-			let stepDt = dt / self.subSteps as f32;
+			let subStepDt = dt / self.subSteps as f32;
 			for _ in 0..self.subSteps {
-				self.step(stepDt);
+				self.subStep(subStepDt);
 			}
 			
 			self.updatesDone += 1;
@@ -253,7 +253,7 @@ impl VerletSolver {
 				
 				ui.text(format!("Sub steps: {}\tUpdates done: {}", self.subSteps, self.updatesDone));
 				ui.text(format!("Update dt: {}", dt));
-				ui.text(format!("Step dt: {}", dt / self.subSteps as f32));
+				ui.text(format!("Sub step dt: {}", dt / self.subSteps as f32));
 				
 				let mut pause = self.isPaused();
 				ui.checkbox("Pause", &mut pause);
