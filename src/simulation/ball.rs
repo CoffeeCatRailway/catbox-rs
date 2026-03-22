@@ -10,6 +10,7 @@ use crate::types::{newMeshRef, GlRef, MeshRef, ShaderRef, VerletSolverRef};
 const F_FIXED: u8 = 0;
 const F_VISIBLE: u8 = 1;
 
+// todo: use shape/collision component
 /// Instance renderable
 pub struct BallRenderable {
 	mesh: MeshRef,

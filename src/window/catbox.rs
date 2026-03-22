@@ -67,6 +67,7 @@ impl CatBox {
 		info!("Creating CatBox");
 		let flags = Flags8::none();
 	
+		// Initialize sdl, gl and imgui
 		info!("SDL3 context");
 		let sdl = sdl3::init()?;
 		let video = sdl.video()?;
@@ -134,6 +135,7 @@ impl CatBox {
 		#[cfg(feature = "multi-viewport")]
 		glow_mvp::enable(&mut imguiRenderer, &mut imgui);
 		
+		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
 		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
 		lineRenderer.enable();
@@ -158,6 +160,7 @@ impl CatBox {
 			..Camera::default()
 		};
 		
+		// Setup physicals
 		let a: u32 = 400;
 		let sq = (a as f32).sqrt();
 		let s = 10.0;
@@ -180,7 +183,6 @@ impl CatBox {
 			verletSolver.borrow_mut().addPhysical(ball);
 		}
 		
-		// In simulation, each 'ball' won't have a renderable component, there will be a single renderable that maps the object list down to model matrices and color
 		let ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone(), verletSolver.clone());
 		ballRenderable.meshRef().borrow_mut().upload(instanceShader.clone())?;
 		

@@ -18,7 +18,7 @@ pub trait Physical {
 	
 	fn fixed(&self) -> bool;
 	
-	fn elasticity(&self) -> f32;
+	fn elasticity(&self) -> f32; // todo: try moving properties to separate component
 	
 	fn update(&mut self, dt: f32);
 	
