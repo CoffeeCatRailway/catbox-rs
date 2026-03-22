@@ -1,6 +1,6 @@
 use std::f32::consts::TAU;
 use bool_flags::Flags8;
-use glam::{vec3, Mat4, Vec3, Vec4};
+use glam::{vec3, Mat4, Vec3};
 use crate::graphics::mesh::{InstanceMeshData, Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
 use crate::simulation::transform::Transform;
@@ -65,20 +65,20 @@ impl Renderable for BallRenderable {
 	}
 	
 	fn render(&self, projViewMat: &Mat4, _dt: f32) -> Result<(), String> {
-		let mut mesh = self.meshRef().write().unwrap();
+		let mut mesh = self.meshRef().borrow_mut();
 		let shader = self.shaderRef().read().unwrap();
 		
 		shader.bind();
 		let pvm = projViewMat * self.modelMatrix();
 		shader.setMatrix4f("u_pvm", &pvm);
 		
-		let data: Vec<InstanceMeshData> = self.verletSolver.read().unwrap()
+		let data: Vec<InstanceMeshData> = self.verletSolver.borrow()
 			.getPhysicals().iter()
 			.map(|physical| {
-				let physical = physical.read().unwrap();
+				let physical = physical.borrow();
 				InstanceMeshData {
 					matrix: physical.transform().getModelMatrix(),
-					color: Vec4::ONE,
+					color: physical.getColor().to_homogeneous(),
 				}
 			}).collect();
 		mesh.updateInstanceData(&data)?;
@@ -90,7 +90,7 @@ impl Renderable for BallRenderable {
 
 impl Drop for BallRenderable {
 	fn drop(&mut self) {
-		self.meshRef().write().unwrap().destroy();
+		self.meshRef().borrow_mut().destroy();
 	}
 }
 
@@ -178,5 +178,9 @@ impl Physical for Ball {
 	
 	fn getVelocity(&self, dt: f32) -> Vec3 {
 		(self.transform.position - self.lastTransform.position) / dt
+	}
+	
+	fn getColor(&self) -> Vec3 {
+		self.color
 	}
 }

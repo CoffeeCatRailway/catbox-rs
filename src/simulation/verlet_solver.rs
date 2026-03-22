@@ -29,6 +29,8 @@ pub trait Physical {
 	fn addVelocity(&mut self, velocity: Vec3, dt: f32);
 	
 	fn getVelocity(&self, dt: f32) -> Vec3;
+	
+	fn getColor(&self) -> Vec3;
 }
 
 const F_DESTROYED: u8 = 0;
@@ -127,43 +129,102 @@ impl VerletSolver {
 		self.physicals.push(physical);
 	}
 	
-	fn collideWithBoundary(&self, _dt: f32, physical: &PhysicalRef) {
-		let mut physical = physical.write().unwrap();
-		let halfSize = (self.worldSize - physical.transform().scale.x) * 0.5;
-		let velocity = physical.getVelocity(1.0) * physical.elasticity();
-		
-		if physical.transform().position.x < -halfSize.x {
-			physical.transformMut().position.x = -halfSize.x;
-			physical.lastTransformMut().position.x = -halfSize.x + velocity.x;
-		} else if physical.transform().position.x > halfSize.x {
-			physical.transformMut().position.x = halfSize.x;
-			physical.lastTransformMut().position.x = halfSize.x + velocity.x;
+	fn sortPhysicals(&mut self) {
+		self.physicals.sort_by(|a, b| {
+			let a = a.borrow();
+			let b = b.borrow();
+			
+			let p1 = a.transform().position.x - a.transform().scale.x;
+			let p2 = b.transform().position.x - b.transform().scale.x;
+			
+			p1.total_cmp(&p2)
+		});
+	}
+	
+	fn collideWithPhysical(&self, physical1: PhysicalRef, physical2: PhysicalRef) {
+		if let Ok(mut physical1) = physical1.try_borrow_mut() {
+			if let Ok(mut physical2) = physical2.try_borrow_mut() {
+				let r1 = physical1.transform().scale.x * 0.5;
+				let r2 = physical2.transform().scale.x * 0.5;
+				
+				let dir = physical1.transform().position - physical2.transform().position;
+				let dist = dir.length();
+				let minDist = r1 + r2;
+				if dist < minDist {
+					let mut dir = dir.normalize();
+					if dist <= f32::EPSILON {
+						dir = Vec3::X;
+					}
+					
+					let massRatio1 = r1 / minDist;
+					let massRatio2 = r2 / minDist;
+					let force = 0.5 * ((physical1.elasticity() + physical2.elasticity()) * 0.5) * (dist - minDist);
+					
+					if !physical1.fixed() {
+						physical1.transformMut().position -= dir * massRatio2 * force;
+					}
+					if !physical2.fixed() {
+						physical2.transformMut().position += dir * massRatio1 * force;
+					}
+				}
+			}
 		}
-		
-		if physical.transform().position.y < -halfSize.y {
-			physical.transformMut().position.y = -halfSize.y;
-			physical.lastTransformMut().position.y = -halfSize.y + velocity.y;
-		} else if physical.transform().position.y > halfSize.y {
-			physical.transformMut().position.y = halfSize.y;
-			physical.lastTransformMut().position.y = halfSize.y + velocity.y;
+	}
+	
+	fn collideWithBoundary(&self, _dt: f32, physical: PhysicalRef) {
+		if let Ok(mut physical) = physical.try_borrow_mut() {
+			let halfSize = (self.worldSize - physical.transform().scale.x) * 0.5;
+			let velocity = physical.getVelocity(1.0) * physical.elasticity();
+			
+			if physical.transform().position.x < -halfSize.x {
+				physical.transformMut().position.x = -halfSize.x;
+				physical.lastTransformMut().position.x = -halfSize.x + velocity.x;
+			} else if physical.transform().position.x > halfSize.x {
+				physical.transformMut().position.x = halfSize.x;
+				physical.lastTransformMut().position.x = halfSize.x + velocity.x;
+			}
+			
+			if physical.transform().position.y < -halfSize.y {
+				physical.transformMut().position.y = -halfSize.y;
+				physical.lastTransformMut().position.y = -halfSize.y + velocity.y;
+			} else if physical.transform().position.y > halfSize.y {
+				physical.transformMut().position.y = halfSize.y;
+				physical.lastTransformMut().position.y = halfSize.y + velocity.y;
+			}
 		}
 	}
 	
 	fn collide(&self, dt: f32) {
-		for physical in self.physicals.iter() {
-			self.collideWithBoundary(dt, physical);
+		for i in 0..self.physicals.len() {
+			let physical1 = self.physicals[i].clone();
+			for j in (i + 1)..self.physicals.len() {
+				let physical2 = self.physicals[j].clone();
+				let skip = {
+					let p1 = physical1.borrow();
+					let p2 = physical2.borrow();
+					(p2.transform().position.x - p2.transform().scale.x * 0.5) >
+						(p1.transform().position.x + p1.transform().scale.x * 0.5)
+				};
+				if skip {
+					break;
+				}
+				self.collideWithPhysical(physical1.clone(), physical2.clone());
+			}
+			
+			self.collideWithBoundary(dt, physical1);
 		}
 	}
 	
 	fn updatePhysicals(&self, dt: f32) {
 		for physical in self.physicals.iter() {
-			let mut physical = physical.write().unwrap();
+			let mut physical = physical.borrow_mut();
 			physical.accelerate(self.gravity);
 			physical.update(dt);
 		}
 	}
 	
 	fn step(&mut self, dt: f32) {
+		self.sortPhysicals();
 		self.collide(dt);
 		self.updatePhysicals(dt);
 	}

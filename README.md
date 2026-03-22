@@ -7,13 +7,13 @@ This is also a continuation of my Java attempt [CatBox](https://github.com/Coffe
 ### Features:
 - [x] Line Renderer for debug info
 - [x] Camera controller
-- [ ] Primitive Shape Renderer (Circle, Box, Triangle-WIP)
-- [ ] Simple object (ball)
-- [ ] Collide with world boundaries
+- [ ] ~~Primitive Shape Renderer (Circle, Box, Triangle-WIP)~~ Reworked into `Renderable`
+- [x] Simple object (ball)
+- [x] Collide with world boundaries
 - [x] Imgui
-- [ ] Separate solver thread
-- [ ] Collide with other objects
+- [ ] Separate solver thread (Maybe later)
+- [x] Collide with other objects
 - [ ] Constraints (Fixed distance & Spring)
 - [ ] Constraint collision (Box)
 - [ ] Editor/Interface to interact with and add/remove objects
-- [ ] Environment controls (Gravity, Pause/Step, Step time or DT)
+- [x] Environment controls (Gravity, Pause/Step, Step time or DT)

@@ -8,7 +8,7 @@ pub trait Renderable {
 	fn shaderRef(&self) -> &ShaderRef;
 	
 	fn render(&self, projViewMat: &Mat4, dt: f32) -> Result<(), String> {
-		let mesh = self.meshRef().read().unwrap();
+		let mesh = self.meshRef().borrow();
 		let shader = self.shaderRef().read().unwrap();
 		
 		shader.bind();
@@ -45,7 +45,7 @@ impl RenderManager {
 	
 	pub fn draw(&mut self, projViewMat: &Mat4, dt: f32) -> Result<(), String> {
 		for renderable in self.renderables.iter() {
-			let renderable = renderable.read().unwrap();
+			let renderable = renderable.borrow();
 			if renderable.visible() {
 				renderable.render(projViewMat, dt)?;
 			}

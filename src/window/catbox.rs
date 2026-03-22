@@ -86,9 +86,9 @@ impl CatBox {
 						  .build()?;
 		let window = newSdlWindowRef(window);
 		
-		let glContext = window.read().unwrap().gl_create_context()?;
+		let glContext = window.borrow().gl_create_context()?;
 		
-		window.read().unwrap().gl_make_current(&glContext)?;
+		window.borrow().gl_make_current(&glContext)?;
 		video.gl_set_swap_interval(SwapInterval::Immediate)?;
 		
 		let gl = unsafe {
@@ -115,10 +115,10 @@ impl CatBox {
 		}
 		
 		// Initial SDL3 platform backend
-		dear_imgui_sdl3::init_platform_for_opengl(&mut imgui, &window.read().unwrap(), &glContext)?;
+		dear_imgui_sdl3::init_platform_for_opengl(&mut imgui, &window.borrow(), &glContext)?;
 		
 		// Basic style scaling
-		let windowScale = window.read().unwrap().display_scale();
+		let windowScale = window.borrow().display_scale();
 		{
 			let style = imgui.style_mut();
 			style.set_font_scale_dpi(windowScale);
@@ -158,27 +158,31 @@ impl CatBox {
 			..Camera::default()
 		};
 		
-		let a: u32 = 441; // 10_000 ~= 40 fps
-		let sq = (a as f32).sqrt() as u32;
+		let a: u32 = 400;
+		let sq = (a as f32).sqrt();
 		let s = 10.0;
 		let sh = s * 0.5;
 		for i in 0..a {
-			let x = (i % sq) as f32;
-			let y = (i / sq) as f32;
+			let x = (i % sq as u32) as f32;
+			let y = (i / sq as u32) as f32;
 			let mut ball = Ball::new();
-			ball.transform.position.x = x * s - sq as f32 * sh + sh;
-			ball.transform.position.y = y * s - sq as f32 * sh + sh;
+			ball.transform.position.x = x * s - sq * sh + sh;
+			ball.transform.position.y = y * s - sq * sh + sh;
 			ball.lastTransform.position = ball.transform.position;
 			ball.transform.scale *= s;
 			ball.elasticity = 0.5;
 			
+			ball.color.x = x / sq;
+			ball.color.y = y / sq;
+			ball.color.z = 0.0;
+			
 			let ball = newPhysicalRef(ball);
-			verletSolver.write().unwrap().addPhysical(ball);
+			verletSolver.borrow_mut().addPhysical(ball);
 		}
 		
 		// In simulation, each 'ball' won't have a renderable component, there will be a single renderable that maps the object list down to model matrices and color
 		let ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone(), verletSolver.clone());
-		ballRenderable.meshRef().write().unwrap().upload(instanceShader.clone())?;
+		ballRenderable.meshRef().borrow_mut().upload(instanceShader.clone())?;
 		
 		let ballRenderable = newRenderableRef(ballRenderable);
 		renderManager.addRenderable(ballRenderable.clone());
@@ -213,7 +217,7 @@ impl CatBox {
 	}
 	
 	fn updateProjectionMatrix(&mut self) {
-		let windowSize = self.window.read().unwrap().size();
+		let windowSize = self.window.borrow().size();
 		let windowAspect = windowSize.0 as f32 / windowSize.1 as f32;
 		
 		let projection = Projection::Orthographic(windowAspect * -1.0, windowAspect * 1.0, -1.0, 1.0);
@@ -244,7 +248,7 @@ impl CatBox {
 					self.updateProjectionMatrix();
 				},
 				WindowEvent::CloseRequested => {
-					if window_id == self.window.read().unwrap().id() {
+					if window_id == self.window.borrow().id() {
 						self.requestClose();
 					}
 				},
@@ -299,7 +303,7 @@ impl CatBox {
 				self.lastMousePos = self.inputHelper.mousePos();
 			}
 			
-			self.verletSolver.write().unwrap().update(OPTIMAL_DT);
+			self.verletSolver.borrow_mut().update(OPTIMAL_DT);
 			
 			// Imgui
 			dear_imgui_sdl3::sdl3_new_frame(&mut self.imgui.context);
@@ -317,7 +321,7 @@ impl CatBox {
 				  
 				  ui.text(format!("Mouse Position: ({:.2},{:.2})", self.inputHelper.mousePos().x, self.inputHelper.mousePos().y));
 				  
-				  let windowSize = self.window.read().unwrap().size();
+				  let windowSize = self.window.borrow().size();
 				  ui.text(format!("Window Size: ({},{})", windowSize.0, windowSize.1));
 				  ui.separator();
 				  
@@ -332,7 +336,7 @@ impl CatBox {
 			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 			  .build(|| {
 				  if ui.collapsing_header("Line Renderer", TreeNodeFlags::COLLAPSING_HEADER) {
-					  let mut lineRendererMut = self.lineRenderer.write().unwrap();
+					  let mut lineRendererMut = self.lineRenderer.borrow_mut();
 					  if ui.small_button("Enable##LineRenderer") {
 						  lineRendererMut.enable();
 					  }
@@ -362,7 +366,7 @@ impl CatBox {
 				  }
 			  });
 			
-			self.verletSolver.write().unwrap().gui(ui, OPTIMAL_DT);
+			self.verletSolver.borrow_mut().gui(ui, OPTIMAL_DT);
 			
 			if updateProjection {
 				self.updateProjectionMatrix();
@@ -383,7 +387,7 @@ impl CatBox {
 			
 			self.renderManager.draw(&projViewMat, dt)?;
 			
-			self.lineRenderer.write().unwrap().drawFlush(&projViewMat);
+			self.lineRenderer.borrow_mut().drawFlush(&projViewMat);
 			
 			if self.imgui.renderer.is_destroyed {
 				self.imgui.renderer.create_device_objects(&self.gl)?;
@@ -397,18 +401,18 @@ impl CatBox {
 					self.imgui.context.update_platform_windows();
 					self.imgui.context.render_platform_windows_default();
 					// Restore main GL context
-					self.window.read().unwrap().gl_make_current(&self.glContext)?;
+					self.window.borrow().gl_make_current(&self.glContext)?;
 				}
 			}
 			
-			self.window.read().unwrap().gl_swap_window();
+			self.window.borrow().gl_swap_window();
 			
 			// fps counter
 			fps = fps.saturating_add(1);
 			totalFrames = totalFrames.saturating_add(1);
 			if startTick >= lastTick + 1000 {
 				let newTitle = format!("{} - FPS: {}", WIN_TITLE, fps);
-				self.window.write().unwrap().set_title(&newTitle)?;
+				self.window.borrow_mut().set_title(&newTitle)?;
 				
 				lastTick = startTick;
 				fps = 0;
@@ -428,7 +432,7 @@ impl CatBox {
 	
 	pub fn destroy(&mut self) {
 		warn!("Destroying window");
-		self.lineRenderer.write().unwrap().destroy();
+		self.lineRenderer.borrow_mut().destroy();
 		#[cfg(feature = "multi-viewport")]
 		glow_mvp::shutdown_multi_viewport_support(&mut self.imgui.context);
 		dear_imgui_sdl3::shutdown(&mut self.imgui.context);

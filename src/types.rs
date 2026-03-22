@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 use glow::{Context as GlowContext};
 use sdl3::video::Window as SdlWindow;
@@ -7,24 +9,24 @@ use crate::graphics::render_manager::Renderable;
 use crate::graphics::shader::Shader;
 use crate::simulation::verlet_solver::{Physical, VerletSolver};
 
-pub type SdlWindowRef = Arc<RwLock<SdlWindow>>;
+pub type SdlWindowRef = Rc<RefCell<SdlWindow>>;
 
 pub type GlRef = Arc<GlowContext>;
 
 pub type ShaderRef = Arc<RwLock<Shader>>;
 
-pub type LineRendererRef = Arc<RwLock<LineRenderer>>;
+pub type LineRendererRef = Rc<RefCell<LineRenderer>>;
 
-pub type RenderableRef = Arc<RwLock<dyn Renderable>>;
+pub type RenderableRef = Rc<RefCell<dyn Renderable>>;
 
-pub type MeshRef = Arc<RwLock<Mesh>>;
+pub type MeshRef = Rc<RefCell<Mesh>>;
 
-pub type PhysicalRef = Arc<RwLock<dyn Physical>>;
+pub type PhysicalRef = Rc<RefCell<dyn Physical>>;
 
-pub type VerletSolverRef = Arc<RwLock<VerletSolver>>;
+pub type VerletSolverRef = Rc<RefCell<VerletSolver>>;
 
 pub fn newSdlWindowRef(window: SdlWindow) -> SdlWindowRef {
-	Arc::new(RwLock::new(window))
+	Rc::new(RefCell::new(window))
 }
 
 pub fn newGlRef(gl: GlowContext) -> GlRef {
@@ -36,21 +38,21 @@ pub fn newShaderRef(shader: Shader) -> ShaderRef {
 }
 
 pub fn newLineRendererRef(renderer: LineRenderer) -> LineRendererRef {
-	Arc::new(RwLock::new(renderer))
+	Rc::new(RefCell::new(renderer))
 }
 
 pub fn newRenderableRef<T: Renderable + 'static>(renderable: T) -> RenderableRef {
-	Arc::new(RwLock::new(renderable))
+	Rc::new(RefCell::new(renderable))
 }
 
 pub fn newMeshRef(mesh: Mesh) -> MeshRef {
-	Arc::new(RwLock::new(mesh))
+	Rc::new(RefCell::new(mesh))
 }
 
 pub fn newPhysicalRef<P: Physical + 'static>(physical: P) -> PhysicalRef {
-	Arc::new(RwLock::new(physical))
+	Rc::new(RefCell::new(physical))
 }
 
 pub fn newVerletSolverRef(solver: VerletSolver) -> VerletSolverRef {
-	Arc::new(RwLock::new(solver))
+	Rc::new(RefCell::new(solver))
 }

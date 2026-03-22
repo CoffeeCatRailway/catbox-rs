@@ -1,4 +1,4 @@
-use glam::{Mat4, Quat, Vec3};
+use glam::{EulerRot, Mat4, Quat, Vec3};
 
 #[derive(Copy, Clone)]
 pub struct Transform {
@@ -34,6 +34,12 @@ impl Transform {
 		Mat4::from_quat(self.rotation)
 	}
 	
+	// todo: test
+	pub fn setRotationFromDirection(&mut self, dirVec: Vec3) {
+		self.rotation = Quat::from_euler(EulerRot::XYZ, dirVec.x, dirVec.y, dirVec.z);
+		self.calculateLocalVectors();
+	}
+	
 	pub fn getScaleMatrix(&self) -> Mat4 {
 		Mat4::from_scale(self.scale)
 	}
@@ -67,6 +73,8 @@ impl Transform {
 		self.localRight = self.calculateLocalRight();
 		self.localUp = self.calculateLocalUp();
 	}
+	
+	// todo: rotate global/local
 	
 	pub fn translateGlobal(&mut self, translation: Vec3) {
 		self.position += translation;
