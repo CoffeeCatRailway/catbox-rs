@@ -1,6 +1,8 @@
+use std::time::Instant;
 use bool_flags::Flags8;
 use dear_imgui_rs::{Ui, WindowFlags};
 use glam::{vec3, Mat4, Vec3};
+use tracing::info;
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
 use crate::simulation::transform::Transform;
@@ -33,6 +35,11 @@ pub trait Physical {
 	fn getColor(&self) -> Vec3; // todo: move shape and collision to separate components
 }
 
+struct Edge {
+	physical: PhysicalRef,
+	isLeft: bool,
+}
+
 // const F_DESTROYED: u8 = 0;
 const F_PAUSED: u8 = 1;
 const F_FORCE_STEP: u8 = 2;
@@ -44,12 +51,15 @@ pub struct Solver {
 	pub gravity: Vec3,
 	pub worldSize: Vec3,
 	
+	edges: Vec<Edge>,
 	physicals: Vec<PhysicalRef>,
 	
 	subSteps: u32,
 	updatesDone: u32,
 	
 	flags: Flags8,
+	
+	sortTime: f32,
 }
 
 impl Solver {
@@ -88,12 +98,14 @@ impl Solver {
 			gravity: Vec3::ZERO,
 			worldSize,
 			
-			physicals: vec![],
+			edges: Vec::new(),
+			physicals: Vec::new(),
 			
 			subSteps: 8,
 			updatesDone: 0,
 			
 			flags,
+			sortTime: 0.0,
 		})
 	}
 	
@@ -126,20 +138,88 @@ impl Solver {
 	}
 	
 	pub fn addPhysical(&mut self, physical: PhysicalRef) {
+		self.edges.push(Edge {
+			physical: physical.clone(),
+			isLeft: true,
+		});
+		self.edges.push(Edge {
+			physical: physical.clone(),
+			isLeft: false,
+		});
 		self.physicals.push(physical);
 	}
 	
-	fn sortPhysicals(&mut self) {
-		self.physicals.sort_by(|a, b| {
-			let a = a.borrow();
-			let b = b.borrow();
-			
-			let p1 = a.transform().position.x - a.transform().scale.x;
-			let p2 = b.transform().position.x - b.transform().scale.x;
-			
-			p1.total_cmp(&p2)
-		});
+	fn sortEdges(&mut self) {
+		let now = Instant::now();
+		
+		// ~0.269025ms, average from 8 substeps with 800 physicals, done until stable state
+		// default rust sort
+		// self.edges.sort_by(|a, b| {
+		// 	let ax = {
+		// 		let ap = a.physical.borrow();
+		// 		if a.isLeft {
+		// 			ap.transform().position.x - ap.transform().scale.x * 0.5
+		// 		} else {
+		// 			ap.transform().position.x + ap.transform().scale.x * 0.5
+		// 		}
+		// 	};
+		// 	let bx = {
+		// 		let bp = b.physical.borrow();
+		// 		if b.isLeft {
+		// 			bp.transform().position.x - bp.transform().scale.x * 0.5
+		// 		} else {
+		// 			bp.transform().position.x + bp.transform().scale.x * 0.5
+		// 		}
+		// 	};
+		// 	ax.total_cmp(&bx)
+		// });
+		
+		// ~0.14825ms, average from 8 substeps with 800 physicals, done until stable state
+		// insertion sort
+		for i in 1..self.edges.len() {
+			for j in (0..i).rev() { // j=i-1; j >= 0; j--
+				let ax = {
+					let a = &self.edges[j];
+					let ap = a.physical.borrow();
+					if a.isLeft {
+						ap.transform().position.x - ap.transform().scale.x * 0.5
+					} else {
+						ap.transform().position.x + ap.transform().scale.x * 0.5
+					}
+				};
+		
+				let bx = {
+					let b = &self.edges[j + 1];
+					let bp = b.physical.borrow();
+					if b.isLeft {
+						bp.transform().position.x - bp.transform().scale.x * 0.5
+					} else {
+						bp.transform().position.x + bp.transform().scale.x * 0.5
+					}
+				};
+		
+				if ax < bx {
+					break;
+				}
+				self.edges.swap(j, j + 1);
+			}
+		}
+		
+		let end = now.elapsed().as_secs_f32() * 1000.0;
+		self.sortTime += end;
 	}
+	
+	// fn sortPhysicals(&mut self) {
+	// 	self.physicals.sort_by(|a, b| {
+	// 		let a = a.borrow();
+	// 		let b = b.borrow();
+	//
+	// 		let p1 = a.transform().position.x - a.transform().scale.x;
+	// 		let p2 = b.transform().position.x - b.transform().scale.x;
+	//
+	// 		p1.total_cmp(&p2)
+	// 	});
+	// }
 	
 	fn collideWithPhysical(&self, physical1: PhysicalRef, physical2: PhysicalRef) {
 		if let Ok(mut physical1) = physical1.try_borrow_mut() {
@@ -195,24 +275,24 @@ impl Solver {
 	}
 	
 	fn collide(&self, dt: f32) {
-		for i in 0..self.physicals.len() {
-			let physical1 = self.physicals[i].clone();
-			for j in (i + 1)..self.physicals.len() {
-				let physical2 = self.physicals[j].clone();
-				let skip = {
-					let p1 = physical1.borrow();
-					let p2 = physical2.borrow();
-					(p2.transform().position.x - p2.transform().scale.x * 0.5) >
-						(p1.transform().position.x + p1.transform().scale.x * 0.5)
-				};
-				if skip {
-					break;
+		let mut touching: Vec<PhysicalRef> = Vec::new();
+		for edge in self.edges.iter() {
+			if edge.isLeft {
+				for other in touching.iter() {
+					self.collideWithPhysical(other.clone(), edge.physical.clone());
 				}
-				self.collideWithPhysical(physical1.clone(), physical2.clone());
+				self.collideWithBoundary(dt, edge.physical.clone());
+				touching.push(edge.physical.clone());
+			} else {
+				if let Some(index) = touching.iter().position(|x| x.borrow().transform().position == edge.physical.borrow().transform().position) {
+					touching.remove(index);
+				}
 			}
-			
-			self.collideWithBoundary(dt, physical1);
 		}
+		
+		// for physical in self.physicals.iter() {
+		// 	self.collideWithBoundary(dt, physical.clone());
+		// }
 	}
 	
 	fn updatePhysicals(&self, dt: f32) {
@@ -224,7 +304,8 @@ impl Solver {
 	}
 	
 	fn subStep(&mut self, dt: f32) {
-		self.sortPhysicals();
+		self.sortEdges();
+		// self.sortPhysicals();
 		self.collide(dt);
 		self.updatePhysicals(dt);
 	}
@@ -235,6 +316,9 @@ impl Solver {
 			for _ in 0..self.subSteps {
 				self.subStep(subStepDt);
 			}
+			
+			info!("Avg sort time: {}ms", self.sortTime * (1.0 / self.subSteps as f32));
+			self.sortTime = 0.0;
 			
 			self.updatesDone += 1;
 			self.forceStep(false);
