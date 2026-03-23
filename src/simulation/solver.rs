@@ -209,18 +209,6 @@ impl Solver {
 		self.sortTime += end;
 	}
 	
-	// fn sortPhysicals(&mut self) {
-	// 	self.physicals.sort_by(|a, b| {
-	// 		let a = a.borrow();
-	// 		let b = b.borrow();
-	//
-	// 		let p1 = a.transform().position.x - a.transform().scale.x;
-	// 		let p2 = b.transform().position.x - b.transform().scale.x;
-	//
-	// 		p1.total_cmp(&p2)
-	// 	});
-	// }
-	
 	fn collideWithPhysical(&self, physical1: PhysicalRef, physical2: PhysicalRef) {
 		if let Ok(mut physical1) = physical1.try_borrow_mut() {
 			if let Ok(mut physical2) = physical2.try_borrow_mut() {
@@ -289,10 +277,6 @@ impl Solver {
 				}
 			}
 		}
-		
-		// for physical in self.physicals.iter() {
-		// 	self.collideWithBoundary(dt, physical.clone());
-		// }
 	}
 	
 	fn updatePhysicals(&self, dt: f32) {
@@ -305,7 +289,6 @@ impl Solver {
 	
 	fn subStep(&mut self, dt: f32) {
 		self.sortEdges();
-		// self.sortPhysicals();
 		self.collide(dt);
 		self.updatePhysicals(dt);
 	}
