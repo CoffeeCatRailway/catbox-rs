@@ -7,7 +7,7 @@ use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::Mesh;
 use crate::graphics::render_manager::Renderable;
 use crate::graphics::shader::Shader;
-use crate::simulation::verlet_solver::{Physical, VerletSolver};
+use crate::simulation::solver::{Physical, Solver};
 
 pub type SdlWindowRef = Rc<RefCell<SdlWindow>>;
 
@@ -23,7 +23,7 @@ pub type MeshRef = Rc<RefCell<Mesh>>;
 
 pub type PhysicalRef = Rc<RefCell<dyn Physical>>;
 
-pub type VerletSolverRef = Rc<RefCell<VerletSolver>>;
+pub type SolverRef = Rc<RefCell<Solver>>;
 
 pub fn newSdlWindowRef(window: SdlWindow) -> SdlWindowRef {
 	Rc::new(RefCell::new(window))
@@ -53,6 +53,6 @@ pub fn newPhysicalRef<P: Physical + 'static>(physical: P) -> PhysicalRef {
 	Rc::new(RefCell::new(physical))
 }
 
-pub fn newVerletSolverRef(solver: VerletSolver) -> VerletSolverRef {
+pub fn newSolverRef(solver: Solver) -> SolverRef {
 	Rc::new(RefCell::new(solver))
 }

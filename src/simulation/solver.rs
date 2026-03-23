@@ -37,7 +37,7 @@ pub trait Physical {
 const F_PAUSED: u8 = 1;
 const F_FORCE_STEP: u8 = 2;
 
-pub struct VerletSolver {
+pub struct Solver {
 	mesh: MeshRef,
 	shader: ShaderRef,
 	
@@ -52,8 +52,8 @@ pub struct VerletSolver {
 	flags: Flags8,
 }
 
-impl VerletSolver {
-	pub fn new(worldSize: Vec3, gl: GlRef, shader: ShaderRef) -> Result<VerletSolver, String> {
+impl Solver {
+	pub fn new(worldSize: Vec3, gl: GlRef, shader: ShaderRef) -> Result<Solver, String> {
 		let mesh = {
 			let vertices = vec![
 				Vertex {
@@ -273,7 +273,7 @@ impl VerletSolver {
 	}
 }
 
-impl Renderable for VerletSolver {
+impl Renderable for Solver {
 	fn meshRef(&self) -> &MeshRef {
 		&self.mesh
 	}

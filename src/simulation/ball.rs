@@ -4,8 +4,8 @@ use glam::{vec3, Mat4, Vec3};
 use crate::graphics::mesh::{InstanceMeshData, Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
 use crate::simulation::transform::Transform;
-use crate::simulation::verlet_solver::Physical;
-use crate::types::{newMeshRef, GlRef, MeshRef, ShaderRef, VerletSolverRef};
+use crate::simulation::solver::Physical;
+use crate::types::{newMeshRef, GlRef, MeshRef, ShaderRef, SolverRef};
 
 const F_FIXED: u8 = 0;
 const F_VISIBLE: u8 = 1;
@@ -15,11 +15,11 @@ const F_VISIBLE: u8 = 1;
 pub struct BallRenderable {
 	mesh: MeshRef,
 	shader: ShaderRef,
-	verletSolver: VerletSolverRef,
+	verletSolver: SolverRef,
 }
 
 impl BallRenderable {
-	pub fn new(gl: GlRef, shader: ShaderRef, verletSolver: VerletSolverRef) -> Self {
+	pub fn new(gl: GlRef, shader: ShaderRef, verletSolver: SolverRef) -> Self {
 		let (vertices, indices) = Self::data();
 		let mesh = Mesh::instance(gl, vertices, Some(indices));
 		Self {

@@ -19,8 +19,8 @@ use crate::graphics::shaders;
 use crate::simulation::ball::{Ball, BallRenderable};
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 use crate::simulation::transform::Transform;
-use crate::simulation::verlet_solver::{Physical, VerletSolver};
-use crate::types::{newGlRef, newLineRendererRef, newPhysicalRef, newRenderableRef, newSdlWindowRef, newVerletSolverRef, GlRef, LineRendererRef, SdlWindowRef, VerletSolverRef};
+use crate::simulation::solver::Solver;
+use crate::types::{newGlRef, newLineRendererRef, newPhysicalRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, LineRendererRef, SdlWindowRef, SolverRef};
 use crate::window::input_helper::InputHelper;
 
 const F_RUNNING: u8 = 0;
@@ -51,7 +51,7 @@ pub struct CatBox {
 	
 	imgui: Imgui,
 	
-	verletSolver: VerletSolverRef,
+	solver: SolverRef,
 	lineRenderer: LineRendererRef,
 	renderManager: RenderManager,
 	clearColor: [f32; 4],
@@ -143,9 +143,9 @@ impl CatBox {
 		let baseShader = shaders::baseShader(gl.clone())?;
 		let instanceShader = shaders::instanceShader(gl.clone())?;
 		
-		let verletSolver = newVerletSolverRef(VerletSolver::new(Vec3::splat(1000.0), gl.clone(), baseShader)?);
+		let solver = newSolverRef(Solver::new(Vec3::splat(1000.0), gl.clone(), baseShader)?);
 		let mut renderManager = RenderManager::new();
-		renderManager.addRenderable(verletSolver.clone());
+		renderManager.addRenderable(solver.clone());
 		
 		let camera = Camera {
 			frustum: Frustum {
@@ -161,7 +161,7 @@ impl CatBox {
 		};
 		
 		// Setup physicals
-		let a: u32 = 400;
+		let a: u32 = 900;
 		let sq = (a as f32).sqrt();
 		let s = 10.0;
 		let sh = s * 0.5;
@@ -180,10 +180,10 @@ impl CatBox {
 			ball.color.z = 0.0;
 			
 			let ball = newPhysicalRef(ball);
-			verletSolver.borrow_mut().addPhysical(ball);
+			solver.borrow_mut().addPhysical(ball);
 		}
 		
-		let ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone(), verletSolver.clone());
+		let ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone(), solver.clone());
 		ballRenderable.meshRef().borrow_mut().upload(instanceShader.clone())?;
 		
 		let ballRenderable = newRenderableRef(ballRenderable);
@@ -204,7 +204,7 @@ impl CatBox {
 				renderer: imguiRenderer,
 			},
 			
-			verletSolver,
+			solver,
 			lineRenderer: newLineRendererRef(lineRenderer),
 			renderManager,
 			clearColor: [0.27, 0.59, 0.27, 1.0],
@@ -305,7 +305,7 @@ impl CatBox {
 				self.lastMousePos = self.inputHelper.mousePos();
 			}
 			
-			self.verletSolver.borrow_mut().update(OPTIMAL_DT);
+			self.solver.borrow_mut().update(OPTIMAL_DT);
 			
 			// Imgui
 			dear_imgui_sdl3::sdl3_new_frame(&mut self.imgui.context);
@@ -368,7 +368,7 @@ impl CatBox {
 				  }
 			  });
 			
-			self.verletSolver.borrow_mut().gui(ui, OPTIMAL_DT);
+			self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
 			
 			if updateProjection {
 				self.updateProjectionMatrix();
