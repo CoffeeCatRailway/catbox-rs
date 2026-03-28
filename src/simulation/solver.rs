@@ -41,6 +41,7 @@ struct Edge {
 }
 
 // const F_DESTROYED: u8 = 0;
+const F_DESTROYED: u8 = 0;
 const F_PAUSED: u8 = 1;
 const F_FORCE_STEP: u8 = 2;
 
@@ -109,9 +110,9 @@ impl Solver {
 		})
 	}
 	
-	// pub fn isDestroyed(&self) -> bool {
-	// 	self.flags.get(F_DESTROYED)
-	// }
+	pub fn isDestroyed(&self) -> bool {
+		self.flags.get(F_DESTROYED)
+	}
 	
 	pub fn isPaused(&self) -> bool {
 		self.flags.get(F_PAUSED)
@@ -337,6 +338,12 @@ impl Solver {
 	
 	pub fn getPhysicals(&self) -> &Vec<PhysicalRef> {
 		&self.physicals
+	}
+
+	// Semi-Redundant since render manager destroys all renderables, here in case of multiple solvers
+	pub fn destroy(&mut self) {
+		self.flags.set(F_DESTROYED);
+		self.mesh.borrow_mut().destroy();
 	}
 }
 

@@ -1,3 +1,4 @@
+use bool_flags::Flags8;
 use glam::Mat4;
 use crate::types::{MeshRef, RenderableRef, ShaderRef};
 
@@ -26,15 +27,23 @@ pub trait Renderable {
 	fn visible(&self) -> bool {
 		true
 	}
+	
+	fn destroy(&mut self) {
+		self.meshRef().borrow_mut().destroy();
+	}
 }
 
+const F_DESTROYED: u8 = 0;
+
 pub struct RenderManager {
+	flags: Flags8,
 	renderables: Vec<RenderableRef>
 }
 
 impl RenderManager {
 	pub fn new() -> Self {
 		Self {
+			flags: Flags8::none(),
 			renderables: Vec::new(),
 		}
 	}
@@ -51,5 +60,12 @@ impl RenderManager {
 			}
 		}
 		Ok(())
+	}
+	
+	pub fn destroy(&mut self) {
+		self.flags.set(F_DESTROYED);
+		for renderable in self.renderables.iter() {
+			renderable.borrow_mut().destroy();
+		}
 	}
 }
