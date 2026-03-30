@@ -3,6 +3,7 @@ use bool_flags::Flags8;
 use glam::{vec3, Mat4, Vec3};
 use crate::graphics::mesh::{InstanceMeshData, Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
+use crate::simulation::solver;
 use crate::simulation::transform::Transform;
 use crate::simulation::solver::Physical;
 use crate::types::{newMeshRef, GlRef, MeshRef, ShaderRef, SolverRef};
@@ -75,7 +76,7 @@ impl Renderable for BallRenderable {
 		
 		let data: Vec<InstanceMeshData> = self.verletSolver.borrow()
 			.getPhysicals().iter()
-			.map(|physical| {
+			.map(|(_, physical)| {
 				let physical = physical.borrow();
 				InstanceMeshData {
 					matrix: physical.transform().getModelMatrix(),
@@ -97,6 +98,7 @@ impl Drop for BallRenderable {
 
 /// Physics object
 pub struct Ball {
+	id: usize,
 	pub transform: Transform,
 	pub lastTransform: Transform,
 	pub acceleration: Vec3,
@@ -111,6 +113,7 @@ impl Ball {
 		// flags.set(F_FIXED);
 		flags.set(F_VISIBLE);
 		Self {
+			id: solver::newId(),
 			transform: Default::default(),
 			lastTransform: Default::default(),
 			acceleration: Vec3::ZERO,
@@ -183,5 +186,9 @@ impl Physical for Ball {
 	
 	fn getColor(&self) -> Vec3 {
 		self.color
+	}
+
+	fn id(&self) -> usize {
+		self.id
 	}
 }
