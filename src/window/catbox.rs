@@ -161,7 +161,7 @@ impl CatBox {
 		};
 		
 		// Setup physicals
-		let a: u32 = 800;
+		let a: u32 = 20*20;
 		let sq = (a as f32).sqrt();
 		let s = 10.0;
 		let sh = s * 0.5;
@@ -171,9 +171,9 @@ impl CatBox {
 			let mut ball = Ball::new();
 			ball.transform.position.x = x * s - sq * sh + sh;
 			ball.transform.position.y = y * s - sq * sh + sh;
-			ball.lastTransform.position = ball.transform.position;
+			ball.lastTransform.position = ball.transform.position - ball.transform.position.normalize_or_zero() * OPTIMAL_DT * 10.0;
 			ball.transform.scale *= s;
-			ball.elasticity = 0.5;
+			// ball.elasticity = 0.5;
 			
 			ball.color.x = x / sq;
 			ball.color.y = y / sq;

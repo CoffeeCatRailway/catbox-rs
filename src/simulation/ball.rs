@@ -125,6 +125,10 @@ impl Ball {
 }
 
 impl Physical for Ball {
+	fn id(&self) -> usize {
+		self.id
+	}
+	
 	fn transform(&self) -> &Transform {
 		&self.transform
 	}
@@ -186,9 +190,5 @@ impl Physical for Ball {
 	
 	fn getColor(&self) -> Vec3 {
 		self.color
-	}
-
-	fn id(&self) -> usize {
-		self.id
 	}
 }

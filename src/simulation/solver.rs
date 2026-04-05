@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::atomic::AtomicUsize;
 use std::time::Instant;
 use bool_flags::Flags8;
-use dear_imgui_rs::{Ui, WindowFlags};
+use dear_imgui_rs::{TreeNodeFlags, Ui, WindowFlags};
 use glam::{vec3, Mat4, Vec3};
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
@@ -17,6 +17,8 @@ pub fn newId() -> usize {
 
 #[allow(unused)]
 pub trait Physical {
+	fn id(&self) -> usize;
+
 	fn transform(&self) -> &Transform;
 	
 	fn transformMut(&mut self) -> &mut Transform;
@@ -40,51 +42,12 @@ pub trait Physical {
 	fn getVelocity(&self, dt: f32) -> Vec3;
 	
 	fn getColor(&self) -> Vec3; // todo: move shape and collision to separate components
-
-	fn id(&self) -> usize;
-}
-
-enum Axis {
-	X,
-	Y,
-	#[allow(unused)]
-	Z,
 }
 
 struct Edge {
-	physical: PhysicalRef,
+	id: usize,
 	isMinimum: bool,
-	axis: Axis,
-}
-
-impl Edge {
-	pub fn coordinate(&self) -> f32 {
-		let physical = self.physical.borrow();
-  		let transform = physical.transform();
-		match self.axis {
-			Axis::X => {
-				if self.isMinimum {
-					transform.position.x - transform.scale.x * 0.5
-				} else {
-					transform.position.x + transform.scale.x * 0.5
-				}
-			}
-			Axis::Y => {
-				if self.isMinimum {
-					transform.position.y - transform.scale.y * 0.5
-				} else {
-					transform.position.y + transform.scale.y * 0.5
-				}
-			}
-			Axis::Z => {
-				if self.isMinimum {
-					transform.position.z - transform.scale.z * 0.5
-				} else {
-					transform.position.z + transform.scale.z * 0.5
-				}
-			}
-		}
-	}
+	coord: f32,
 }
 
 const F_DESTROYED: u8 = 0;
@@ -106,7 +69,12 @@ pub struct Solver {
 	updatesDone: u32,
 	
 	flags: Flags8,
-	
+
+	sweepAxis: String,
+	collisionChecks: usize,
+
+	calcEdgeCoordsAccum: f32,
+	calcEdgeCoordsTime: f32,
 	sortTimeAccum: f32,
 	sortTime: f32,
 	sweepTimeAccum: f32,
@@ -161,6 +129,11 @@ impl Solver {
 			
 			flags,
 
+			sweepAxis: "X".to_string(),
+			collisionChecks: 0,
+
+			calcEdgeCoordsAccum: 0.0,
+			calcEdgeCoordsTime: 0.0,
 			sortTimeAccum: 0.0,
 			sortTime: 0.0,
 			sweepTimeAccum: 0.0,
@@ -200,126 +173,33 @@ impl Solver {
 	}
 	
 	pub fn addPhysical(&mut self, physical: PhysicalRef) {
-		self.edgesX.push(Edge {
-			physical: physical.clone(),
-			isMinimum: true,
-			axis: Axis::X,
-		});
-		self.edgesX.push(Edge {
-			physical: physical.clone(),
-			isMinimum: false,
-			axis: Axis::X,
-		});
-		self.edgesY.push(Edge {
-			physical: physical.clone(),
-			isMinimum: true,
-			axis: Axis::Y,
-		});
-		self.edgesY.push(Edge {
-			physical: physical.clone(),
-			isMinimum: false,
-			axis: Axis::Y,
-		});
-		let id = physical.borrow().id();
+		let id = {
+			let borrow = physical.borrow();
+			let id = physical.borrow().id();
+			let transform = borrow.transform();
+			self.edgesX.push(Edge {
+				id,
+				isMinimum: true,
+				coord: transform.position.x - transform.scale.x * 0.5,
+			});
+			self.edgesX.push(Edge {
+				id,
+				isMinimum: false,
+				coord: transform.position.x + transform.scale.x * 0.5,
+			});
+			self.edgesY.push(Edge {
+				id,
+				isMinimum: true,
+				coord: transform.position.y - transform.scale.y * 0.5,
+			});
+			self.edgesY.push(Edge {
+				id,
+				isMinimum: false,
+				coord: transform.position.y + transform.scale.y * 0.5,
+			});
+			id
+		};
 		self.physicals.insert(id, physical);
-	}
-
-	fn insertionSort<T, F>(vec: &mut Vec<T>, mut compare: F)
-	where
-		F: FnMut(&T, &T) -> bool,
-	{
-		// Taken with 800 physicals and 1,-400 gravity
-		// ~10.930447ms first sort
-		// ~0.15062812ms second sort and onwards
-		let n = 1..vec.len();
-		for i in n {
-			let mut j = i;
-			while j > 0 && compare(&vec[j], &vec[j - 1]) {
-				vec.swap(j, j - 1);
-				j -= 1;
-			}
-		}
-
-		// Taken with 800 physicals and 1,-400 gravity
-		// ~10.008063ms first
-		// ~2.7993727ms second-fifth
-		// lowers afterwards
-		// for i in 1..vec.len() {
-		// 	for j in (0..i).rev() {// j=i-1; j >= 0; j--
-		// 		if compare(&vec[j], &vec[j + 1]) {
-		// 			break;
-		// 		}
-		// 		vec.swap(j, j + 1);
-		// 	}
-		// }
-	}
-
-	
-	fn sortEdges(&mut self) {
-		let now = Instant::now();
-		
-		// ~0.269025ms, average from 8 substeps with 800 physicals, done until stable state
-		// default rust sort
-		// self.edges.sort_by(|a, b| {
-		// 	let ax = {
-		// 		let ap = a.physical.borrow();
-		// 		if a.isLeft {
-		// 			ap.transform().position.x - ap.transform().scale.x * 0.5
-		// 		} else {
-		// 			ap.transform().position.x + ap.transform().scale.x * 0.5
-		// 		}
-		// 	};
-		// 	let bx = {
-		// 		let bp = b.physical.borrow();
-		// 		if b.isLeft {
-		// 			bp.transform().position.x - bp.transform().scale.x * 0.5
-		// 		} else {
-		// 			bp.transform().position.x + bp.transform().scale.x * 0.5
-		// 		}
-		// 	};
-		// 	ax.total_cmp(&bx)
-		// });
-		
-		// ~0.14825ms, average from 8 substeps with 800 physicals, done until stable state
-		// insertion sort
-		// for i in 1..self.edges.len() {
-		// 	for j in (0..i).rev() { // j=i-1; j >= 0; j--
-		// 		let ax = {
-		// 			let a = &self.edges[j];
-		// 			let ap = a.physical.borrow();
-		// 			if a.isMinimum {
-		// 				ap.transform().position.x - ap.transform().scale.x * 0.5
-		// 			} else {
-		// 				ap.transform().position.x + ap.transform().scale.x * 0.5
-		// 			}
-		// 		};
-		//
-		// 		let bx = {
-		// 			let b = &self.edges[j + 1];
-		// 			let bp = b.physical.borrow();
-		// 			if b.isMinimum {
-		// 				bp.transform().position.x - bp.transform().scale.x * 0.5
-		// 			} else {
-		// 				bp.transform().position.x + bp.transform().scale.x * 0.5
-		// 			}
-		// 		};
-		//
-		// 		if ax < bx {
-		// 			break;
-		// 		}
-		// 		self.edges.swap(j, j + 1);
-		// 	}
-		// }
-
-		Self::insertionSort(&mut self.edgesX, |a, b| {
-			a.coordinate() < b.coordinate()
-		});
-		Self::insertionSort(&mut self.edgesY, |a, b| {
-			a.coordinate() < b.coordinate()
-		});
-		
-		let end = now.elapsed().as_secs_f32() * 1000.0;
-		self.sortTimeAccum += end;
 	}
 	
 	fn collideWithPhysical(&self, physical1: PhysicalRef, physical2: PhysicalRef) {
@@ -374,13 +254,43 @@ impl Solver {
 			}
 		}
 	}
+	
+	fn insertionSort<T, F>(vec: &mut Vec<T>, mut compare: F)
+	where
+		F: FnMut(&T, &T) -> bool,
+	{
+		// Taken with 800 physicals and 1,-400 gravity
+		// ~10.930447ms first sort
+		// ~0.15062812ms second sort and onwards
+		let n = 1..vec.len();
+		for i in n {
+			let mut j = i;
+			while j > 0 && compare(&vec[j], &vec[j - 1]) {
+				vec.swap(j, j - 1);
+				j -= 1;
+			}
+		}
 
-	fn sweepEdges(&self, edges: &Vec<Edge>) -> Vec<(usize, usize)> {
+		// Taken with 800 physicals and 1,-400 gravity
+		// ~10.008063ms first
+		// ~2.7993727ms second-fifth
+		// lowers afterwards
+		// for i in 1..vec.len() {
+		// 	for j in (0..i).rev() {// j=i-1; j >= 0; j--
+		// 		if compare(&vec[j], &vec[j + 1]) {
+		// 			break;
+		// 		}
+		// 		vec.swap(j, j + 1);
+		// 	}
+		// }
+	}
+
+	fn sweepEdges(edges: &Vec<Edge>) -> Vec<(usize, usize)> {
 		let mut pairs = Vec::<(usize, usize)>::new();
 
 		let mut touching = Vec::<usize>::new();
 		for edge in edges.iter() {
-			let edgeId = edge.physical.borrow().id();
+			let edgeId = edge.id;
 			if edge.isMinimum {
 				for other in touching.iter() {
 					let other = *other;
@@ -397,8 +307,65 @@ impl Solver {
 
 		pairs
 	}
+
+	fn calcVarianceForEdges(edges: &Vec<Edge>) -> f32 {
+		let mut sum = 0.0;
+		for edge in edges.iter() {
+			sum += edge.coord;
+		}
+		let mean = sum / edges.len() as f32;
+
+		let mut squaredDiffSum = 0.0;
+		for edge in edges.iter() {
+			let diff = edge.coord - mean;
+			squaredDiffSum += diff * diff;
+		}
+
+		squaredDiffSum / edges.len() as f32
+	}
+
+	fn calcEdgeCoords(&mut self) {
+		let now = Instant::now();
+
+		for i in 0..self.edgesX.len() {
+			let edgeX = &mut self.edgesX[i];
+			let (px, sx) = {
+				let borrow = self.physicals[&edgeX.id].borrow();
+				let transform = borrow.transform();
+				(transform.position.x, transform.scale.x * 0.5)
+			};
+			if edgeX.isMinimum {
+				edgeX.coord = px - sx;
+			} else {
+				edgeX.coord = px + sx;
+			}
+
+			let edgeY = &mut self.edgesY[i];
+			let (py, sy) = {
+				let borrow = self.physicals[&edgeY.id].borrow();
+				let transform = borrow.transform();
+				(transform.position.y, transform.scale.y * 0.5)
+			};
+			if edgeY.isMinimum {
+				edgeY.coord = py - sy;
+			} else {
+				edgeY.coord = py + sy;
+			}
+		}
+
+		let end = now.elapsed().as_secs_f32() * 1000.0;
+		self.calcEdgeCoordsAccum += end;
+	}
 	
-	fn collide(&mut self, _dt: f32) {
+	fn broadPhaseCollisionCheck(&mut self) {
+		let now = Instant::now();
+
+		Self::insertionSort(&mut self.edgesX, |a, b| a.coord < b.coord);
+		Self::insertionSort(&mut self.edgesY, |a, b| a.coord < b.coord);
+
+		let end = now.elapsed().as_secs_f32() * 1000.0;
+		self.sortTimeAccum += end;
+
 		let now = Instant::now();
 
 		// let mut touching: Vec<usize> = Vec::new();
@@ -417,18 +384,31 @@ impl Solver {
 		// 		touching.retain(|x| *x != edgeId);
 		// 	}
 		// }
-
-		let pairsX = self.sweepEdges(&self.edgesX).into_iter().collect::<HashSet<_>>();
-		let pairsY = self.sweepEdges(&self.edgesY);//.into_iter().collect::<HashSet<_>>();
+		
+		let pairs = {
+			let varianceX = Self::calcVarianceForEdges(&self.edgesX);
+			let varianceY = Self::calcVarianceForEdges(&self.edgesY);
+			if varianceX > varianceY {
+				self.sweepAxis = "X".to_string();
+				Self::sweepEdges(&self.edgesX)
+			} else {
+				self.sweepAxis = "Y".to_string();
+				Self::sweepEdges(&self.edgesY)
+			}
+		};
+		self.collisionChecks = pairs.len();
+		
+		// let pairsX = Self::sweepEdges(&self.edgesX);//.into_iter().collect::<HashSet<_>>();
+		// let pairsY = self.sweepEdges(&self.edgesY);//.into_iter().collect::<HashSet<_>>();
+		// let pairs = pairsY.into_iter().filter(|x| pairsX.contains(x)).collect::<Vec<_>>();
 		// let pairs = pairsX.intersection(&pairsY).collect::<HashSet<_>>();
-		let pairs = pairsY.into_iter().filter(|x| pairsX.contains(x)).collect::<Vec<_>>();
-		// println!("{} {} {}", pairsMin.len(), pairsMax.len(), pairs.len());
-		for (a, b) in pairs.iter() {
-			let physical1 = self.physicals.get(a).unwrap().clone();
-			let physical2 = self.physicals.get(b).unwrap().clone();
+		
+		for (a, b) in pairs.into_iter() {
+			let physical1 = self.physicals[&a].clone();
+			let physical2 = self.physicals[&b].clone();
 			self.collideWithPhysical(physical1, physical2);
 		}
-
+		
 		let end = now.elapsed().as_secs_f32() * 1000.0;
 		self.sweepTimeAccum += end;
 	}
@@ -448,8 +428,8 @@ impl Solver {
 	fn subStep(&mut self, dt: f32) {
 		let now = Instant::now();
 
-		self.sortEdges();
-		self.collide(dt);
+		self.calcEdgeCoords();
+		self.broadPhaseCollisionCheck();
 		self.updatePhysicals(dt);
 
 		let end = now.elapsed().as_secs_f32() * 1000.0;
@@ -473,6 +453,8 @@ impl Solver {
 			self.stepTime = end;
 
 			let timeRecip = 1.0 / self.subSteps as f32;
+			self.calcEdgeCoordsTime = self.calcEdgeCoordsAccum * timeRecip;
+			self.calcEdgeCoordsAccum = 0.0;
 			self.sortTime = self.sortTimeAccum * timeRecip;
 			self.sortTimeAccum = 0.0;
 			self.sweepTime = self.sweepTimeAccum * timeRecip;
@@ -493,6 +475,8 @@ impl Solver {
 				ui.separator();
 				
 				ui.text(format!("Physicals: {}", self.physicals.len()));
+				ui.text(format!("Sweep axis: {}", self.sweepAxis));
+				ui.text(format!("Collision checks: {}", self.collisionChecks));
 				ui.separator();
 
 				ui.text(format!("Sub steps: {}", self.subSteps));
@@ -510,12 +494,15 @@ impl Solver {
 					}
 				}
 				ui.separator();
-
-				ui.text("Keys: (*) = Averaged over sub steps");
-				ui.text(format!("Sort time*: {}ms", self.sortTime));
-				ui.text(format!("Sweep time*: {}ms", self.sweepTime));
-				ui.text(format!("Sub step time*: {}ms", self.subStepTime));
-				ui.text(format!("Step time: {}ms", self.stepTime));
+				
+				if ui.collapsing_header("Times", TreeNodeFlags::COLLAPSING_HEADER) {
+					ui.text("(*) = Averaged over sub steps");
+					ui.text(format!("Calc edge coords time*: {}ms", self.calcEdgeCoordsTime));
+					ui.text(format!("Sort time*: {}ms", self.sortTime));
+					ui.text(format!("Sweep time*: {}ms", self.sweepTime));
+					ui.text(format!("Sub step time*: {}ms", self.subStepTime));
+					ui.text(format!("Step time: {}ms", self.stepTime));
+				}
 			});
 	}
 	
