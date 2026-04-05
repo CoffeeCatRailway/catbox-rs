@@ -185,12 +185,16 @@ impl LineRenderer {
 		self.lastFloatsPushed
 	}
 	
-	pub fn enable(&mut self) {
-		self.flags.set(F_ENABLED);
+	pub fn enable(&mut self, enabled: bool) {
+		if enabled {
+			self.flags.set(F_ENABLED);
+		} else {
+			self.flags.clear(F_ENABLED);
+		}
 	}
 	
-	pub fn disable(&mut self) {
-		self.flags.clear(F_ENABLED);
+	pub fn isEnabled(&self) -> bool {
+		self.flags.get(F_ENABLED)
 	}
 }
 

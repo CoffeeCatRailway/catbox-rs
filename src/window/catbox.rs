@@ -138,7 +138,7 @@ impl CatBox {
 		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
 		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
-		lineRenderer.enable();
+		lineRenderer.enable(false);
 		
 		let baseShader = shaders::baseShader(gl.clone())?;
 		let instanceShader = shaders::instanceShader(gl.clone())?;
@@ -339,12 +339,14 @@ impl CatBox {
 			  .build(|| {
 				  if ui.collapsing_header("Line Renderer", TreeNodeFlags::COLLAPSING_HEADER) {
 					  let mut lineRendererMut = self.lineRenderer.borrow_mut();
-					  if ui.small_button("Enable##LineRenderer") {
-						  lineRendererMut.enable();
-					  }
-					  ui.same_line();
-					  if ui.small_button("Disable##LineRenderer") {
-						  lineRendererMut.disable();
+					  if !lineRendererMut.isEnabled() {
+						  if ui.small_button("Enable##LineRenderer") {
+							  lineRendererMut.enable(true);
+						  }
+					  } else {
+						  if ui.small_button("Disable##LineRenderer") {
+							  lineRendererMut.enable(false);
+						  }
 					  }
 					  ui.text(format!("Buffer capacity: {}", lineRendererMut.getBufferCapacity()));
 					  ui.text(format!("Last floats pushed: {}", lineRendererMut.getLastFloatsPushed()));
