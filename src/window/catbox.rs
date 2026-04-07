@@ -164,15 +164,12 @@ impl CatBox {
 		let a: u32 = 20*20;
 		let sq = (a as f32).sqrt();
 		let s = 10.0;
-		let sh = s * 0.5;
+		let sh = s / 2.0;
 		for i in 0..a {
 			let x = (i % sq as u32) as f32;
 			let y = (i / sq as u32) as f32;
-			let mut ball = Ball::new();
-			ball.transform.position.x = x * s - sq * sh + sh;
-			ball.transform.position.y = y * s - sq * sh + sh;
+			let mut ball = Ball::new(Vec3::new(x * s - sq * sh + sh, y * s - sq * sh + sh, 0.0), Vec3::splat(s));
 			ball.lastTransform.position = ball.transform.position - ball.transform.position.normalize_or_zero() * OPTIMAL_DT * 10.0;
-			ball.transform.scale *= s;
 			// ball.elasticity = 0.5;
 			
 			ball.color.x = x / sq;

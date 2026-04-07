@@ -39,7 +39,7 @@ impl BallRenderable {
 		for i in 0..segments {
 			let angle = i as f32 * TAU / segments as f32;
 			vertices.push(Vertex {
-				position: vec3(angle.cos(), angle.sin(), 0.0) * 0.5,
+				position: vec3(angle.cos(), angle.sin(), 0.0) / 2.0,
 				..Default::default()
 			});
 			
@@ -80,7 +80,7 @@ impl Renderable for BallRenderable {
 				let physical = physical.borrow();
 				InstanceMeshData {
 					matrix: physical.transform().getModelMatrix(),
-					color: physical.getColor().to_homogeneous(),
+					color: physical.color().to_homogeneous(),
 				}
 			}).collect();
 		mesh.updateInstanceData(&data)?;
@@ -102,23 +102,30 @@ pub struct Ball {
 	pub transform: Transform,
 	pub lastTransform: Transform,
 	pub acceleration: Vec3,
-	pub color: Vec3,
 	pub elasticity: f32,
+	pub color: Vec3,
 	flags: Flags8,
 }
 
 impl Ball {
-	pub fn new() -> Self {
+	pub fn new(pos: Vec3, size: Vec3) -> Self {
 		let mut flags = Flags8::none();
-		// flags.set(F_FIXED);
 		flags.set(F_VISIBLE);
 		Self {
 			id: solver::newId(),
-			transform: Default::default(),
-			lastTransform: Default::default(),
+			transform: Transform {
+				position: pos,
+				scale: size,
+				..Default::default()
+			},
+			lastTransform: Transform {
+				position: pos,
+				scale: size,
+				..Default::default()
+			},
 			acceleration: Vec3::ZERO,
-			color: Vec3::ONE,
 			elasticity: 1.0,
+			color: Vec3::ONE,
 			flags,
 		}
 	}
@@ -147,10 +154,6 @@ impl Physical for Ball {
 	
 	fn fixed(&self) -> bool {
 		self.flags.get(F_FIXED)
-	}
-	
-	fn elasticity(&self) -> f32 {
-		self.elasticity
 	}
 	
 	fn update(&mut self, dt: f32) {
@@ -188,7 +191,11 @@ impl Physical for Ball {
 		(self.transform.position - self.lastTransform.position) / dt
 	}
 	
-	fn getColor(&self) -> Vec3 {
+	fn elasticity(&self) -> f32 {
+		self.elasticity
+	}
+	
+	fn color(&self) -> Vec3 {
 		self.color
 	}
 }

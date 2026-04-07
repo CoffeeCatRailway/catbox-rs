@@ -11,7 +11,7 @@ pub fn screenToWorldSpace(cursor: Vec2, width: u32, height: u32, projectionMatri
 	let mut eye = projectionMatrix.inverse() * clip;
 	eye.z = -1.0;
 	eye.w = 0.0;
-	(viewMatrix.inverse() * eye).truncate() //.normalize()
+	(viewMatrix.inverse() * eye).truncate() //.normalize_or_zero()
 }
 
 #[allow(unused)]
@@ -82,8 +82,8 @@ impl Camera {
 			z: self.yaw.to_radians().sin() * self.pitch.to_radians().cos(),
 		};
 		self.transform.localFront = front;
-		self.transform.localRight = self.transform.localFront.cross(Vec3::Y).normalize();
-		self.transform.localUp = self.transform.localRight.cross(self.transform.localFront).normalize();
+		self.transform.localRight = self.transform.localFront.cross(Vec3::Y).normalize_or_zero();
+		self.transform.localUp = self.transform.localRight.cross(self.transform.localFront).normalize_or_zero();
 		self.transform.rotation = Quat::look_to_rh(self.transform.localFront, self.transform.localUp).normalize().inverse();
 	}
 	

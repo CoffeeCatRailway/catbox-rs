@@ -29,8 +29,6 @@ pub trait Physical {
 	
 	fn fixed(&self) -> bool;
 	
-	fn elasticity(&self) -> f32; // todo: try moving properties to separate component
-	
 	fn update(&mut self, dt: f32);
 	
 	fn accelerate(&mut self, acceleration: Vec3);
@@ -41,7 +39,9 @@ pub trait Physical {
 	
 	fn getVelocity(&self, dt: f32) -> Vec3;
 	
-	fn getColor(&self) -> Vec3; // todo: move shape and collision to separate components
+	fn elasticity(&self) -> f32; // todo: try moving properties to separate component
+	
+	fn color(&self) -> Vec3; // todo: move shape and collision to separate components
 }
 
 struct Edge {
@@ -205,21 +205,21 @@ impl Solver {
 	fn collideWithPhysical(&self, physical1: PhysicalRef, physical2: PhysicalRef) {
 		if let Ok(mut physical1) = physical1.try_borrow_mut() {
 			if let Ok(mut physical2) = physical2.try_borrow_mut() {
-				let r1 = physical1.transform().scale.x * 0.5;
-				let r2 = physical2.transform().scale.x * 0.5;
+				let r1 = physical1.transform().scale.x / 2.0;
+				let r2 = physical2.transform().scale.x / 2.0;
 				
 				let dir = physical1.transform().position - physical2.transform().position;
 				let dist = dir.length();
 				let minDist = r1 + r2;
 				if dist < minDist {
-					let mut dir = dir.normalize();
+					let mut dir = dir.normalize_or_zero();
 					if dist <= f32::EPSILON {
 						dir = Vec3::X;
 					}
 					
 					let massRatio1 = r1 / minDist;
 					let massRatio2 = r2 / minDist;
-					let force = 0.5 * ((physical1.elasticity() + physical2.elasticity()) * 0.5) * (dist - minDist);
+					let force = ((physical1.elasticity() + physical2.elasticity()) / 2.0) / 2.0 * (dist - minDist);
 					
 					if !physical1.fixed() {
 						physical1.transformMut().position -= dir * massRatio2 * force;
@@ -234,7 +234,7 @@ impl Solver {
 	
 	fn collideWithBoundary(&self, _dt: f32, physical: PhysicalRef) {
 		if let Ok(mut physical) = physical.try_borrow_mut() {
-			let halfSize = (self.worldSize - physical.transform().scale.x) * 0.5;
+			let halfSize = (self.worldSize - physical.transform().scale.x) / 2.0;
 			let velocity = physical.getVelocity(1.0) * physical.elasticity();
 			
 			if physical.transform().position.x < -halfSize.x {
