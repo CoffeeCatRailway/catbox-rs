@@ -4,6 +4,7 @@ use glam::{vec3, Mat4, Vec3};
 use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::{InstanceMeshData, Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
+use crate::simulation::aabb::AABB;
 use crate::simulation::solver;
 use crate::simulation::transform::Transform;
 use crate::simulation::solver::Physical;
@@ -109,6 +110,7 @@ pub struct Ball {
 	pub elasticity: f32,
 	pub color: Vec3,
 	flags: Flags8,
+	aabb: AABB,
 }
 
 impl Ball {
@@ -131,6 +133,10 @@ impl Ball {
 			elasticity: 1.0,
 			color: Vec3::ONE,
 			flags,
+			aabb: AABB {
+				position: pos - size / 2.0,
+				size,
+			}
 		}
 	}
 }
@@ -168,6 +174,9 @@ impl Physical for Ball {
 		self.lastTransform = self.transform;
 		self.transform.position += delta + self.acceleration * dt * dt;
 		self.acceleration = Vec3::ZERO;
+		
+		self.aabb.position = self.transform.position - self.transform.scale / 2.0;
+		self.aabb.size = self.transform.scale;
 	}
 	
 	fn accelerate(&mut self, acceleration: Vec3) {
@@ -201,5 +210,9 @@ impl Physical for Ball {
 	
 	fn color(&self) -> Vec3 {
 		self.color
+	}
+	
+	fn bounds(&self) -> AABB {
+		self.aabb
 	}
 }

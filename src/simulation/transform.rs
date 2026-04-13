@@ -1,6 +1,6 @@
 use glam::{EulerRot, Mat4, Quat, Vec3};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Transform {
 	pub position: Vec3,
 	pub rotation: Quat,

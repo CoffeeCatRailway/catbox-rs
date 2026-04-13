@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::atomic::AtomicUsize;
 use std::time::Instant;
 use bool_flags::Flags8;
@@ -6,6 +7,7 @@ use dear_imgui_rs::{TreeNodeFlags, Ui, WindowFlags};
 use glam::{vec3, Mat4, Vec3};
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
+use crate::simulation::aabb::AABB;
 use crate::simulation::transform::Transform;
 use crate::types::{newMeshRef, GlRef, MeshRef, PhysicalRef, ShaderRef};
 
@@ -17,8 +19,9 @@ pub fn newId() -> usize {
 
 #[allow(unused)]
 pub trait Physical {
+pub trait Physical: Debug {
 	fn id(&self) -> usize;
-
+	
 	fn transform(&self) -> &Transform;
 	
 	fn transformMut(&mut self) -> &mut Transform;
@@ -42,6 +45,8 @@ pub trait Physical {
 	fn elasticity(&self) -> f32; // todo: try moving properties to separate component
 	
 	fn color(&self) -> Vec3; // todo: move shape and collision to separate components
+	
+	fn bounds(&self) -> AABB;
 }
 
 struct Edge {
