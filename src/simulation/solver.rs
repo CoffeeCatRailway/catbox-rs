@@ -18,7 +18,6 @@ pub fn newId() -> usize {
 }
 
 #[allow(unused)]
-pub trait Physical {
 pub trait Physical: Debug {
 	fn id(&self) -> usize;
 	
