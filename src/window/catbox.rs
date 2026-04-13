@@ -13,14 +13,13 @@ use sdl3::timer;
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::gl_check_error;
-use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::render_manager::{RenderManager, Renderable};
 use crate::graphics::shaders;
 use crate::simulation::ball::{Ball, BallRenderable};
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 use crate::simulation::transform::Transform;
 use crate::simulation::solver::Solver;
-use crate::types::{newGlRef, newLineRendererRef, newPhysicalRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, LineRendererRef, SdlWindowRef, SolverRef};
+use crate::types::{newGlRef, newPhysicalRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
 use crate::window::input_helper::InputHelper;
 
 const F_RUNNING: u8 = 0;
@@ -52,7 +51,6 @@ pub struct CatBox {
 	imgui: Imgui,
 	
 	solver: SolverRef,
-	lineRenderer: LineRendererRef,
 	renderManager: RenderManager,
 	clearColor: [f32; 4],
 	lastMousePos: Vec2,
@@ -137,14 +135,11 @@ impl CatBox {
 		
 		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
-		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024)?;
-		lineRenderer.enable(false);
-		
 		let baseShader = shaders::baseShader(gl.clone())?;
 		let instanceShader = shaders::instanceShader(gl.clone())?;
 		
 		let solver = newSolverRef(Solver::new(Vec3::splat(1000.0), gl.clone(), baseShader)?);
-		let mut renderManager = RenderManager::new();
+		let mut renderManager = RenderManager::new(gl.clone())?;
 		renderManager.addRenderable(solver.clone());
 		
 		let camera = Camera {
@@ -181,7 +176,7 @@ impl CatBox {
 		}
 		
 		let ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone(), solver.clone());
-		ballRenderable.meshRef().borrow_mut().upload(instanceShader.clone())?;
+		ballRenderable.meshRef().unwrap().borrow_mut().upload(instanceShader.clone())?;
 		
 		let ballRenderable = newRenderableRef(ballRenderable);
 		renderManager.addRenderable(ballRenderable.clone());
@@ -202,7 +197,6 @@ impl CatBox {
 			},
 			
 			solver,
-			lineRenderer: newLineRendererRef(lineRenderer),
 			renderManager,
 			clearColor: [0.27, 0.59, 0.27, 1.0],
 			lastMousePos: Vec2::ZERO,
@@ -335,7 +329,7 @@ impl CatBox {
 			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 			  .build(|| {
 				  if ui.collapsing_header("Line Renderer", TreeNodeFlags::COLLAPSING_HEADER) {
-					  let mut lineRendererMut = self.lineRenderer.borrow_mut();
+					  let lineRendererMut = self.renderManager.lineRendererMut();
 					  if !lineRendererMut.isEnabled() {
 						  if ui.small_button("Enable##LineRenderer") {
 							  lineRendererMut.enable(true);
@@ -388,8 +382,6 @@ impl CatBox {
 			
 			self.renderManager.draw(&projViewMat, dt)?;
 			
-			self.lineRenderer.borrow_mut().drawFlush(&projViewMat);
-			
 			if self.imgui.renderer.is_destroyed {
 				self.imgui.renderer.create_device_objects(&self.gl)?;
 			}
@@ -435,7 +427,6 @@ impl CatBox {
 		warn!("Destroying window");
 		self.solver.borrow_mut().destroy();
 		self.renderManager.destroy();
-		self.lineRenderer.borrow_mut().destroy();
 		#[cfg(feature = "multi-viewport")]
 		glow_mvp::shutdown_multi_viewport_support(&mut self.imgui.context);
 		dear_imgui_sdl3::shutdown(&mut self.imgui.context);

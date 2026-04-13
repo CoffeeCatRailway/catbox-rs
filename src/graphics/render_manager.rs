@@ -1,22 +1,25 @@
 use bool_flags::Flags8;
 use glam::Mat4;
-use crate::types::{MeshRef, RenderableRef, ShaderRef};
+use crate::graphics::line_renderer::LineRenderer;
+use crate::types::{GlRef, MeshRef, RenderableRef, ShaderRef};
 
 #[allow(unused)]
 pub trait Renderable {
-	fn meshRef(&self) -> &MeshRef;
+	fn meshRef(&self) -> Option<&MeshRef>;
 	
-	fn shaderRef(&self) -> &ShaderRef;
+	fn shaderRef(&self) -> Option<&ShaderRef>;
 	
-	fn render(&self, projViewMat: &Mat4, dt: f32) -> Result<(), String> {
-		let mesh = self.meshRef().borrow();
-		let shader = self.shaderRef().read().unwrap();
-		
-		shader.bind();
-		let pvm = projViewMat * self.modelMatrix();
-		shader.setMatrix4f("u_pvm", &pvm);
-		
-		mesh.draw();
+	fn render(&self, projViewMat: &Mat4, dt: f32, _lineRenderer: &mut LineRenderer) -> Result<(), String> {
+		if let Some(mesh) = self.meshRef() && let Some(shader) = self.shaderRef() {
+			let mesh = mesh.borrow();
+			let shader = shader.read().unwrap();
+			
+			shader.bind();
+			let pvm = projViewMat * self.modelMatrix();
+			shader.setMatrix4f("u_pvm", &pvm);
+			
+			mesh.draw();
+		}
 		Ok(())
 	}
 	
@@ -29,7 +32,9 @@ pub trait Renderable {
 	}
 	
 	fn destroy(&mut self) {
-		self.meshRef().borrow_mut().destroy();
+		if let Some(mesh) = self.meshRef() {
+			mesh.borrow_mut().destroy();
+		}
 	}
 }
 
@@ -37,15 +42,19 @@ const F_DESTROYED: u8 = 0;
 
 pub struct RenderManager {
 	flags: Flags8,
-	renderables: Vec<RenderableRef>
+	renderables: Vec<RenderableRef>,
+	lineRenderer: LineRenderer,
 }
 
 impl RenderManager {
-	pub fn new() -> Self {
-		Self {
+	pub fn new(gl: GlRef) -> Result<Self, String> {
+		let mut lineRenderer = LineRenderer::new(gl, 1024)?;
+		lineRenderer.enable(false);
+		Ok(Self {
 			flags: Flags8::none(),
 			renderables: Vec::new(),
-		}
+			lineRenderer,
+		})
 	}
 	
 	pub fn addRenderable(&mut self, renderable: RenderableRef) {
@@ -56,9 +65,10 @@ impl RenderManager {
 		for renderable in self.renderables.iter() {
 			let renderable = renderable.borrow();
 			if renderable.visible() {
-				renderable.render(projViewMat, dt)?;
+				renderable.render(projViewMat, dt, &mut self.lineRenderer)?;
 			}
 		}
+		self.lineRenderer.drawFlush(&projViewMat);
 		Ok(())
 	}
 	
@@ -67,5 +77,10 @@ impl RenderManager {
 		for renderable in self.renderables.iter() {
 			renderable.borrow_mut().destroy();
 		}
+		self.lineRenderer.destroy();
+	}
+	
+	pub fn lineRendererMut(&mut self) -> &mut LineRenderer {
+		&mut self.lineRenderer
 	}
 }

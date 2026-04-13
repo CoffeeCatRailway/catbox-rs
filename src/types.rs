@@ -3,7 +3,6 @@ use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 use glow::{Context as GlowContext};
 use sdl3::video::Window as SdlWindow;
-use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::Mesh;
 use crate::graphics::render_manager::Renderable;
 use crate::graphics::shader::Shader;
@@ -14,8 +13,6 @@ pub type SdlWindowRef = Rc<RefCell<SdlWindow>>;
 pub type GlRef = Arc<GlowContext>;
 
 pub type ShaderRef = Arc<RwLock<Shader>>;
-
-pub type LineRendererRef = Rc<RefCell<LineRenderer>>;
 
 pub type RenderableRef = Rc<RefCell<dyn Renderable>>;
 
@@ -35,10 +32,6 @@ pub fn newGlRef(gl: GlowContext) -> GlRef {
 
 pub fn newShaderRef(shader: Shader) -> ShaderRef {
 	Arc::new(RwLock::new(shader))
-}
-
-pub fn newLineRendererRef(renderer: LineRenderer) -> LineRendererRef {
-	Rc::new(RefCell::new(renderer))
 }
 
 pub fn newRenderableRef<T: Renderable + 'static>(renderable: T) -> RenderableRef {

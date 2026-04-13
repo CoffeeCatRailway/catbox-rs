@@ -1,6 +1,7 @@
 use std::f32::consts::TAU;
 use bool_flags::Flags8;
 use glam::{vec3, Mat4, Vec3};
+use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::{InstanceMeshData, Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
 use crate::simulation::solver;
@@ -58,45 +59,48 @@ impl BallRenderable {
 }
 
 impl Renderable for BallRenderable {
-	fn meshRef(&self) -> &MeshRef {
-		&self.mesh
+	fn meshRef(&self) -> Option<&MeshRef> {
+		Option::from(&self.mesh)
 	}
 	
-	fn shaderRef(&self) -> &ShaderRef {
-		&self.shader
+	fn shaderRef(&self) -> Option<&ShaderRef> {
+		Option::from(&self.shader)
 	}
 	
-	fn render(&self, projViewMat: &Mat4, _dt: f32) -> Result<(), String> {
-		let mut mesh = self.meshRef().borrow_mut();
-		let shader = self.shaderRef().read().unwrap();
-		
-		shader.bind();
-		let pvm = projViewMat * self.modelMatrix();
-		shader.setMatrix4f("u_pvm", &pvm);
-		
-		let data: Vec<InstanceMeshData> = self.verletSolver.borrow()
-			.getPhysicals().iter()
-			.map(|(_, physical)| {
-				let physical = physical.borrow();
-				InstanceMeshData {
-					matrix: physical.transform().getModelMatrix(),
-					color: physical.color().to_homogeneous(),
-				}
-			}).collect();
-		mesh.updateInstanceData(&data)?;
-		
-		mesh.draw();
+	fn render(&self, projViewMat: &Mat4, _dt: f32, _lineRenderer: &mut LineRenderer) -> Result<(), String> {
+		if let Some(mesh) = self.meshRef() && let Some(shader) = self.shaderRef() {
+			let mut mesh = mesh.borrow_mut();
+			let shader = shader.read().unwrap();
+			
+			shader.bind();
+			let pvm = projViewMat * self.modelMatrix();
+			shader.setMatrix4f("u_pvm", &pvm);
+			
+			let data: Vec<InstanceMeshData> = self.verletSolver.borrow()
+												  .getPhysicals().iter()
+												  .map(|(_, physical)| {
+													  let physical = physical.borrow();
+													  InstanceMeshData {
+														  matrix: physical.transform().getModelMatrix(),
+														  color: physical.color().to_homogeneous(),
+													  }
+												  }).collect();
+			mesh.updateInstanceData(&data)?;
+			
+			mesh.draw();
+		}
 		Ok(())
 	}
 }
 
 impl Drop for BallRenderable {
 	fn drop(&mut self) {
-		self.meshRef().borrow_mut().destroy();
+		self.destroy();
 	}
 }
 
 /// Physics object
+#[derive(Debug)]
 pub struct Ball {
 	id: usize,
 	pub transform: Transform,

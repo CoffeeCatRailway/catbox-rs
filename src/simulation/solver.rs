@@ -518,12 +518,12 @@ impl Solver {
 }
 
 impl Renderable for Solver {
-	fn meshRef(&self) -> &MeshRef {
-		&self.mesh
+	fn meshRef(&self) -> Option<&MeshRef> {
+		Some(&self.mesh)
 	}
 	
-	fn shaderRef(&self) -> &ShaderRef {
-		&self.shader
+	fn shaderRef(&self) -> Option<&ShaderRef> {
+		Some(&self.shader)
 	}
 	
 	fn modelMatrix(&self) -> Mat4 {
