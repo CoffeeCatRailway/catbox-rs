@@ -20,6 +20,11 @@ pub trait Renderable {
 			
 			mesh.draw();
 		}
+		self.renderPost(projViewMat, dt, _lineRenderer)?;
+		Ok(())
+	}
+	
+	fn renderPost(&self, _projViewMat: &Mat4, _dt: f32, _lineRenderer: &mut LineRenderer) -> Result<(), String> {
 		Ok(())
 	}
 	

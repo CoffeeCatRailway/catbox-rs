@@ -19,6 +19,14 @@ impl AABB {
 		self.position + self.size / 2.0
 	}
 	
+	pub fn grow(&self, extent: Vec3) -> Self {
+		Self::centered(self.center(), self.size + extent)
+	}
+	
+	pub fn shrink(&self, extent: Vec3) -> Self {
+		Self::centered(self.center(), self.size - extent)
+	}
+	
 	pub fn start(&self) -> Vec3 {
 		self.position
 	}

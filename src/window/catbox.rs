@@ -156,7 +156,7 @@ impl CatBox {
 		};
 		
 		// Setup physicals
-		let a: u32 = 20*20;
+		let a: u32 = 30*30;
 		let sq = (a as f32).sqrt();
 		let s = 10.0;
 		let sh = s / 2.0;
