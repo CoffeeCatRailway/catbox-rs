@@ -50,11 +50,11 @@ pub trait Physical: Debug {
 	fn bounds(&self) -> AABB;
 }
 
-// struct Edge {
-// 	id: usize,
-// 	isMinimum: bool,
-// 	coord: f32,
-// }
+struct Edge {
+	id: usize,
+	isMinimum: bool,
+	coord: f32,
+}
 
 const F_DESTROYED: u8 = 0;
 const F_PAUSED: u8 = 1;
@@ -67,8 +67,8 @@ pub struct Solver {
 	pub gravity: Vec3,
 	pub worldSize: Vec3,
 
-	// edgesX: Vec<Edge>,
-	// edgesY: Vec<Edge>,
+	edgesX: Vec<Edge>,
+	edgesY: Vec<Edge>,
 	quadTree: QuadTree<PhysicalRef>,
 	physicals: HashMap<usize, PhysicalRef>,
 	
@@ -127,8 +127,8 @@ impl Solver {
 			gravity: Vec3::ZERO,
 			worldSize,
 
-			// edgesX: Vec::new(),
-			// edgesY: Vec::new(),
+			edgesX: Vec::new(),
+			edgesY: Vec::new(),
 			quadTree: QuadTree::new(10, AABB::centered(Vec3::ZERO, worldSize.truncate().extend(0.0))), // todo: fix vec3 issue with aabb/quadtree
 			physicals: HashMap::new(),
 			
@@ -184,27 +184,27 @@ impl Solver {
 		let id = {
 			let borrow = physical.borrow();
 			let id = borrow.id();
-			// let transform = borrow.transform();
-			// self.edgesX.push(Edge {
-			// 	id,
-			// 	isMinimum: true,
-			// 	coord: transform.position.x - transform.scale.x * 0.5,
-			// });
-			// self.edgesX.push(Edge {
-			// 	id,
-			// 	isMinimum: false,
-			// 	coord: transform.position.x + transform.scale.x * 0.5,
-			// });
-			// self.edgesY.push(Edge {
-			// 	id,
-			// 	isMinimum: true,
-			// 	coord: transform.position.y - transform.scale.y * 0.5,
-			// });
-			// self.edgesY.push(Edge {
-			// 	id,
-			// 	isMinimum: false,
-			// 	coord: transform.position.y + transform.scale.y * 0.5,
-			// });
+			let transform = borrow.transform();
+			self.edgesX.push(Edge {
+				id,
+				isMinimum: true,
+				coord: transform.position.x - transform.scale.x * 0.5,
+			});
+			self.edgesX.push(Edge {
+				id,
+				isMinimum: false,
+				coord: transform.position.x + transform.scale.x * 0.5,
+			});
+			self.edgesY.push(Edge {
+				id,
+				isMinimum: true,
+				coord: transform.position.y - transform.scale.y * 0.5,
+			});
+			self.edgesY.push(Edge {
+				id,
+				isMinimum: false,
+				coord: transform.position.y + transform.scale.y * 0.5,
+			});
 			id
 		};
 		self.physicals.insert(id, physical);
@@ -263,163 +263,163 @@ impl Solver {
 		}
 	}
 	
-	// fn insertionSort<T, F>(vec: &mut Vec<T>, mut compare: F)
-	// where
-	// 	F: FnMut(&T, &T) -> bool,
-	// {
-	// 	// Taken with 800 physicals and 1,-400 gravity
-	// 	// ~10.930447ms first sort
-	// 	// ~0.15062812ms second sort and onwards
-	// 	let n = 1..vec.len();
-	// 	for i in n {
-	// 		let mut j = i;
-	// 		while j > 0 && compare(&vec[j], &vec[j - 1]) {
-	// 			vec.swap(j, j - 1);
-	// 			j -= 1;
-	// 		}
-	// 	}
-	//
-	// 	// Taken with 800 physicals and 1,-400 gravity
-	// 	// ~10.008063ms first
-	// 	// ~2.7993727ms second-fifth
-	// 	// lowers afterwards
-	// 	// for i in 1..vec.len() {
-	// 	// 	for j in (0..i).rev() {// j=i-1; j >= 0; j--
-	// 	// 		if compare(&vec[j], &vec[j + 1]) {
-	// 	// 			break;
-	// 	// 		}
-	// 	// 		vec.swap(j, j + 1);
-	// 	// 	}
-	// 	// }
-	// }
-	//
-	// fn sweepEdges(edges: &Vec<Edge>) -> Vec<(usize, usize)> {
-	// 	let mut pairs = Vec::<(usize, usize)>::new();
-	//
-	// 	let mut touching = Vec::<usize>::new();
-	// 	for edge in edges.iter() {
-	// 		let edgeId = edge.id;
-	// 		if edge.isMinimum {
-	// 			for other in touching.iter() {
-	// 				let other = *other;
-	// 				pairs.push((other.min(edgeId), edgeId.max(other)));
-	// 			}
-	// 			touching.push(edgeId);
-	// 		} else {
-	// 			if let Some(index) = touching.iter().position(|x| *x == edgeId) {
-	// 				touching.remove(index);
-	// 			}
-	// 			// touching.retain(|x| *x != edgeId);
-	// 		}
-	// 	}
-	//
-	// 	pairs
-	// }
-	//
-	// fn calcVarianceForEdges(edges: &Vec<Edge>) -> f32 {
-	// 	let mut sum = 0.0;
-	// 	for edge in edges.iter() {
-	// 		sum += edge.coord;
-	// 	}
-	// 	let mean = sum / edges.len() as f32;
-	//
-	// 	let mut squaredDiffSum = 0.0;
-	// 	for edge in edges.iter() {
-	// 		let diff = edge.coord - mean;
-	// 		squaredDiffSum += diff * diff;
-	// 	}
-	//
-	// 	squaredDiffSum / edges.len() as f32
-	// }
-	//
-	// fn calcEdgeCoords(&mut self) {
-	// 	let now = Instant::now();
-	//
-	// 	for i in 0..self.edgesX.len() {
-	// 		let edgeX = &mut self.edgesX[i];
-	// 		let (px, sx) = {
-	// 			let borrow = self.physicals[&edgeX.id].borrow();
-	// 			let transform = borrow.transform();
-	// 			(transform.position.x, transform.scale.x * 0.5)
-	// 		};
-	// 		if edgeX.isMinimum {
-	// 			edgeX.coord = px - sx;
-	// 		} else {
-	// 			edgeX.coord = px + sx;
-	// 		}
-	//
-	// 		let edgeY = &mut self.edgesY[i];
-	// 		let (py, sy) = {
-	// 			let borrow = self.physicals[&edgeY.id].borrow();
-	// 			let transform = borrow.transform();
-	// 			(transform.position.y, transform.scale.y * 0.5)
-	// 		};
-	// 		if edgeY.isMinimum {
-	// 			edgeY.coord = py - sy;
-	// 		} else {
-	// 			edgeY.coord = py + sy;
-	// 		}
-	// 	}
-	//
-	// 	let end = now.elapsed().as_secs_f32() * 1000.0;
-	// 	self.calcEdgeCoordsAccum += end;
-	// }
-	//
-	// fn broadPhaseCollisionCheck(&mut self) {
-	// 	let now = Instant::now();
-	//
-	// 	Self::insertionSort(&mut self.edgesX, |a, b| a.coord < b.coord);
-	// 	Self::insertionSort(&mut self.edgesY, |a, b| a.coord < b.coord);
-	//
-	// 	let end = now.elapsed().as_secs_f32() * 1000.0;
-	// 	self.sortTimeAccum += end;
-	//
-	// 	let now = Instant::now();
-	//
-	// 	// let mut touching: Vec<usize> = Vec::new();
-	// 	// for edge in self.edgesX.iter() {
-	// 	// 	let edgeId = edge.physical.borrow().id();
-	// 	// 	if edge.isMinimum {
-	// 	// 		for other in touching.iter() {
-	// 	// 			self.collideWithPhysical(self.physicals.get(&other).unwrap().clone(), edge.physical.clone());
-	// 	// 		}
-	// 	// 		// self.collideWithBoundary(dt, edge.physical.clone());
-	// 	// 		touching.push(edgeId);
-	// 	// 	} else {
-	// 	// 		// if let Some(index) = touching.iter().position(|x| x.borrow().transform().position == edge.physical.borrow().transform().position) {
-	// 	// 		// 	touching.remove(index);
-	// 	// 		// }
-	// 	// 		touching.retain(|x| *x != edgeId);
-	// 	// 	}
-	// 	// }
-	//
-	// 	let pairs = {
-	// 		let varianceX = Self::calcVarianceForEdges(&self.edgesX);
-	// 		let varianceY = Self::calcVarianceForEdges(&self.edgesY);
-	// 		if varianceX > varianceY {
-	// 			self.sweepAxis = "X".to_string();
-	// 			Self::sweepEdges(&self.edgesX)
-	// 		} else {
-	// 			self.sweepAxis = "Y".to_string();
-	// 			Self::sweepEdges(&self.edgesY)
-	// 		}
-	// 	};
-	// 	self.collisionChecks = pairs.len();
-	//
-	// 	// let pairsX = Self::sweepEdges(&self.edgesX);//.into_iter().collect::<HashSet<_>>();
-	// 	// let pairsY = self.sweepEdges(&self.edgesY);//.into_iter().collect::<HashSet<_>>();
-	// 	// let pairs = pairsY.into_iter().filter(|x| pairsX.contains(x)).collect::<Vec<_>>();
-	// 	// let pairs = pairsX.intersection(&pairsY).collect::<HashSet<_>>();
-	//
-	// 	for (a, b) in pairs.into_iter() {
-	// 		let physical1 = self.physicals[&a].clone();
-	// 		let physical2 = self.physicals[&b].clone();
-	// 		self.collideWithPhysical(physical1, physical2);
-	// 	}
-	//
-	// 	let end = now.elapsed().as_secs_f32() * 1000.0;
-	// 	self.sweepTimeAccum += end;
-	// }
+	fn insertionSort<T, F>(vec: &mut Vec<T>, mut compare: F)
+	where
+		F: FnMut(&T, &T) -> bool,
+	{
+		// Taken with 800 physicals and 1,-400 gravity
+		// ~10.930447ms first sort
+		// ~0.15062812ms second sort and onwards
+		let n = 1..vec.len();
+		for i in n {
+			let mut j = i;
+			while j > 0 && compare(&vec[j], &vec[j - 1]) {
+				vec.swap(j, j - 1);
+				j -= 1;
+			}
+		}
+	
+		// Taken with 800 physicals and 1,-400 gravity
+		// ~10.008063ms first
+		// ~2.7993727ms second-fifth
+		// lowers afterwards
+		// for i in 1..vec.len() {
+		// 	for j in (0..i).rev() {// j=i-1; j >= 0; j--
+		// 		if compare(&vec[j], &vec[j + 1]) {
+		// 			break;
+		// 		}
+		// 		vec.swap(j, j + 1);
+		// 	}
+		// }
+	}
+	
+	fn sweepEdges(edges: &Vec<Edge>) -> Vec<(usize, usize)> {
+		let mut pairs = Vec::<(usize, usize)>::new();
+	
+		let mut touching = Vec::<usize>::new();
+		for edge in edges.iter() {
+			let edgeId = edge.id;
+			if edge.isMinimum {
+				for other in touching.iter() {
+					let other = *other;
+					pairs.push((other.min(edgeId), edgeId.max(other)));
+				}
+				touching.push(edgeId);
+			} else {
+				if let Some(index) = touching.iter().position(|x| *x == edgeId) {
+					touching.remove(index);
+				}
+				// touching.retain(|x| *x != edgeId);
+			}
+		}
+	
+		pairs
+	}
+	
+	fn calcVarianceForEdges(edges: &Vec<Edge>) -> f32 {
+		let mut sum = 0.0;
+		for edge in edges.iter() {
+			sum += edge.coord;
+		}
+		let mean = sum / edges.len() as f32;
+	
+		let mut squaredDiffSum = 0.0;
+		for edge in edges.iter() {
+			let diff = edge.coord - mean;
+			squaredDiffSum += diff * diff;
+		}
+	
+		squaredDiffSum / edges.len() as f32
+	}
+	
+	fn calcEdgeCoords(&mut self) {
+		let now = Instant::now();
+	
+		for i in 0..self.edgesX.len() {
+			let edgeX = &mut self.edgesX[i];
+			let (px, sx) = {
+				let borrow = self.physicals[&edgeX.id].borrow();
+				let transform = borrow.transform();
+				(transform.position.x, transform.scale.x * 0.5)
+			};
+			if edgeX.isMinimum {
+				edgeX.coord = px - sx;
+			} else {
+				edgeX.coord = px + sx;
+			}
+	
+			let edgeY = &mut self.edgesY[i];
+			let (py, sy) = {
+				let borrow = self.physicals[&edgeY.id].borrow();
+				let transform = borrow.transform();
+				(transform.position.y, transform.scale.y * 0.5)
+			};
+			if edgeY.isMinimum {
+				edgeY.coord = py - sy;
+			} else {
+				edgeY.coord = py + sy;
+			}
+		}
+	
+		let end = now.elapsed().as_secs_f32() * 1000.0;
+		self.calcEdgeCoordsAccum += end;
+	}
+	
+	fn broadPhaseCollisionCheck(&mut self) {
+		let now = Instant::now();
+	
+		Self::insertionSort(&mut self.edgesX, |a, b| a.coord < b.coord);
+		Self::insertionSort(&mut self.edgesY, |a, b| a.coord < b.coord);
+	
+		let end = now.elapsed().as_secs_f32() * 1000.0;
+		self.sortTimeAccum += end;
+	
+		let now = Instant::now();
+	
+		// let mut touching: Vec<usize> = Vec::new();
+		// for edge in self.edgesX.iter() {
+		// 	let edgeId = edge.physical.borrow().id();
+		// 	if edge.isMinimum {
+		// 		for other in touching.iter() {
+		// 			self.collideWithPhysical(self.physicals.get(&other).unwrap().clone(), edge.physical.clone());
+		// 		}
+		// 		// self.collideWithBoundary(dt, edge.physical.clone());
+		// 		touching.push(edgeId);
+		// 	} else {
+		// 		// if let Some(index) = touching.iter().position(|x| x.borrow().transform().position == edge.physical.borrow().transform().position) {
+		// 		// 	touching.remove(index);
+		// 		// }
+		// 		touching.retain(|x| *x != edgeId);
+		// 	}
+		// }
+	
+		let pairs = {
+			let varianceX = Self::calcVarianceForEdges(&self.edgesX);
+			let varianceY = Self::calcVarianceForEdges(&self.edgesY);
+			if varianceX > varianceY {
+				self.sweepAxis = "X".to_string();
+				Self::sweepEdges(&self.edgesX)
+			} else {
+				self.sweepAxis = "Y".to_string();
+				Self::sweepEdges(&self.edgesY)
+			}
+		};
+		self.collisionChecks = pairs.len();
+	
+		// let pairsX = Self::sweepEdges(&self.edgesX);//.into_iter().collect::<HashSet<_>>();
+		// let pairsY = self.sweepEdges(&self.edgesY);//.into_iter().collect::<HashSet<_>>();
+		// let pairs = pairsY.into_iter().filter(|x| pairsX.contains(x)).collect::<Vec<_>>();
+		// let pairs = pairsX.intersection(&pairsY).collect::<HashSet<_>>();
+	
+		for (a, b) in pairs.into_iter() {
+			let physical1 = self.physicals[&a].clone();
+			let physical2 = self.physicals[&b].clone();
+			self.collideWithPhysical(physical1, physical2);
+		}
+	
+		let end = now.elapsed().as_secs_f32() * 1000.0;
+		self.sweepTimeAccum += end;
+	}
 	
 	fn updatePhysicals(&self, dt: f32) {
 		for (_, physical) in self.physicals.iter() {
@@ -436,13 +436,16 @@ impl Solver {
 	fn subStep(&mut self, dt: f32) {
 		let now = Instant::now();
 		
+		// 15+ fps
+		// ~3.5ms
 		self.quadTree.clear();
 		for (_, physical) in self.physicals.iter() {
 			self.quadTree.insert(physical.clone(), &|physical, bounds| {
 				bounds.overlaps(&physical.borrow().bounds())
 			});
 		}
-
+		
+		// ~5ms
 		for (id, physical) in self.physicals.iter() {
 			let found = {
 				let area = physical.borrow().bounds();
@@ -458,6 +461,8 @@ impl Solver {
 			}
 		}
 		
+		// 5-18 fps
+		// ~27ms
 		// self.calcEdgeCoords();
 		// self.broadPhaseCollisionCheck();
 		self.updatePhysicals(dt);
