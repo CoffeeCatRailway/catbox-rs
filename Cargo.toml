@@ -11,14 +11,14 @@ publish = false
 
 [dependencies]
 sdl3 = { version = "0.17", features = ["build-from-source"] }
-glow = "0.16"
+glow = "0.17"
 glam = { version = "0.32", features = ["bytemuck"] }
 bytemuck = { version = "1.25", features = ["derive"] }
 bool-flags = "0.1"
 
-dear-imgui-rs = { version = "0.10.4", features = ["glam"] }
-dear-imgui-sdl3 = "0.10.4"
-dear-imgui-glow = "0.10.4"
+dear-imgui-rs = { version = "0.11", features = ["glam"] }
+dear-imgui-sdl3 = "0.11"
+dear-imgui-glow = "0.11"
 
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
