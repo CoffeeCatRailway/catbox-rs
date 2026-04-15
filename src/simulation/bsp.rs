@@ -1,0 +1,178 @@
+use std::fmt::Debug;
+use glam::{Mat4, Vec3};
+use tracing::warn;
+use crate::graphics::line_renderer::LineRenderer;
+use crate::graphics::render_manager::Renderable;
+use crate::simulation::aabb::AABB;
+use crate::types::{MeshRef, ShaderRef};
+
+#[derive(Copy, Clone, Debug)]
+pub enum Orientation {
+	Vertical,
+	Horizontal,
+}
+
+impl Orientation {
+	pub fn next(&self) -> Orientation {
+		match self {
+			Orientation::Vertical => Orientation::Horizontal,
+			Orientation::Horizontal => Orientation::Vertical,
+		}
+	}
+}
+
+pub struct BSPGrid<T> {
+	capacity: usize,
+	values: Vec<T>,
+	
+	bounds: AABB,
+	orientation: Orientation,
+	left: Option<Box<BSPGrid<T>>>,
+	right: Option<Box<BSPGrid<T>>>,
+}
+
+impl<T> BSPGrid<T> {
+	pub fn new(capacity: usize, bounds: AABB) -> BSPGrid<T> {
+		Self::withOrientation(capacity, bounds, Orientation::Vertical)
+	}
+	
+	pub fn withOrientation(capacity: usize, bounds: AABB, orientation: Orientation) -> BSPGrid<T> {
+		Self {
+			capacity,
+			values: Vec::new(),
+			
+			bounds,
+			orientation,
+			left: None,
+			right: None,
+		}
+	}
+	
+	pub fn clear(&mut self) {
+		self.values.clear();
+		self.left = None;
+		self.right = None;
+	}
+	
+	pub fn depth(&self) -> usize {
+		let left = match self.left {
+			None => 0,
+			Some(ref leaf) => leaf.depth(),
+		};
+		let right = match self.right {
+			None => 0,
+			Some(ref leaf) => leaf.depth(),
+		};
+		1 + left.max(right)
+	}
+}
+
+impl<T: Clone + Debug> BSPGrid<T> {
+	fn split<F: Fn(&T, &AABB) -> bool>(&mut self, overlaps: &F) {
+		if self.left.is_some() {
+			return;
+		}
+		
+		let size = match self.orientation {
+			Orientation::Vertical => self.bounds.size / Vec3::new(1.0, 2.0, 1.0),
+			Orientation::Horizontal => self.bounds.size / Vec3::new(2.0, 1.0, 1.0),
+		};
+		let orientation = self.orientation.next();
+		
+		let offset = match self.orientation {
+			Orientation::Vertical => Vec3::new(0.0, 0.0, 0.0),
+			Orientation::Horizontal => Vec3::new(0.0, 0.0, 0.0),
+		};
+		self.left = Some(Box::new(BSPGrid::withOrientation(self.capacity, AABB::new(self.bounds.position + offset, size), orientation)));
+		
+		let offset = match self.orientation {
+			Orientation::Vertical => Vec3::new(0.0, size.y, 0.0),
+			Orientation::Horizontal => Vec3::new(size.x, 0.0, 0.0),
+		};
+		self.right = Some(Box::new(BSPGrid::withOrientation(self.capacity, AABB::new(self.bounds.position + offset, size), orientation)));
+		
+		let mut moved;
+		for value in self.values.drain(..) {
+			moved = false;
+			moved |= self.left.as_mut().unwrap().insert(value.clone(), overlaps);
+			moved |= self.right.as_mut().unwrap().insert(value.clone(), overlaps);
+			if !moved {
+				warn!("Value {:?} lost when spliting BSPGrid!", value);
+			}
+		}
+	}
+	
+	pub fn insert<F: Fn(&T, &AABB) -> bool>(&mut self, value: T, overlaps: &F) -> bool {
+		if !overlaps(&value, &self.bounds) {
+			return false;
+		}
+		
+		if self.values.len() < self.capacity && self.left.is_none() {
+			self.values.push(value);
+			return true;
+		}
+		
+		if self.left.is_none() {
+			self.split(overlaps);
+		}
+		
+		let mut inserted = false;
+		inserted |= self.left.as_mut().unwrap().insert(value.clone(), overlaps);
+		inserted |= self.right.as_mut().unwrap().insert(value.clone(), overlaps);
+		inserted
+	}
+	
+	pub fn findInArea<F: Fn(&T, &AABB) -> bool>(&self, area: &AABB, overlaps: &F) -> Vec<T> {
+		let mut found = Vec::new();
+		if !self.bounds.overlaps(area) {
+			return found;
+		}
+		
+		for value in self.values.iter() {
+			if overlaps(value, area) {
+				found.push(value.clone());
+			}
+		}
+		if self.left.is_none() {
+			return found;
+		}
+		
+		found.append(&mut self.left.as_ref().unwrap().findInArea(area, overlaps));
+		found.append(&mut self.right.as_ref().unwrap().findInArea(area, overlaps));
+		found
+	}
+}
+
+impl<T> Renderable for BSPGrid<T> {
+	fn meshRef(&self) -> Option<&MeshRef> {
+		None
+	}
+	
+	fn shaderRef(&self) -> Option<&ShaderRef> {
+		None
+	}
+	
+	fn render(&self, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer) -> Result<(), String> {
+		let start = self.bounds.start();
+		let end = self.bounds.end();
+		
+		let topLeft = Vec3::new(start.x, end.y, 0.0);
+		let topRight = Vec3::new(end.x, end.y, 0.0);
+		let bottomLeft = Vec3::new(start.x, start.y, 0.0);
+		let bottomRight = Vec3::new(end.x, start.y, 0.0);
+		
+		lineRenderer.pushLine3(topLeft, Vec3::ONE, topRight, Vec3::ONE);
+		lineRenderer.pushLine3(topRight, Vec3::ONE, bottomRight, Vec3::ONE);
+		lineRenderer.pushLine3(bottomRight, Vec3::ONE, bottomLeft, Vec3::ONE);
+		lineRenderer.pushLine3(bottomLeft, Vec3::ONE, topLeft, Vec3::ONE);
+		
+		if self.left.is_none() {
+			return Ok(());
+		}
+		
+		self.left.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer)?;
+		self.right.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer)?;
+		
+		Ok(())
+	}
+}

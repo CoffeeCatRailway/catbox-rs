@@ -9,6 +9,7 @@ use crate::graphics::line_renderer::LineRenderer;
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::graphics::render_manager::Renderable;
 use crate::simulation::aabb::AABB;
+use crate::simulation::bsp::BSPGrid;
 use crate::simulation::quadtree::QuadTree;
 use crate::simulation::transform::Transform;
 use crate::types::{newMeshRef, GlRef, MeshRef, PhysicalRef, ShaderRef};
@@ -69,7 +70,7 @@ pub struct Solver {
 
 	edgesX: Vec<Edge>,
 	edgesY: Vec<Edge>,
-	quadTree: QuadTree<PhysicalRef>,
+	quadTree: BSPGrid<PhysicalRef>,
 	physicals: HashMap<usize, PhysicalRef>,
 	
 	subSteps: u32,
@@ -129,7 +130,7 @@ impl Solver {
 
 			edgesX: Vec::new(),
 			edgesY: Vec::new(),
-			quadTree: QuadTree::new(10, AABB::centered(Vec3::ZERO, worldSize.truncate().extend(0.0))), // todo: fix vec3 issue with aabb/quadtree
+			quadTree: BSPGrid::new(10, AABB::centered(Vec3::ZERO, worldSize.truncate().extend(0.0))), // todo: fix vec3 issue with aabb/quadtree
 			physicals: HashMap::new(),
 			
 			subSteps: 8,
