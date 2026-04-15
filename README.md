@@ -13,6 +13,9 @@ This is also a continuation of my Java attempt [CatBox](https://github.com/Coffe
 - [x] Imgui
 - [ ] Separate solver thread (Maybe later)
 - [x] Collide with other objects
+    - [x] Sweep and Prune (5-18 fps)
+    - [x] Space partition (QuadTree or BSP, 15+ fps)
+    - [ ] Combination
 - [ ] Constraints (Fixed distance & Spring)
 - [ ] Constraint collision (Box)
 - [ ] Editor/Interface to interact with and add/remove objects

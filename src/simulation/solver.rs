@@ -60,6 +60,7 @@ struct Edge {
 const F_DESTROYED: u8 = 0;
 const F_PAUSED: u8 = 1;
 const F_FORCE_STEP: u8 = 2;
+const F_COLLISION_MODE: u8 = 3;
 
 pub struct Solver {
 	mesh: MeshRef,
@@ -121,6 +122,7 @@ impl Solver {
 		
 		let mut flags = Flags8::none();
 		flags.set(F_PAUSED);
+		flags.set(F_COLLISION_MODE);
 		Ok(Self {
 			mesh,
 			shader,
@@ -437,35 +439,37 @@ impl Solver {
 	fn subStep(&mut self, dt: f32) {
 		let now = Instant::now();
 		
-		// 15+ fps
-		// ~3.5ms
-		self.quadTree.clear();
-		for (_, physical) in self.physicals.iter() {
-			self.quadTree.insert(physical.clone(), &|physical, bounds| {
-				bounds.overlaps(&physical.borrow().bounds())
-			});
-		}
-		
-		// ~5ms
-		for (id, physical) in self.physicals.iter() {
-			let found = {
-				let area = physical.borrow().bounds();
-				self.quadTree.findInArea(&area, &|physical, bounds| {
+		if self.flags.get(F_COLLISION_MODE) {
+			// 15+ fps
+			// ~3.5ms
+			self.quadTree.clear();
+			for (_, physical) in self.physicals.iter() {
+				self.quadTree.insert(physical.clone(), &|physical, bounds| {
 					bounds.overlaps(&physical.borrow().bounds())
-				})
-			};
-			for physical2 in found.into_iter() {
-				if *id == physical2.borrow().id() {
-					continue;
-				}
-				self.collideWithPhysical(physical.clone(), physical2.clone());
+				});
 			}
+			
+			// ~5ms
+			for (id, physical) in self.physicals.iter() {
+				let found = {
+					let area = physical.borrow().bounds();
+					self.quadTree.findInArea(&area, &|physical, bounds| {
+						bounds.overlaps(&physical.borrow().bounds())
+					})
+				};
+				for physical2 in found.into_iter() {
+					if *id == physical2.borrow().id() {
+						continue;
+					}
+					self.collideWithPhysical(physical.clone(), physical2.clone());
+				}
+			}
+		} else {
+			// 5-18 fps
+			// ~27ms
+			self.calcEdgeCoords();
+			self.broadPhaseCollisionCheck();
 		}
-		
-		// 5-18 fps
-		// ~27ms
-		// self.calcEdgeCoords();
-		// self.broadPhaseCollisionCheck();
 		self.updatePhysicals(dt);
 
 		let end = now.elapsed().as_secs_f32() * 1000.0;
@@ -511,8 +515,21 @@ impl Solver {
 				ui.separator();
 				
 				ui.text(format!("Physicals: {}", self.physicals.len()));
-				ui.text(format!("Sweep axis: {}", self.sweepAxis));
-				ui.text(format!("Collision checks: {}", self.collisionChecks));
+				
+				let mut collisionMode = self.flags.get(F_COLLISION_MODE);
+				ui.checkbox("Space Partition/Edge Sweep", &mut collisionMode);
+				if collisionMode {
+					self.flags.set(F_COLLISION_MODE);
+				} else {
+					self.flags.clear(F_COLLISION_MODE);
+				}
+				
+				if collisionMode {
+					ui.text(format!("Partition depth: {}", self.quadTree.depth()));
+				} else {
+					ui.text(format!("Sweep axis: {}", self.sweepAxis));
+					ui.text(format!("Collision checks: {}", self.collisionChecks));
+				}
 				ui.separator();
 
 				ui.text(format!("Sub steps: {}", self.subSteps));
@@ -533,9 +550,11 @@ impl Solver {
 				
 				if ui.collapsing_header("Times", TreeNodeFlags::COLLAPSING_HEADER) {
 					ui.text("(*) = Averaged over sub steps");
-					ui.text(format!("Calc edge coords time*: {}ms", self.calcEdgeCoordsTime));
-					ui.text(format!("Sort time*: {}ms", self.sortTime));
-					ui.text(format!("Sweep time*: {}ms", self.sweepTime));
+					if !collisionMode {
+						ui.text(format!("Calc edge coords time*: {}ms", self.calcEdgeCoordsTime));
+						ui.text(format!("Sort time*: {}ms", self.sortTime));
+						ui.text(format!("Sweep time*: {}ms", self.sweepTime));
+					}
 					ui.text(format!("Sub step time*: {}ms", self.subStepTime));
 					ui.text(format!("Step time: {}ms", self.stepTime));
 				}
@@ -563,7 +582,9 @@ impl Renderable for Solver {
 	}
 	
 	fn renderPost(&self, projViewMat: &Mat4, dt: f32, lineRenderer: &mut LineRenderer) -> Result<(), String> {
-		self.quadTree.render(projViewMat, dt, lineRenderer)?;
+		if self.flags.get(F_COLLISION_MODE) {
+			self.quadTree.render(projViewMat, dt, lineRenderer)?;
+		}
 		Ok(())
 	}
 	

@@ -38,6 +38,26 @@ impl<T> QuadTree<T> {
         self.southWest = None;
         self.southEast = None;
     }
+	
+	pub fn depth(&self) -> usize {
+		let northWest = match self.northWest {
+			None => 0,
+			Some(ref leaf) => leaf.depth(),
+		};
+		let northEast = match self.northEast {
+			None => 0,
+			Some(ref leaf) => leaf.depth(),
+		};
+		let southWest = match self.southWest {
+			None => 0,
+			Some(ref leaf) => leaf.depth(),
+		};
+		let southEast = match self.southEast {
+			None => 0,
+			Some(ref leaf) => leaf.depth(),
+		};
+		1 + northWest.max(northEast).max(southWest).max(southEast)
+	}
 }
 
 impl<T: Clone + Debug> QuadTree<T> {
