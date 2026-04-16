@@ -196,6 +196,13 @@ impl LineRenderer {
 	pub fn isEnabled(&self) -> bool {
 		self.flags.get(F_ENABLED)
 	}
+	
+	pub fn setLineWidth(&self, width: f32) {
+		unsafe {
+			self.gl.line_width(width);
+			gl_check_error!(self.gl);
+		}
+	}
 }
 
 impl Drop for LineRenderer {

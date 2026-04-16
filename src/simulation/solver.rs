@@ -191,22 +191,22 @@ impl Solver {
 			self.edgesX.push(Edge {
 				id,
 				isMinimum: true,
-				coord: transform.position.x - transform.scale.x * 0.5,
+				coord: transform.position.x - transform.scale.x / 2.0,
 			});
 			self.edgesX.push(Edge {
 				id,
 				isMinimum: false,
-				coord: transform.position.x + transform.scale.x * 0.5,
+				coord: transform.position.x + transform.scale.x / 2.0,
 			});
 			self.edgesY.push(Edge {
 				id,
 				isMinimum: true,
-				coord: transform.position.y - transform.scale.y * 0.5,
+				coord: transform.position.y - transform.scale.y / 2.0,
 			});
 			self.edgesY.push(Edge {
 				id,
 				isMinimum: false,
-				coord: transform.position.y + transform.scale.y * 0.5,
+				coord: transform.position.y + transform.scale.y / 2.0,
 			});
 			id
 		};
@@ -346,7 +346,7 @@ impl Solver {
 			let (px, sx) = {
 				let borrow = self.physicals[&edgeX.id].borrow();
 				let transform = borrow.transform();
-				(transform.position.x, transform.scale.x * 0.5)
+				(transform.position.x, transform.scale.x / 2.0)
 			};
 			if edgeX.isMinimum {
 				edgeX.coord = px - sx;
@@ -358,7 +358,7 @@ impl Solver {
 			let (py, sy) = {
 				let borrow = self.physicals[&edgeY.id].borrow();
 				let transform = borrow.transform();
-				(transform.position.y, transform.scale.y * 0.5)
+				(transform.position.y, transform.scale.y / 2.0)
 			};
 			if edgeY.isMinimum {
 				edgeY.coord = py - sy;
