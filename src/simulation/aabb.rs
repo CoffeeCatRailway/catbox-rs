@@ -35,16 +35,24 @@ impl AABB {
 		self.position + self.size
 	}
 	
-	pub fn overlaps(&self, other: &AABB) -> bool
-	{
-		(self.start().x <= other.end().x && self.end().x >= other.start().x) &&
-			(self.start().y <= other.end().y && self.end().y >= other.start().y) &&
-			(self.start().z <= other.end().z && self.end().z >= other.start().z)
+	pub fn overlaps(&self, other: &AABB) -> bool {
+		let start1 = self.start();
+		let end1 = self.end();
+		
+		let start2 = other.start();
+		let end2 = other.end();
+		
+		start1.x <= end2.x && end1.x >= start2.x
+			&& start1.y <= end2.y && end1.y >= start2.y
+			&& start1.z <= end2.z && end1.z >= start2.z
 	}
 	
 	pub fn containsPoint(&self, point: Vec3) -> bool {
-		(point.x >= self.start().x && point.x <= self.end().x) &&
-			(point.y >= self.start().y && point.y <= self.end().y) &&
-			(point.z >= self.start().z && point.z <= self.end().z)
+		let start = self.start();
+		let end = self.end();
+		
+		point.x >= start.x && point.x <= end.x
+			&& point.y >= start.y && point.y <= end.y
+			&& point.z >= start.z && point.z <= end.z
 	}
 }
