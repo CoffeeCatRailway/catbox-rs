@@ -214,10 +214,8 @@ impl Solver {
 	}
 	
 	fn collideWithPhysical(&self, physical1: PhysicalRef, physical2: PhysicalRef) {
-		let mut physical1 = physical1.borrow_mut();
-		let mut physical2 = physical2.borrow_mut();
-		// if let Ok(mut physical1) = physical1.try_borrow_mut() {
-		// 	if let Ok(mut physical2) = physical2.try_borrow_mut() {
+		if let Ok(mut physical1) = physical1.try_borrow_mut() {
+			if let Ok(mut physical2) = physical2.try_borrow_mut() {
 				let r1 = physical1.transform().scale.x / 2.0;
 				let r2 = physical2.transform().scale.x / 2.0;
 				
@@ -241,13 +239,12 @@ impl Solver {
 						physical2.transformMut().position += dir * massRatio1 * force;
 					}
 				}
-		// 	}
-		// }
+			}
+		}
 	}
 	
 	fn collideWithBoundary(&self, _dt: f32, physical: PhysicalRef) {
-		let mut physical = physical.borrow_mut();
-		// if let Ok(mut physical) = physical.try_borrow_mut() {
+		if let Ok(mut physical) = physical.try_borrow_mut() {
 			let halfSize = (self.worldSize - physical.transform().scale.x) / 2.0;
 			let velocity = physical.getVelocity(1.0) * physical.elasticity();
 			
@@ -266,7 +263,7 @@ impl Solver {
 				physical.transformMut().position.y = halfSize.y;
 				physical.lastTransformMut().position.y = halfSize.y + velocity.y;
 			}
-		// }
+		}
 	}
 	
 	fn insertionSort<T, F>(vec: &mut Vec<T>, mut compare: F)
