@@ -430,6 +430,8 @@ impl Solver {
 			{
 				let mut physicalMut = physical.borrow_mut();
 				physicalMut.accelerate(self.gravity);
+				// let gravity = (Vec3::ZERO - physicalMut.transform().position).normalize_or_zero() * self.gravity.x;
+				// physicalMut.accelerate(gravity);
 				physicalMut.update(dt);
 			}
 			self.collideWithBoundary(dt, physical);
