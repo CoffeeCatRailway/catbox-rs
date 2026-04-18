@@ -153,6 +153,10 @@ impl<T> Renderable for BSPGrid<T> {
 	}
 	
 	fn render(&self, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer) -> Result<(), String> {
+		if !lineRenderer.isEnabled() {
+			return Ok(())
+		}
+		
 		let start = self.bounds.start();
 		let end = self.bounds.end();
 		
@@ -161,10 +165,13 @@ impl<T> Renderable for BSPGrid<T> {
 		let bottomLeft = Vec3::new(start.x, start.y, 0.0);
 		let bottomRight = Vec3::new(end.x, start.y, 0.0);
 		
-		lineRenderer.pushLine3(topLeft, Vec3::ONE, topRight, Vec3::ONE);
-		lineRenderer.pushLine3(topRight, Vec3::ONE, bottomRight, Vec3::ONE);
-		lineRenderer.pushLine3(bottomRight, Vec3::ONE, bottomLeft, Vec3::ONE);
-		lineRenderer.pushLine3(bottomLeft, Vec3::ONE, topLeft, Vec3::ONE);
+		let percent = self.values.len() as f32 / self.capacity as f32;
+		let color = Vec3::new(percent, 1.0 - percent, 0.0);
+		
+		lineRenderer.pushLine3(topLeft, color, topRight, color);
+		lineRenderer.pushLine3(topRight, color, bottomRight, color);
+		lineRenderer.pushLine3(bottomRight, color, bottomLeft, color);
+		lineRenderer.pushLine3(bottomLeft, color, topLeft, color);
 		
 		if self.left.is_none() {
 			return Ok(());

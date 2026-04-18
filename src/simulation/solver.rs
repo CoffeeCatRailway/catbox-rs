@@ -132,7 +132,7 @@ impl Solver {
 
 			edgesX: Vec::new(),
 			edgesY: Vec::new(),
-			quadTree: BSPGrid::new(10, AABB::centered(Vec3::ZERO, worldSize.truncate().extend(0.0))), // todo: fix vec3 issue with aabb/quadtree
+			quadTree: BSPGrid::new(4, AABB::centered(Vec3::ZERO, worldSize.truncate().extend(0.0))), // todo: fix vec3 issue with aabb/quadtree
 			physicals: HashMap::new(),
 			
 			subSteps: 8,
@@ -191,22 +191,22 @@ impl Solver {
 			self.edgesX.push(Edge {
 				id,
 				isMinimum: true,
-				coord: transform.position.x - transform.scale.x * 0.5,
+				coord: transform.position.x - transform.scale.x / 2.0,
 			});
 			self.edgesX.push(Edge {
 				id,
 				isMinimum: false,
-				coord: transform.position.x + transform.scale.x * 0.5,
+				coord: transform.position.x + transform.scale.x / 2.0,
 			});
 			self.edgesY.push(Edge {
 				id,
 				isMinimum: true,
-				coord: transform.position.y - transform.scale.y * 0.5,
+				coord: transform.position.y - transform.scale.y / 2.0,
 			});
 			self.edgesY.push(Edge {
 				id,
 				isMinimum: false,
-				coord: transform.position.y + transform.scale.y * 0.5,
+				coord: transform.position.y + transform.scale.y / 2.0,
 			});
 			id
 		};
@@ -343,7 +343,7 @@ impl Solver {
 			let (px, sx) = {
 				let borrow = self.physicals[&edgeX.id].borrow();
 				let transform = borrow.transform();
-				(transform.position.x, transform.scale.x * 0.5)
+				(transform.position.x, transform.scale.x / 2.0)
 			};
 			if edgeX.isMinimum {
 				edgeX.coord = px - sx;
@@ -355,7 +355,7 @@ impl Solver {
 			let (py, sy) = {
 				let borrow = self.physicals[&edgeY.id].borrow();
 				let transform = borrow.transform();
-				(transform.position.y, transform.scale.y * 0.5)
+				(transform.position.y, transform.scale.y / 2.0)
 			};
 			if edgeY.isMinimum {
 				edgeY.coord = py - sy;
@@ -442,12 +442,13 @@ impl Solver {
 		let now = Instant::now();
 		
 		if self.flags.get(F_COLLISION_MODE) {
-			// 15+ fps
+			// 17+ fps
 			// ~3.5ms
 			self.quadTree.clear();
 			for (_, physical) in self.physicals.iter() {
 				self.quadTree.insert(physical.clone(), &|physical, bounds| {
-					bounds.overlaps(&physical.borrow().bounds())
+					// bounds.overlaps(&physical.borrow().bounds())
+					bounds.containsPoint(physical.borrow().transform().position)
 				});
 			}
 			

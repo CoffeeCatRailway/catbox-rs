@@ -55,6 +55,7 @@ impl RenderManager {
 	pub fn new(gl: GlRef) -> Result<Self, String> {
 		let mut lineRenderer = LineRenderer::new(gl, 1024)?;
 		lineRenderer.enable(false);
+		lineRenderer.setLineWidth(1.5);
 		Ok(Self {
 			flags: Flags8::none(),
 			renderables: Vec::new(),

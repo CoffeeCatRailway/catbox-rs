@@ -165,7 +165,7 @@ impl CatBox {
 			let y = (i / sq as u32) as f32;
 			let mut ball = Ball::new(Vec3::new(x * s - sq * sh + sh, y * s - sq * sh + sh, 0.0), Vec3::splat(s));
 			ball.lastTransform.position = ball.transform.position - ball.transform.position.normalize_or_zero() * OPTIMAL_DT * 10.0;
-			// ball.elasticity = 0.5;
+			ball.elasticity = 0.5;
 			
 			ball.color.x = x / sq;
 			ball.color.y = y / sq;
