@@ -9,7 +9,7 @@ use std::error::Error;
 use glow::HasContext;
 use tracing::{error, info};
 use crate::types::GlRef;
-use crate::window::catbox::CatBox;
+use crate::window::CatBox;
 
 // Helper to check for GL errors at runtime. Mirrors the behavior of the
 // C-style `glCheckError()` helper: it polls `gl.get_error()` and prints

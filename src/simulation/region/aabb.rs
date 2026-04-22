@@ -15,14 +15,17 @@ impl AABB {
 		Self::new(position - size / 2.0, size)
 	}
 	
+	#[allow(unused)]
 	pub fn center(&self) -> Vec3 {
 		self.position + self.size / 2.0
 	}
 	
+	#[allow(unused)]
 	pub fn grow(&self, extent: Vec3) -> Self {
 		Self::centered(self.center(), self.size + extent)
 	}
 	
+	#[allow(unused)]
 	pub fn shrink(&self, extent: Vec3) -> Self {
 		Self::centered(self.center(), self.size - extent)
 	}

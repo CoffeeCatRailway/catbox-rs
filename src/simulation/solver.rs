@@ -5,13 +5,11 @@ use std::time::Instant;
 use bool_flags::Flags8;
 use dear_imgui_rs::{TreeNodeFlags, Ui, WindowFlags};
 use glam::{vec3, Mat4, Vec3};
-use crate::graphics::line_renderer::LineRenderer;
+use crate::graphics::LineRenderer;
 use crate::graphics::mesh::{Mesh, Vertex};
-use crate::graphics::render_manager::Renderable;
-use crate::simulation::aabb::AABB;
-use crate::simulation::bsp::BSPGrid;
-use crate::simulation::quadtree::QuadTree;
-use crate::simulation::transform::Transform;
+use crate::graphics::Renderable;
+use crate::simulation::region::{BSPGrid, AABB};
+use crate::simulation::Transform;
 use crate::types::{newMeshRef, GlRef, MeshRef, PhysicalRef, ShaderRef};
 
 static ID_COUNTER: AtomicUsize = AtomicUsize::new(0);

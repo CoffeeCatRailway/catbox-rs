@@ -4,9 +4,9 @@ use std::sync::{Arc, RwLock};
 use glow::{Context as GlowContext};
 use sdl3::video::Window as SdlWindow;
 use crate::graphics::mesh::Mesh;
-use crate::graphics::render_manager::Renderable;
+use crate::graphics::Renderable;
 use crate::graphics::shader::Shader;
-use crate::simulation::solver::{Physical, Solver};
+use crate::simulation::{Physical, Solver};
 
 pub type SdlWindowRef = Rc<RefCell<SdlWindow>>;
 

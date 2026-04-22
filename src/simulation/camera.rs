@@ -1,5 +1,5 @@
 use glam::{vec2, vec4, Mat4, Quat, Vec2, Vec3};
-use crate::simulation::transform::Transform;
+use crate::simulation::Transform;
 
 pub fn screenToWorldSpace(cursor: Vec2, width: u32, height: u32, projectionMatrix: Mat4, viewMatrix: Mat4) -> Vec3 {
 	// https://antongerdelan.net/opengl/raycasting.html

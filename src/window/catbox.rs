@@ -13,14 +13,13 @@ use sdl3::timer;
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::gl_check_error;
-use crate::graphics::render_manager::{RenderManager, Renderable};
+use crate::graphics::{RenderManager, Renderable};
 use crate::graphics::shaders;
 use crate::simulation::ball::{Ball, BallRenderable};
 use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
-use crate::simulation::transform::Transform;
-use crate::simulation::solver::Solver;
+use crate::simulation::{Transform, Solver};
 use crate::types::{newGlRef, newPhysicalRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
-use crate::window::input_helper::InputHelper;
+use crate::window::InputHelper;
 
 const F_RUNNING: u8 = 0;
 

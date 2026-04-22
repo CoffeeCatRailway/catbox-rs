@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 use glam::{Mat4, Vec3};
 use tracing::warn;
-use crate::graphics::line_renderer::LineRenderer;
-use crate::graphics::render_manager::Renderable;
-use crate::simulation::aabb::AABB;
+use crate::graphics::LineRenderer;
+use crate::graphics::Renderable;
+use crate::simulation::region::aabb::AABB;
 use crate::types::{MeshRef, ShaderRef};
 
 #[derive(Copy, Clone, Debug)]

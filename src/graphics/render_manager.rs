@@ -1,6 +1,6 @@
 use bool_flags::Flags8;
 use glam::Mat4;
-use crate::graphics::line_renderer::LineRenderer;
+use crate::graphics::LineRenderer;
 use crate::types::{GlRef, MeshRef, RenderableRef, ShaderRef};
 
 #[allow(unused)]
