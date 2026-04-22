@@ -5,7 +5,7 @@ use glam::{Mat4, Vec3};
 use tracing::warn;
 use crate::graphics::LineRenderer;
 use crate::graphics::Renderable;
-use crate::simulation::region::aabb::AABB;
+use crate::simulation::region::AABB;
 use crate::types::{MeshRef, ShaderRef};
 
 pub struct QuadTree<T> {
