@@ -1,8 +1,7 @@
 use std::fmt::Debug;
 use glam::{Mat4, Vec3};
 use tracing::warn;
-use crate::graphics::LineRenderer;
-use crate::graphics::Renderable;
+use crate::graphics::{LineRenderer, Renderable};
 use crate::simulation::region::AABB;
 use crate::types::{MeshRef, ShaderRef};
 

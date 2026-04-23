@@ -1,9 +1,8 @@
 use std::f32::consts::TAU;
 use bool_flags::Flags8;
 use glam::{vec3, Mat4, Vec3};
-use crate::graphics::LineRenderer;
+use crate::graphics::{LineRenderer, Renderable};
 use crate::graphics::mesh::{InstanceMeshData, Mesh, Vertex};
-use crate::graphics::Renderable;
 use crate::simulation::region::AABB;
 use crate::simulation::{solver, Transform};
 use crate::simulation::solver::Physical;
