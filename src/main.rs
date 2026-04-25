@@ -4,6 +4,7 @@ mod graphics;
 mod simulation;
 mod types;
 mod window;
+mod thread_pool;
 
 use std::error::Error;
 use glow::HasContext;
