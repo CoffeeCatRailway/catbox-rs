@@ -156,21 +156,10 @@ impl<T> Renderable for BSPGrid<T> {
 			return Ok(())
 		}
 		
-		let start = self.bounds.start();
-		let end = self.bounds.end();
-		
-		let topLeft = Vec3::new(start.x, end.y, 0.0);
-		let topRight = Vec3::new(end.x, end.y, 0.0);
-		let bottomLeft = Vec3::new(start.x, start.y, 0.0);
-		let bottomRight = Vec3::new(end.x, start.y, 0.0);
-		
 		let percent = self.values.len() as f32 / self.capacity as f32;
 		let color = Vec3::new(percent, 1.0 - percent, 0.0);
 		
-		lineRenderer.pushLine3(topLeft, color, topRight, color);
-		lineRenderer.pushLine3(topRight, color, bottomRight, color);
-		lineRenderer.pushLine3(bottomRight, color, bottomLeft, color);
-		lineRenderer.pushLine3(bottomLeft, color, topLeft, color);
+		lineRenderer.pushAABB(&self.bounds, color);
 		
 		if self.left.is_none() {
 			return Ok(());

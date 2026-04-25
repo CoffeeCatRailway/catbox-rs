@@ -4,6 +4,7 @@ use glow::{Buffer, HasContext, VertexArray};
 use tracing::{info, warn};
 use crate::gl_check_error;
 use crate::graphics::shaders;
+use crate::simulation::region::AABB;
 use crate::types::{GlRef, ShaderRef};
 
 const F_ENABLED: u8 = 	0;
@@ -127,6 +128,25 @@ impl LineRenderer {
 		self.vec.push(color2.z);
 		
 		self.floatsPushed += FLOATS * 2;
+	}
+	
+	pub fn pushAABB(&mut self, aabb: &AABB, color: Vec3) {
+		if !self.flags.get(F_ENABLED) {
+			return;
+		}
+		
+		let start = aabb.start();
+		let end = aabb.end();
+		
+		let topLeft = Vec3::new(start.x, end.y, 0.0);
+		let topRight = Vec3::new(end.x, end.y, 0.0);
+		let bottomLeft = Vec3::new(start.x, start.y, 0.0);
+		let bottomRight = Vec3::new(end.x, start.y, 0.0);
+		
+		self.pushLine3(topLeft, color, topRight, color);
+		self.pushLine3(topRight, color, bottomRight, color);
+		self.pushLine3(bottomRight, color, bottomLeft, color);
+		self.pushLine3(bottomLeft, color, topLeft, color);
 	}
 	
 	pub fn drawFlush(&mut self, pvMatrix: &Mat4) {
