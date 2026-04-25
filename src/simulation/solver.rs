@@ -92,6 +92,8 @@ pub struct Solver {
 
 impl Solver {
 	pub fn new(worldSize: Vec3, gl: GlRef, shader: ShaderRef) -> Result<Solver, String> {
+		let worldSize = worldSize.truncate().extend(0.0); // Only simulating 2d for now
+		
 		let mesh = {
 			let vertices = vec![
 				Vertex {
@@ -129,7 +131,7 @@ impl Solver {
 
 			edgesX: Vec::new(),
 			edgesY: Vec::new(),
-			quadTree: BSPGrid::new(4, AABB::centered(Vec3::ZERO, worldSize.truncate().extend(0.0))), // todo: fix vec3 issue with aabb/quadtree
+			quadTree: BSPGrid::new(4, AABB::centered(Vec3::ZERO, worldSize)), // todo: fix vec3 issue with aabb/quadtree
 			physicals: HashMap::new(),
 			
 			subSteps: 8,
