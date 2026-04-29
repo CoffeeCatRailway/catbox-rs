@@ -7,6 +7,7 @@ use crate::graphics::{LineRenderer, Renderable};
 use crate::simulation::region::AABB;
 use crate::types::{MeshRef, ShaderRef};
 
+#[derive(Clone)]
 pub struct QuadTree<T> {
     capacity: usize,
     values: Vec<T>,
@@ -58,6 +59,10 @@ impl<T> QuadTree<T> {
 			Some(ref leaf) => leaf.depth(),
 		};
 		1 + northWest.max(northEast).max(southWest).max(southEast)
+	}
+	
+	pub fn bounds(&self) -> &AABB {
+		&self.bounds
 	}
 }
 

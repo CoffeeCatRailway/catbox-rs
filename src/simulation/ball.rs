@@ -78,7 +78,7 @@ impl Renderable for BallRenderable {
 			let data: Vec<InstanceMeshData> = self.verletSolver.borrow()
 												  .getPhysicals().iter()
 												  .map(|(_, physical)| {
-													  let physical = physical.borrow();
+													  let physical = physical.read().unwrap();
 													  InstanceMeshData {
 														  matrix: physical.transform().getModelMatrix(),
 														  color: physical.color().to_homogeneous(),

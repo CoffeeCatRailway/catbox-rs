@@ -18,7 +18,7 @@ pub type RenderableRef = Rc<RefCell<dyn Renderable>>;
 
 pub type MeshRef = Rc<RefCell<Mesh>>;
 
-pub type PhysicalRef = Rc<RefCell<dyn Physical>>;
+pub type PhysicalRef = Arc<RwLock<dyn Physical>>;
 
 pub type SolverRef = Rc<RefCell<Solver>>;
 
@@ -43,7 +43,7 @@ pub fn newMeshRef(mesh: Mesh) -> MeshRef {
 }
 
 pub fn newPhysicalRef<P: Physical + 'static>(physical: P) -> PhysicalRef {
-	Rc::new(RefCell::new(physical))
+	Arc::new(RwLock::new(physical))
 }
 
 pub fn newSolverRef(solver: Solver) -> SolverRef {

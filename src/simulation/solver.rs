@@ -1,24 +1,28 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, RwLock};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Instant;
 use bool_flags::Flags8;
 use dear_imgui_rs::{TreeNodeFlags, Ui, WindowFlags};
 use glam::{vec3, Mat4, Vec3};
+use tracing::info;
 use crate::graphics::{LineRenderer, Renderable};
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::simulation::region::{BSPGrid, AABB};
 use crate::simulation::Transform;
+use crate::thread_pool::ThreadPool;
 use crate::types::{newMeshRef, GlRef, MeshRef, PhysicalRef, ShaderRef};
 
+static U64_ATOMIC_BUFFER: AtomicU64 = AtomicU64::new(0);
 static ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 pub fn newId() -> usize {
-	ID_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+	ID_COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
 #[allow(unused)]
-pub trait Physical: Debug {
+pub trait Physical: Debug + Send + Sync {
 	fn id(&self) -> usize;
 	
 	fn transform(&self) -> &Transform;
@@ -54,10 +58,23 @@ struct Edge {
 	coord: f32,
 }
 
+struct Chunk {
+	tree: BSPGrid<PhysicalRef>,
+	physicals: Vec<PhysicalRef>,
+	neighbours: Vec<ChunkRef>,
+}
+
+type ChunkRef = Arc<RwLock<Chunk>>;
+
 const F_DESTROYED: u8 = 0;
 const F_PAUSED: u8 = 1;
 const F_FORCE_STEP: u8 = 2;
+
 const F_COLLISION_MODE: u8 = 3;
+const F_THREAD_MODE: u8 = 4;
+
+const GRID_CAPACITY: usize = 7;
+const THREAD_COUNT: usize = 6;
 
 pub struct Solver {
 	mesh: MeshRef,
@@ -65,6 +82,9 @@ pub struct Solver {
 	
 	pub gravity: Vec3,
 	pub worldSize: Vec3,
+	
+	threadPool: ThreadPool,
+	chunks: Vec<ChunkRef>,
 
 	edgesX: Vec<Edge>,
 	edgesY: Vec<Edge>,
@@ -85,8 +105,12 @@ pub struct Solver {
 	sortTime: f32,
 	sweepTimeAccum: f32,
 	sweepTime: f32,
+	
 	subStepTimeAccum: f32,
 	subStepTime: f32,
+	
+	chunkBuildTime: f32,
+	
 	stepTime: f32,
 }
 
@@ -119,19 +143,56 @@ impl Solver {
 			newMeshRef(mesh)
 		};
 		
+		info!("Creating solver chunks");
+		let mut chunks = Vec::with_capacity(THREAD_COUNT * THREAD_COUNT);
+		let chunkSize = worldSize / THREAD_COUNT as f32;
+		let worldSizeHalf = worldSize / 2.0;
+		
+		for y in 0..THREAD_COUNT {
+			for x in 0..THREAD_COUNT {
+				let pos = Vec3::new(x as f32 * chunkSize.x, (THREAD_COUNT - 1 - y) as f32 * chunkSize.y, 0.0) - worldSizeHalf;
+				chunks.push(Arc::new(RwLock::new(Chunk {
+					tree: BSPGrid::new(GRID_CAPACITY, AABB::new(pos, chunkSize)),
+					physicals: Vec::new(),
+					neighbours: Vec::new(),
+				})));
+			}
+		}
+		
+		info!("Finding chunk neighbours");
+		for x in 0..THREAD_COUNT {
+			for y in 0..THREAD_COUNT {
+				let chunk = chunks[x + y * THREAD_COUNT].clone();
+				for dy in -1..2 {
+					for dx in -1..2 {
+						let x = dx + x as i32;
+						let y = dy + y as i32;
+						if (dx == 0 && dy == 0) || (x < 0 || x >= THREAD_COUNT as i32 || y < 0 || y >= THREAD_COUNT as i32) {
+							continue;
+						}
+						chunk.write().unwrap().neighbours.push(chunks[y as usize + x as usize * THREAD_COUNT].clone());
+					}
+				}
+			}
+		}
+		
 		let mut flags = Flags8::none();
 		flags.set(F_PAUSED);
 		flags.set(F_COLLISION_MODE);
+		flags.set(F_THREAD_MODE);
 		Ok(Self {
 			mesh,
 			shader,
 			
 			gravity: Vec3::ZERO,
 			worldSize,
+			
+			threadPool: ThreadPool::new(THREAD_COUNT),
+			chunks,
 
 			edgesX: Vec::new(),
 			edgesY: Vec::new(),
-			quadTree: BSPGrid::new(4, AABB::centered(Vec3::ZERO, worldSize)), // todo: fix vec3 issue with aabb/quadtree
+			quadTree: BSPGrid::new(GRID_CAPACITY, AABB::centered(Vec3::ZERO, worldSize)), // todo: fix vec3 issue with aabb/quadtree
 			physicals: HashMap::new(),
 			
 			subSteps: 8,
@@ -148,8 +209,12 @@ impl Solver {
 			sortTime: 0.0,
 			sweepTimeAccum: 0.0,
 			sweepTime: 0.0,
+			
 			subStepTimeAccum: 0.0,
 			subStepTime: 0.0,
+			
+			chunkBuildTime: 0.0,
+			
 			stepTime: 0.0,
 		})
 	}
@@ -184,7 +249,7 @@ impl Solver {
 	
 	pub fn addPhysical(&mut self, physical: PhysicalRef) {
 		let id = {
-			let borrow = physical.borrow();
+			let borrow = physical.read().unwrap();
 			let id = borrow.id();
 			let transform = borrow.transform();
 			self.edgesX.push(Edge {
@@ -212,9 +277,10 @@ impl Solver {
 		self.physicals.insert(id, physical);
 	}
 	
-	fn collideWithPhysical(&self, physical1: PhysicalRef, physical2: PhysicalRef) {
-		if let Ok(mut physical1) = physical1.try_borrow_mut() {
-			if let Ok(mut physical2) = physical2.try_borrow_mut() {
+	// todo: try collision checks with rays
+	fn collideWithPhysical(physical1: PhysicalRef, physical2: PhysicalRef) {
+		if let Ok(mut physical1) = physical1.try_write() {
+			if let Ok(mut physical2) = physical2.try_write() {
 				let r1 = physical1.transform().scale.x / 2.0;
 				let r2 = physical2.transform().scale.x / 2.0;
 				
@@ -242,9 +308,9 @@ impl Solver {
 		}
 	}
 	
-	fn collideWithBoundary(&self, _dt: f32, physical: PhysicalRef) {
-		if let Ok(mut physical) = physical.try_borrow_mut() {
-			let halfSize = (self.worldSize - physical.transform().scale.x) / 2.0;
+	fn collideWithBoundary(_dt: f32, physical: PhysicalRef, worldSize: Vec3) {
+		if let Ok(mut physical) = physical.try_write() {
+			let halfSize = (worldSize - physical.transform().scale.x) / 2.0;
 			let velocity = physical.getVelocity(1.0) * physical.elasticity();
 			
 			if physical.transform().position.x < -halfSize.x {
@@ -340,7 +406,7 @@ impl Solver {
 		for i in 0..self.edgesX.len() {
 			let edgeX = &mut self.edgesX[i];
 			let (px, sx) = {
-				let borrow = self.physicals[&edgeX.id].borrow();
+				let borrow = self.physicals[&edgeX.id].read().unwrap();
 				let transform = borrow.transform();
 				(transform.position.x, transform.scale.x / 2.0)
 			};
@@ -352,7 +418,7 @@ impl Solver {
 	
 			let edgeY = &mut self.edgesY[i];
 			let (py, sy) = {
-				let borrow = self.physicals[&edgeY.id].borrow();
+				let borrow = self.physicals[&edgeY.id].read().unwrap();
 				let transform = borrow.transform();
 				(transform.position.y, transform.scale.y / 2.0)
 			};
@@ -416,7 +482,7 @@ impl Solver {
 		for (a, b) in pairs.into_iter() {
 			let physical1 = self.physicals[&a].clone();
 			let physical2 = self.physicals[&b].clone();
-			self.collideWithPhysical(physical1, physical2);
+			Self::collideWithPhysical(physical1, physical2);
 		}
 	
 		let end = now.elapsed().as_secs_f32() * 1000.0;
@@ -427,55 +493,110 @@ impl Solver {
 		for (_, physical) in self.physicals.iter() {
 			let physical = physical.clone();
 			{
-				let mut physicalMut = physical.borrow_mut();
+				let mut physicalMut = physical.write().unwrap();
 				physicalMut.accelerate(self.gravity);
 				// let gravity = (Vec3::ZERO - physicalMut.transform().position).normalize_or_zero() * self.gravity.x;
 				// physicalMut.accelerate(gravity);
 				physicalMut.update(dt);
 			}
-			self.collideWithBoundary(dt, physical);
+			Self::collideWithBoundary(dt, physical, self.worldSize);
+		}
+	}
+	
+	fn populateQuadTree(&mut self) {
+		// 17+ fps
+		// ~3.5ms
+		self.quadTree.clear();
+		for (_, physical) in self.physicals.iter() {
+			self.quadTree.insert(physical.clone(), &|physical, bounds| {
+				bounds.containsPoint(physical.read().unwrap().transform().position)
+			});
 		}
 	}
 	
 	fn subStep(&mut self, dt: f32) {
 		let now = Instant::now();
-		
+	
 		if self.flags.get(F_COLLISION_MODE) {
-			// 17+ fps
-			// ~3.5ms
-			self.quadTree.clear();
-			for (_, physical) in self.physicals.iter() {
-				self.quadTree.insert(physical.clone(), &|physical, bounds| {
-					// bounds.overlaps(&physical.borrow().bounds())
-					bounds.containsPoint(physical.borrow().transform().position)
-				});
-			}
-			
+			self.populateQuadTree();
+	
 			// ~5ms
+			// ~50ms (full step)
 			for (id, physical) in self.physicals.iter() {
 				let found = {
-					let area = physical.borrow().bounds();
+					let area = physical.read().unwrap().bounds();
 					self.quadTree.findInArea(&area, &|physical, bounds| {
-						bounds.overlaps(&physical.borrow().bounds())
+						bounds.overlaps(&physical.read().unwrap().bounds())
 					})
 				};
 				for physical2 in found.into_iter() {
-					if *id == physical2.borrow().id() {
+					if *id == physical2.read().unwrap().id() {
 						continue;
 					}
-					self.collideWithPhysical(physical.clone(), physical2.clone());
+					Self::collideWithPhysical(physical.clone(), physical2.clone());
 				}
 			}
 		} else {
 			// 5-18 fps
 			// ~27ms
+			// ~150ms (full step)
 			self.calcEdgeCoords();
 			self.broadPhaseCollisionCheck();
 		}
 		self.updatePhysicals(dt);
-
+	
 		let end = now.elapsed().as_secs_f32() * 1000.0;
 		self.subStepTimeAccum += end;
+	}
+	
+	fn collideBroadPhaseChunk(dt: f32, chunk: ChunkRef, worldSize: Vec3) {
+		if let Ok(chunk) = chunk.try_read() {
+			// let now = Instant::now();
+			for physical1 in chunk.physicals.iter() {
+				let (id1, bounds) = {
+					let read = physical1.read().unwrap();
+					(read.id(), read.bounds())
+				};
+				
+				let mut found = chunk.tree.findInArea(&bounds, &|physical, bounds| {
+					bounds.overlaps(&physical.read().unwrap().bounds())
+				});
+				
+				// for neighbour in chunk.neighbours.iter() {
+				// 	if let Ok(neighbour) = neighbour.try_read() {
+				// 		let mut extra = neighbour.tree.findInArea(&bounds, &|physical, bounds| {
+				// 			bounds.overlaps(&physical.read().unwrap().bounds())
+				// 		});
+				// 		found.append(&mut extra);
+				// 	}
+				// }
+				
+				for physical2 in found.into_iter() {
+					let id2 = { physical2.read().unwrap().id() };
+					if id1 == id2 {
+						continue;
+					}
+					Self::collideWithPhysical(physical1.clone(), physical2.clone());
+				}
+				
+				Self::collideWithBoundary(dt, physical1.clone(), worldSize); // todo: fix physicals 'outside' world
+			}
+			// let end = now.elapsed().as_secs_f32() * 1000.0;
+			// info!("Chunk collision took {}ms", end);
+		}
+	}
+	
+	fn updatePhysicalsChunk(dt: f32, chunk: ChunkRef, gravity: Vec3) {
+		if let Ok(chunk) = chunk.try_read() {
+			for physical in chunk.physicals.iter() {
+				if let Ok(mut physical) = physical.try_write() {
+					physical.accelerate(gravity);
+					// let gravity = (Vec3::ZERO - physical.transform().position).normalize_or_zero() * gravity.length();
+					// physical.accelerate(gravity);
+					physical.update(dt);
+				}
+			}
+		}
 	}
 	
 	pub fn update(&mut self, dt: f32) {
@@ -485,24 +606,89 @@ impl Solver {
 
 		if !self.isPaused() || self.isForceStep() {
 			let now = Instant::now();
-
-			let subStepDt = dt / self.subSteps as f32;
-			for _ in 0..self.subSteps {
-				self.subStep(subStepDt);
+			
+			let subSteps = self.subSteps;
+			let subStepDt = dt / subSteps as f32;
+			
+			if self.flags.get(F_THREAD_MODE) {
+				// 30+ fps
+				// ~10-20ms (full step)
+				
+				let gravity = self.gravity;
+				let worldSize = self.worldSize;
+				
+				U64_ATOMIC_BUFFER.store(0, Ordering::Relaxed);
+				for x in 0..THREAD_COUNT {
+					for y in 0..THREAD_COUNT {
+						let chunk = self.chunks[x + y * THREAD_COUNT].clone();
+						let physicals = self.physicals.clone();
+						self.threadPool.execute(move |_| {
+							let now = Instant::now();
+							
+							if let Ok(mut chunk) = chunk.try_write() {
+								chunk.tree.clear();
+								chunk.physicals.clear();
+								
+								for (_, physical) in physicals.iter() {
+									if chunk.tree.insert(physical.clone(), &|physical, bounds| {
+										bounds.containsPoint(physical.read().unwrap().transform().position)
+									}) {
+										chunk.physicals.push(physical.clone());
+									}
+								}
+							}
+							
+							let end = now.elapsed().as_micros();
+							U64_ATOMIC_BUFFER.fetch_add(end as u64, Ordering::Relaxed);
+							// info!("{}", end as f32 / 1000.0);
+						});
+					}
+					self.threadPool.waitForCompletion();
+				}
+				self.chunkBuildTime = (U64_ATOMIC_BUFFER.load(Ordering::Relaxed) / (THREAD_COUNT * THREAD_COUNT) as u64) as f32 / 1000.0;
+				
+				U64_ATOMIC_BUFFER.store(0, Ordering::Relaxed);
+				for x in 0..THREAD_COUNT {
+					for y in 0..THREAD_COUNT {
+						let x = (x + y) % THREAD_COUNT; // Stagger x so no neighboring threads update simultaneously
+						let chunk = self.chunks[x + y * THREAD_COUNT].clone();
+						
+						self.threadPool.execute(move |_| {
+							for _ in 0..subSteps {
+								let now = Instant::now();
+								
+								Self::collideBroadPhaseChunk(subStepDt, chunk.clone(), worldSize);
+								Self::updatePhysicalsChunk(subStepDt, chunk.clone(), gravity);
+								
+								let end = now.elapsed().as_micros();
+								U64_ATOMIC_BUFFER.fetch_add(end as u64, Ordering::Relaxed);
+								// info!("{}", end as f32 / 1000.0);
+							}
+						});
+					}
+					self.threadPool.waitForCompletion();
+				}
+				self.subStepTime = (U64_ATOMIC_BUFFER.load(Ordering::Relaxed) / (THREAD_COUNT * THREAD_COUNT * self.subSteps as usize) as u64) as f32 / 1000.0;
+			} else {
+				self.populateQuadTree();
+				for _ in 0..subSteps {
+					self.subStep(subStepDt);
+				}
+				
+				let timeRecip = 1.0 / self.subSteps as f32;
+				self.calcEdgeCoordsTime = self.calcEdgeCoordsAccum * timeRecip;
+				self.calcEdgeCoordsAccum = 0.0;
+				self.sortTime = self.sortTimeAccum * timeRecip;
+				self.sortTimeAccum = 0.0;
+				self.sweepTime = self.sweepTimeAccum * timeRecip;
+				self.sweepTimeAccum = 0.0;
+				
+				self.subStepTime = self.subStepTimeAccum * timeRecip;
+				self.subStepTimeAccum = 0.0;
 			}
 
 			let end = now.elapsed().as_secs_f32() * 1000.0;
 			self.stepTime = end;
-
-			let timeRecip = 1.0 / self.subSteps as f32;
-			self.calcEdgeCoordsTime = self.calcEdgeCoordsAccum * timeRecip;
-			self.calcEdgeCoordsAccum = 0.0;
-			self.sortTime = self.sortTimeAccum * timeRecip;
-			self.sortTimeAccum = 0.0;
-			self.sweepTime = self.sweepTimeAccum * timeRecip;
-			self.sweepTimeAccum = 0.0;
-			self.subStepTime = self.subStepTimeAccum * timeRecip;
-			self.subStepTimeAccum = 0.0;
 			
 			self.updatesDone += 1;
 			self.forceStep(false);
@@ -519,18 +705,23 @@ impl Solver {
 				ui.text(format!("Physicals: {}", self.physicals.len()));
 				
 				let mut collisionMode = self.flags.get(F_COLLISION_MODE);
-				ui.checkbox("Space Partition/Edge Sweep", &mut collisionMode);
-				if collisionMode {
-					self.flags.set(F_COLLISION_MODE);
+				let mut threadMode = self.flags.get(F_THREAD_MODE);
+				ui.checkbox("Use threads", &mut threadMode);
+				if threadMode {
+					self.flags.set(F_THREAD_MODE);
+					ui.text(format!("Thread count: {}", THREAD_COUNT));
 				} else {
-					self.flags.clear(F_COLLISION_MODE);
-				}
-				
-				if collisionMode {
-					ui.text(format!("Partition depth: {}", self.quadTree.depth()));
-				} else {
-					ui.text(format!("Sweep axis: {}", self.sweepAxis));
-					ui.text(format!("Collision checks: {}", self.collisionChecks));
+					self.flags.clear(F_THREAD_MODE);
+					ui.checkbox("Space partition/Sweep n' prune", &mut collisionMode);
+					
+					if collisionMode {
+						self.flags.set(F_COLLISION_MODE);
+						ui.text(format!("Partition depth: {}", self.quadTree.depth()));
+					} else {
+						self.flags.clear(F_COLLISION_MODE);
+						ui.text(format!("Sweep axis: {}", self.sweepAxis));
+						ui.text(format!("Collision checks: {}", self.collisionChecks));
+					}
 				}
 				ui.separator();
 
@@ -551,11 +742,18 @@ impl Solver {
 				ui.separator();
 				
 				if ui.collapsing_header("Times", TreeNodeFlags::COLLAPSING_HEADER) {
-					ui.text("(*) = Averaged over sub steps");
-					if !collisionMode {
-						ui.text(format!("Calc edge coords time*: {}ms", self.calcEdgeCoordsTime));
-						ui.text(format!("Sort time*: {}ms", self.sortTime));
-						ui.text(format!("Sweep time*: {}ms", self.sweepTime));
+					if threadMode {
+						ui.text("(*) = Averaged over sub steps and threads");
+						
+						ui.text(format!("Chunk build time*: {}ms", self.chunkBuildTime));
+					} else {
+						ui.text("(*) = Averaged over sub steps");
+						
+						if !collisionMode {
+							ui.text(format!("Calc edge coords time*: {}ms", self.calcEdgeCoordsTime));
+							ui.text(format!("Sort time*: {}ms", self.sortTime));
+							ui.text(format!("Sweep time*: {}ms", self.sweepTime));
+						}
 					}
 					ui.text(format!("Sub step time*: {}ms", self.subStepTime));
 					ui.text(format!("Step time: {}ms", self.stepTime));
@@ -571,6 +769,7 @@ impl Solver {
 	pub fn destroy(&mut self) {
 		self.flags.set(F_DESTROYED);
 		self.mesh.borrow_mut().destroy();
+		self.threadPool.stopAll();
 	}
 }
 
@@ -584,7 +783,15 @@ impl Renderable for Solver {
 	}
 	
 	fn renderPost(&self, projViewMat: &Mat4, dt: f32, lineRenderer: &mut LineRenderer) -> Result<(), String> {
-		if self.flags.get(F_COLLISION_MODE) {
+		let collisionMode = self.flags.get(F_COLLISION_MODE);
+		let threadMode = self.flags.get(F_THREAD_MODE);
+		
+		if threadMode {
+			for chunk in self.chunks.iter() {
+				chunk.read().unwrap().tree.render(projViewMat, dt, lineRenderer)?;
+				lineRenderer.pushAABB(chunk.read().unwrap().tree.bounds(), Vec3::Z);
+			}
+		} else if collisionMode {
 			self.quadTree.render(projViewMat, dt, lineRenderer)?;
 		}
 		Ok(())

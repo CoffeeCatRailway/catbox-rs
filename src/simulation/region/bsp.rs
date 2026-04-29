@@ -20,6 +20,7 @@ impl Orientation {
 	}
 }
 
+#[derive(Clone)]
 pub struct BSPGrid<T> {
 	capacity: usize,
 	values: Vec<T>,
@@ -63,6 +64,10 @@ impl<T> BSPGrid<T> {
 			Some(ref leaf) => leaf.depth(),
 		};
 		1 + left.max(right)
+	}
+	
+	pub fn bounds(&self) -> &AABB {
+		&self.bounds
 	}
 }
 
