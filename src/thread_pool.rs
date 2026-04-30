@@ -45,7 +45,7 @@ impl ThreadPool {
 		assert!(maxWorkers > 0);
 		
 		let workers = if workers > maxWorkers {
-			warn!("Workers {} exceeded maximum of {} workers!", workers, maxWorkers);
+			warn!("{} workers exceeded maximum of {}!", workers, maxWorkers);
 			maxWorkers
 		} else {
 			workers
@@ -103,6 +103,15 @@ impl ThreadPool {
 			self.sender.send(Message::Stop).unwrap();
 		}
 		self.flags.set(F_STOPPED);
+	}
+	
+	// pub fn getActive(&self) -> usize {
+	// 	let (lock, _) = &*self.jobCount;
+	// 	*lock.lock().unwrap()
+	// }
+	
+	pub fn getTotal(&self) -> usize {
+		self.workers.len()
 	}
 }
 

@@ -712,7 +712,8 @@ impl Solver {
 				}
 				
 				if threadMode {
-					ui.text(format!("Thread count: {}", THREAD_COUNT));
+					// ui.text(format!("Threads: {}/{}", self.threadPool.getActive(), self.threadPool.getTotal()));
+					ui.text(format!("Threads: {}", self.threadPool.getTotal()));
 				} else {
 					if ui.checkbox("Space partition/Sweep n' prune", &mut collisionMode) {
 						self.flags.flip(F_COLLISION_MODE);
