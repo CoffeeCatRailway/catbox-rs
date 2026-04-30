@@ -187,7 +187,7 @@ impl Solver {
 			gravity: Vec3::ZERO,
 			worldSize,
 			
-			threadPool: ThreadPool::new(THREAD_COUNT),
+			threadPool: ThreadPool::withNWorkers(THREAD_COUNT),
 			chunks,
 
 			edgesX: Vec::new(),
@@ -650,6 +650,7 @@ impl Solver {
 				U64_ATOMIC_BUFFER.store(0, Ordering::Relaxed);
 				for x in 0..THREAD_COUNT {
 					for y in 0..THREAD_COUNT {
+						// todo: try different stagger method for more coverage
 						let x = (x + y) % THREAD_COUNT; // Stagger x so no neighboring threads update simultaneously
 						let chunk = self.chunks[x + y * THREAD_COUNT].clone();
 						
