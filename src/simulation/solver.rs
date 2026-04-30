@@ -707,19 +707,20 @@ impl Solver {
 				
 				let mut collisionMode = self.flags.get(F_COLLISION_MODE);
 				let mut threadMode = self.flags.get(F_THREAD_MODE);
-				ui.checkbox("Use threads", &mut threadMode);
+				if ui.checkbox("Use threads", &mut threadMode) {
+					self.flags.flip(F_THREAD_MODE);
+				}
+				
 				if threadMode {
-					self.flags.set(F_THREAD_MODE);
 					ui.text(format!("Thread count: {}", THREAD_COUNT));
 				} else {
-					self.flags.clear(F_THREAD_MODE);
-					ui.checkbox("Space partition/Sweep n' prune", &mut collisionMode);
+					if ui.checkbox("Space partition/Sweep n' prune", &mut collisionMode) {
+						self.flags.flip(F_COLLISION_MODE);
+					}
 					
 					if collisionMode {
-						self.flags.set(F_COLLISION_MODE);
 						ui.text(format!("Partition depth: {}", self.quadTree.depth()));
 					} else {
-						self.flags.clear(F_COLLISION_MODE);
 						ui.text(format!("Sweep axis: {}", self.sweepAxis));
 						ui.text(format!("Collision checks: {}", self.collisionChecks));
 					}
