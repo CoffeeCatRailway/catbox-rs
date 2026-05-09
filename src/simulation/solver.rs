@@ -556,23 +556,30 @@ impl Solver {
 		if let Ok(chunk) = chunk.try_read() {
 			// let now = Instant::now();
 			for physical1 in chunk.physicals.iter() {
-				let (id1, bounds) = {
+				let (id1, bounds, pos) = {
 					let read = physical1.read().unwrap();
-					(read.id(), read.bounds())
+					(read.id(), read.bounds(), read.transform().position)
 				};
+				if !chunk.tree.bounds().containsPoint(pos) {
+					continue;
+				}
 				
 				let mut found = chunk.tree.findInArea(&bounds, &|physical, bounds| {
 					bounds.overlaps(&physical.read().unwrap().bounds())
 				});
 				
-				// for neighbour in chunk.neighbours.iter() {
-				// 	if let Ok(neighbour) = neighbour.try_read() {
-				// 		let mut extra = neighbour.tree.findInArea(&bounds, &|physical, bounds| {
-				// 			bounds.overlaps(&physical.read().unwrap().bounds())
-				// 		});
-				// 		found.append(&mut extra);
-				// 	}
-				// }
+				for neighbour in chunk.neighbours.iter() {
+					if let Ok(neighbour) = neighbour.try_read() {
+						if !neighbour.tree.bounds().overlaps(&bounds) {
+							continue;
+						}
+				
+						let mut extra = neighbour.tree.findInArea(&bounds, &|physical, bounds| {
+							bounds.overlaps(&physical.read().unwrap().bounds())
+						});
+						found.append(&mut extra);
+					}
+				}
 				
 				for physical2 in found.into_iter() {
 					let id2 = { physical2.read().unwrap().id() };
