@@ -593,6 +593,9 @@ impl Solver {
 		if let Ok(chunk) = chunk.try_read() {
 			for physical in chunk.physicals.iter() {
 				if let Ok(mut physical) = physical.try_write() {
+					if !chunk.tree.bounds().containsPoint(physical.transform().position) {
+						continue;
+					}
 					physical.accelerate(gravity);
 					// let gravity = (Vec3::ZERO - physical.transform().position).normalize_or_zero() * gravity.length();
 					// physical.accelerate(gravity);
@@ -635,6 +638,7 @@ impl Solver {
 								for (_, physical) in physicals.iter() {
 									if chunk.tree.insert(physical.clone(), &|physical, bounds| {
 										bounds.containsPoint(physical.read().unwrap().transform().position)
+										// bounds.overlaps(&physical.read().unwrap().bounds())
 									}) {
 										chunk.physicals.push(physical.clone());
 									}
