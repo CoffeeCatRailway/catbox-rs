@@ -14,7 +14,6 @@ use crate::simulation::Transform;
 use crate::thread_pool::ThreadPool;
 use crate::types::{newMeshRef, GlRef, MeshRef, PhysicalRef, ShaderRef};
 
-static U64_ATOMIC_BUFFER: AtomicU64 = AtomicU64::new(0);
 static ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 pub fn newId() -> usize {
@@ -73,8 +72,9 @@ const F_FORCE_STEP: u8 = 2;
 const F_COLLISION_MODE: u8 = 3;
 const F_THREAD_MODE: u8 = 4;
 
-const GRID_CAPACITY: usize = 7;
-const THREAD_COUNT: usize = 6;
+const GRID_CAPACITY: usize = 2;
+const THREAD_COUNT: usize = 12;
+static U64_ATOMIC_BUFFER: AtomicU64 = AtomicU64::new(0);
 
 pub struct Solver {
 	mesh: MeshRef,
@@ -143,16 +143,19 @@ impl Solver {
 			newMeshRef(mesh)
 		};
 		
+		let threadPool = ThreadPool::withNWorkers(THREAD_COUNT);
+		
 		info!("Creating solver chunks");
-		let mut chunks = Vec::with_capacity(THREAD_COUNT * THREAD_COUNT);
-		let chunkSize = worldSize / THREAD_COUNT as f32;
+		let mut chunks = Vec::with_capacity(threadPool.getTotal() * threadPool.getTotal());
+		let chunkSize = worldSize / threadPool.getTotal() as f32;
 		let worldSizeHalf = worldSize / 2.0;
 		
-		for y in 0..THREAD_COUNT {
-			for x in 0..THREAD_COUNT {
-				let pos = Vec3::new(x as f32 * chunkSize.x, (THREAD_COUNT - 1 - y) as f32 * chunkSize.y, 0.0) - worldSizeHalf;
+		for y in 0..threadPool.getTotal() {
+			for x in 0..threadPool.getTotal() {
+				let pos = Vec3::new(x as f32 * chunkSize.x, (threadPool.getTotal() - 1 - y) as f32 * chunkSize.y, 0.0) - worldSizeHalf;
+				let bounds = AABB::new(pos, chunkSize);
 				chunks.push(Arc::new(RwLock::new(Chunk {
-					tree: BSPGrid::new(GRID_CAPACITY, AABB::new(pos, chunkSize)),
+					tree: BSPGrid::new(GRID_CAPACITY, bounds),
 					physicals: Vec::new(),
 					neighbours: Vec::new(),
 				})));
@@ -160,17 +163,17 @@ impl Solver {
 		}
 		
 		info!("Finding chunk neighbours");
-		for x in 0..THREAD_COUNT {
-			for y in 0..THREAD_COUNT {
-				let chunk = chunks[x + y * THREAD_COUNT].clone();
+		for x in 0..threadPool.getTotal() {
+			for y in 0..threadPool.getTotal() {
+				let chunk = chunks[x + y * threadPool.getTotal()].clone();
 				for dy in -1..2 {
 					for dx in -1..2 {
 						let x = dx + x as i32;
 						let y = dy + y as i32;
-						if (dx == 0 && dy == 0) || (x < 0 || x >= THREAD_COUNT as i32 || y < 0 || y >= THREAD_COUNT as i32) {
+						if (dx == 0 && dy == 0) || (x < 0 || x >= threadPool.getTotal() as i32 || y < 0 || y >= threadPool.getTotal() as i32) {
 							continue;
 						}
-						chunk.write().unwrap().neighbours.push(chunks[y as usize + x as usize * THREAD_COUNT].clone());
+						chunk.write().unwrap().neighbours.push(chunks[x as usize + y as usize * threadPool.getTotal()].clone());
 					}
 				}
 			}
@@ -187,7 +190,7 @@ impl Solver {
 			gravity: Vec3::ZERO,
 			worldSize,
 			
-			threadPool: ThreadPool::withNWorkers(THREAD_COUNT),
+			threadPool,
 			chunks,
 
 			edgesX: Vec::new(),
@@ -618,9 +621,9 @@ impl Solver {
 				let worldSize = self.worldSize;
 				
 				U64_ATOMIC_BUFFER.store(0, Ordering::Relaxed);
-				for x in 0..THREAD_COUNT {
-					for y in 0..THREAD_COUNT {
-						let chunk = self.chunks[x + y * THREAD_COUNT].clone();
+				for x in 0..self.threadPool.getTotal() {
+					for y in 0..self.threadPool.getTotal() {
+						let chunk = self.chunks[x + y * self.threadPool.getTotal()].clone();
 						let physicals = self.physicals.clone();
 						self.threadPool.execute(move |_| {
 							let now = Instant::now();
@@ -643,16 +646,16 @@ impl Solver {
 							// info!("{}", end as f32 / 1000.0);
 						});
 					}
-					self.threadPool.waitForCompletion();
 				}
-				self.chunkBuildTime = (U64_ATOMIC_BUFFER.load(Ordering::Relaxed) / (THREAD_COUNT * THREAD_COUNT) as u64) as f32 / 1000.0;
+				self.threadPool.waitForCompletion();
+				self.chunkBuildTime = (U64_ATOMIC_BUFFER.load(Ordering::Relaxed) / (self.threadPool.getTotal() * self.threadPool.getTotal()) as u64) as f32 / 1000.0;
 				
 				U64_ATOMIC_BUFFER.store(0, Ordering::Relaxed);
-				for x in 0..THREAD_COUNT {
-					for y in 0..THREAD_COUNT {
-						// todo: try different stagger method for more coverage
-						let x = (x + y) % THREAD_COUNT; // Stagger x so no neighboring threads update simultaneously
-						let chunk = self.chunks[x + y * THREAD_COUNT].clone();
+				for x in 0..self.threadPool.getTotal() {
+					for y in 0..self.threadPool.getTotal() {
+						// todo: try different stagger method for better coverage
+						let x = (x + y) % self.threadPool.getTotal(); // Stagger x so no neighboring threads update simultaneously
+						let chunk = self.chunks[x + y * self.threadPool.getTotal()].clone();
 						
 						self.threadPool.execute(move |_| {
 							for _ in 0..subSteps {
@@ -667,9 +670,9 @@ impl Solver {
 							}
 						});
 					}
-					self.threadPool.waitForCompletion();
 				}
-				self.subStepTime = (U64_ATOMIC_BUFFER.load(Ordering::Relaxed) / (THREAD_COUNT * THREAD_COUNT * self.subSteps as usize) as u64) as f32 / 1000.0;
+				self.threadPool.waitForCompletion();
+				self.subStepTime = (U64_ATOMIC_BUFFER.load(Ordering::Relaxed) / (self.threadPool.getTotal() * self.threadPool.getTotal() * self.subSteps as usize) as u64) as f32 / 1000.0;
 			} else {
 				self.populateQuadTree();
 				for _ in 0..subSteps {
@@ -791,8 +794,16 @@ impl Renderable for Solver {
 		
 		if threadMode {
 			for chunk in self.chunks.iter() {
-				chunk.read().unwrap().tree.render(projViewMat, dt, lineRenderer)?;
-				lineRenderer.pushAABB(chunk.read().unwrap().tree.bounds(), Vec3::Z);
+				let chunk = chunk.read().unwrap();
+				chunk.tree.render(projViewMat, dt, lineRenderer)?;
+				
+				lineRenderer.pushAABB(chunk.tree.bounds(), Vec3::Z);
+				// for neighbour in chunk.neighbours.iter() {
+				// 	let cPos = chunk.tree.bounds().center();
+				// 	let nPos = neighbour.read().unwrap().tree.bounds().center();
+				// 	let dir = nPos - cPos;
+				// 	lineRenderer.pushLine3(cPos, Vec3::Z, cPos + dir / 2.0, Vec3::ONE);
+				// }
 			}
 		} else if collisionMode {
 			self.quadTree.render(projViewMat, dt, lineRenderer)?;

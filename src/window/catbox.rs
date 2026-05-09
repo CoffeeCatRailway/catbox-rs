@@ -162,7 +162,9 @@ impl CatBox {
 		for i in 0..a {
 			let x = (i % sq as u32) as f32;
 			let y = (i / sq as u32) as f32;
-			let mut ball = Ball::new(Vec3::new(x * s - sq * sh + sh, y * s - sq * sh + sh, 0.0), Vec3::splat(s));
+			// let size = Vec3::splat(((i as f32 / 2.0).sin() * 0.25 + 0.75) * s);
+			let size = Vec3::splat(s);
+			let mut ball = Ball::new(Vec3::new(x * s - sq * sh + sh, y * s - sq * sh + sh, 0.0), size);
 			ball.lastTransform.position = ball.transform.position - ball.transform.position.normalize_or_zero() * OPTIMAL_DT * 10.0;
 			// ball.elasticity = 0.5;
 			

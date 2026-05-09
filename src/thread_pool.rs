@@ -34,6 +34,7 @@ impl ThreadPool {
 		}
 	}
 	
+	#[allow(unused)]
 	pub fn withMaxWorkers() -> Self {
 		Self::withNWorkers(Self::getAvailableMaxThreads())
 	}
