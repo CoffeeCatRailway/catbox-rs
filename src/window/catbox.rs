@@ -15,9 +15,11 @@ use tracing::{info, warn};
 use crate::gl_check_error;
 use crate::graphics::{RenderManager, Renderable};
 use crate::graphics::shaders;
-use crate::simulation::ball::{Ball, BallRenderable};
-use crate::simulation::{Transform, Solver};
-use crate::types::{newGlRef, newPhysicalRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
+use crate::simulation::Transform;
+// use crate::simulation::ball::{Ball, BallRenderable};
+// use crate::simulation::{Transform, Solver};
+use crate::types::{newGlRef, newRenderableRef, newSdlWindowRef, GlRef, SdlWindowRef};
+// use crate::types::{newGlRef, newPhysicalRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
 use crate::window::InputHelper;
 use crate::window::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 
@@ -49,7 +51,7 @@ pub struct CatBox {
 	
 	imgui: Imgui,
 	
-	solver: SolverRef,
+	// solver: SolverRef,
 	renderManager: RenderManager,
 	clearColor: [f32; 4],
 	lastMousePos: Vec2,
@@ -133,13 +135,13 @@ impl CatBox {
 		glow_mvp::enable(&mut imguiRenderer, &mut imgui);
 		
 		// Initialize renderers, shaders and camera
-		info!("Initializing locals");
-		let baseShader = shaders::baseShader(gl.clone())?;
-		let instanceShader = shaders::instanceShader(gl.clone())?;
-		
-		let solver = newSolverRef(Solver::new(Vec3::splat(1000.0), gl.clone(), baseShader)?);
+		// info!("Initializing locals");
+		// let baseShader = shaders::baseShader(gl.clone())?;
+		// let instanceShader = shaders::instanceShader(gl.clone())?;
+		//
+		// let solver = newSolverRef(Solver::new(Vec3::splat(1000.0), gl.clone(), baseShader)?);
 		let mut renderManager = RenderManager::new(gl.clone())?;
-		renderManager.addRenderable(solver.clone());
+		// renderManager.addRenderable(solver.clone());
 		
 		let camera = Camera {
 			frustum: Frustum {
@@ -154,33 +156,33 @@ impl CatBox {
 			..Camera::default()
 		};
 		
-		// Setup physicals
-		let a: u32 = 30*30;
-		let sq = (a as f32).sqrt();
-		let s = 10.0;
-		let sh = s / 2.0;
-		for i in 0..a {
-			let x = (i % sq as u32) as f32;
-			let y = (i / sq as u32) as f32;
-			// let size = Vec3::splat(((i as f32 / 2.0).sin() * 0.25 + 0.75) * s);
-			let size = Vec3::splat(s);
-			let mut ball = Ball::new(Vec3::new(x * s - sq * sh + sh, y * s - sq * sh + sh, 0.0), size);
-			ball.lastTransform.position = ball.transform.position - ball.transform.position.normalize_or_zero() * OPTIMAL_DT * 10.0;
-			// ball.elasticity = 0.5;
-			
-			ball.color.x = x / sq;
-			ball.color.y = y / sq;
-			ball.color.z = 0.0;
-			
-			let ball = newPhysicalRef(ball);
-			solver.borrow_mut().addPhysical(ball);
-		}
-		
-		let ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone(), solver.clone());
-		ballRenderable.meshRef().unwrap().borrow_mut().upload(instanceShader.clone())?;
-		
-		let ballRenderable = newRenderableRef(ballRenderable);
-		renderManager.addRenderable(ballRenderable.clone());
+		// // Setup physicals
+		// let a: u32 = 30*30;
+		// let sq = (a as f32).sqrt();
+		// let s = 10.0;
+		// let sh = s / 2.0;
+		// for i in 0..a {
+		// 	let x = (i % sq as u32) as f32;
+		// 	let y = (i / sq as u32) as f32;
+		// 	// let size = Vec3::splat(((i as f32 / 2.0).sin() * 0.25 + 0.75) * s);
+		// 	let size = Vec3::splat(s);
+		// 	let mut ball = Ball::new(Vec3::new(x * s - sq * sh + sh, y * s - sq * sh + sh, 0.0), size);
+		// 	ball.lastTransform.position = ball.transform.position - ball.transform.position.normalize_or_zero() * OPTIMAL_DT * 10.0;
+		// 	// ball.elasticity = 0.5;
+		//
+		// 	ball.color.x = x / sq;
+		// 	ball.color.y = y / sq;
+		// 	ball.color.z = 0.0;
+		//
+		// 	let ball = newPhysicalRef(ball);
+		// 	solver.borrow_mut().addPhysical(ball);
+		// }
+		//
+		// let ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone(), solver.clone());
+		// ballRenderable.meshRef().unwrap().borrow_mut().upload(instanceShader.clone())?;
+		//
+		// let ballRenderable = newRenderableRef(ballRenderable);
+		// renderManager.addRenderable(ballRenderable.clone());
 		
 		let mut catbox = CatBox {
 			width: WIN_WIDTH,
@@ -197,7 +199,7 @@ impl CatBox {
 				renderer: imguiRenderer,
 			},
 			
-			solver,
+			// solver,
 			renderManager,
 			clearColor: [0.27, 0.59, 0.27, 1.0],
 			lastMousePos: Vec2::ZERO,
@@ -297,7 +299,7 @@ impl CatBox {
 				self.lastMousePos = self.inputHelper.mousePos();
 			}
 			
-			self.solver.borrow_mut().update(OPTIMAL_DT);
+			// self.solver.borrow_mut().update(OPTIMAL_DT);
 			
 			// Imgui
 			dear_imgui_sdl3::sdl3_new_frame(&mut self.imgui.context);
@@ -362,7 +364,7 @@ impl CatBox {
 				  }
 			  });
 			
-			self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
+			// self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
 			
 			if updateProjection {
 				self.updateProjectionMatrix();
@@ -426,7 +428,7 @@ impl CatBox {
 	
 	pub fn destroy(&mut self) {
 		warn!("Destroying window");
-		self.solver.borrow_mut().destroy();
+		// self.solver.borrow_mut().destroy();
 		self.renderManager.destroy();
 		#[cfg(feature = "multi-viewport")]
 		glow_mvp::shutdown_multi_viewport_support(&mut self.imgui.context);
