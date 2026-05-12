@@ -8,7 +8,7 @@ use glam::{vec3, Mat4, Vec2, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
-use sdl3::mouse::MouseButton;
+use sdl3::mouse::{MouseButton, MouseUtil};
 use sdl3::timer;
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
@@ -24,6 +24,7 @@ use crate::window::InputHelper;
 use crate::window::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 
 const F_RUNNING: u8 = 0;
+const F_MOUSE_CAPTURED: u8 = 1;
 
 const WIN_TITLE: &str = "Physics CatBox";
 const WIN_WIDTH: u32 = 800;
@@ -48,6 +49,7 @@ pub struct CatBox {
 	#[cfg_attr(not(feature = "multi-viewport"), allow(unused))]
 	glContext: GLContext,
 	window: SdlWindowRef,
+	mouseUtil: MouseUtil,
 	
 	imgui: Imgui,
 	
@@ -141,22 +143,24 @@ impl CatBox {
 		//
 		// let solver = newSolverRef(Solver::new(Vec3::splat(1000.0), gl.clone(), baseShader)?);
 		let mut renderManager = RenderManager::new(gl.clone())?;
+		renderManager.lineRendererMut().enable(true);
 		// renderManager.addRenderable(solver.clone());
 		
 		let camera = Camera {
 			frustum: Frustum {
-				fov: 500.0,
-				fovMax: 10000.0,
+				far: 500.0,
+				// fov: 500.0,
+				// fovMax: 10000.0,
 				..Frustum::default()
 			},
 			transform: Transform {
-				position: vec3(0.0, 0.0, 5.0),
+				position: vec3(0.0, 20.0, 100.0),
 				..Transform::default()
 			},
 			..Camera::default()
 		};
 		
-		// // Setup physicals
+		// Setup physicals
 		// let a: u32 = 30*30;
 		// let sq = (a as f32).sqrt();
 		// let s = 10.0;
@@ -193,6 +197,7 @@ impl CatBox {
 			gl,
 			glContext,
 			window,
+			mouseUtil: sdl.mouse(),
 			
 			imgui: Imgui {
 				context: imgui,
@@ -216,7 +221,8 @@ impl CatBox {
 		let windowSize = self.window.borrow().size();
 		let windowAspect = windowSize.0 as f32 / windowSize.1 as f32;
 		
-		let projection = Projection::Orthographic(windowAspect * -1.0, windowAspect * 1.0, -1.0, 1.0);
+		let projection = Projection::Perspective(windowAspect);
+		// let projection = Projection::Orthographic(windowAspect * -1.0, windowAspect * 1.0, -1.0, 1.0);
 		self.projectionMatrix = self.camera.getProjectionMatrix(projection);
 	}
 	
@@ -251,8 +257,15 @@ impl CatBox {
 				_ => {},
 			},
 			Event::MouseWheel { y, .. } => {
-				self.camera.frustum.zoom(-y * 10.0);
-				self.updateProjectionMatrix();
+				if !self.imgui.context.io().want_capture_mouse() {
+					self.camera.frustum.zoom(-y * 1.0);
+					self.updateProjectionMatrix();
+				}
+			},
+			Event::MouseMotion { xrel, yrel, .. } => {
+				if self.flags.get(F_MOUSE_CAPTURED) {
+					self.camera.turn(xrel, -yrel);
+				}
 			}
 			_ => {},
 		}
@@ -282,24 +295,65 @@ impl CatBox {
 			// update
 			self.imgui.context.io_mut().set_delta_time(dt);
 			
-			if self.inputHelper.isMouseJustPressed(MouseButton::Middle) {
-				self.lastMousePos = self.inputHelper.mousePos();
-			}
-			if self.inputHelper.isMousePressed(MouseButton::Middle) {
-				let mouseDiff = self.lastMousePos - self.inputHelper.mousePos();
-				if mouseDiff.length() > 0.0 {
-					let lastMouseWorld = screenToWorldSpace(self.lastMousePos, self.width, self.height, self.projectionMatrix, self.viewMatrix);
-					let mouseDiffWorld = screenToWorldSpace(self.lastMousePos + mouseDiff, self.width, self.height, self.projectionMatrix, self.viewMatrix);
-					let worldDiff = lastMouseWorld - mouseDiffWorld;
-					// println!("{}", worldDiff.z);
-					
-					self.camera.transform.position.x -= worldDiff.x;
-					self.camera.transform.position.y -= worldDiff.y;
+			let mut mouseCaptured = self.flags.get(F_MOUSE_CAPTURED);
+			if self.inputHelper.isKeyJustPressed(Keycode::_1) {
+				self.flags.flip(F_MOUSE_CAPTURED);
+				mouseCaptured = self.flags.get(F_MOUSE_CAPTURED);
+				
+				self.mouseUtil.set_relative_mouse_mode(&*self.window.borrow(), mouseCaptured);
+				info!("Mouse captured: {}", mouseCaptured);
+				
+				let mut imguiConfigFlags = self.imgui.context.io().config_flags();
+				if mouseCaptured {
+					imguiConfigFlags.insert(ConfigFlags::NO_MOUSE);
+				} else {
+					imguiConfigFlags.remove(ConfigFlags::NO_MOUSE);
 				}
-				self.lastMousePos = self.inputHelper.mousePos();
+				self.imgui.context.io_mut().set_config_flags(imguiConfigFlags);
 			}
+			if mouseCaptured && !self.imgui.context.io().want_capture_keyboard() {
+				if self.inputHelper.isKeyPressed(Keycode::W) {
+					self.camera.transform.translateLocalForward(30.0 * dt);
+				}
+				if self.inputHelper.isKeyPressed(Keycode::S) {
+					self.camera.transform.translateLocalForward(-30.0 * dt);
+				}
+				if self.inputHelper.isKeyPressed(Keycode::A) {
+					self.camera.transform.translateLocalRight(-30.0 * dt);
+				}
+				if self.inputHelper.isKeyPressed(Keycode::D) {
+					self.camera.transform.translateLocalRight(30.0 * dt);
+				}
+				if self.inputHelper.isKeyPressed(Keycode::Space) {
+					self.camera.transform.translateGlobal(Vec3::Y * 30.0 * dt);
+				}
+				if self.inputHelper.isKeyPressed(Keycode::LCtrl) {
+					self.camera.transform.translateGlobal(Vec3::Y * -30.0 * dt);
+				}
+			}
+			// todo: fix for 3d world drag
+			// if self.inputHelper.isMouseJustPressed(MouseButton::Middle) {
+			// 	self.lastMousePos = self.inputHelper.mousePos();
+			// }
+			// if self.inputHelper.isMousePressed(MouseButton::Middle) {
+			// 	let mouseDiff = self.lastMousePos - self.inputHelper.mousePos();
+			// 	if mouseDiff.length() > 0.0 {
+			// 		let lastMouseWorld = screenToWorldSpace(self.lastMousePos, self.width, self.height, self.projectionMatrix, self.viewMatrix);
+			// 		let mouseDiffWorld = screenToWorldSpace(self.lastMousePos + mouseDiff, self.width, self.height, self.projectionMatrix, self.viewMatrix);
+			// 		let worldDiff = lastMouseWorld - mouseDiffWorld;
+			// 		// println!("{}", worldDiff.z);
+			//
+			// 		self.camera.transform.position.x -= worldDiff.x;
+			// 		self.camera.transform.position.y -= worldDiff.y;
+			// 	}
+			// 	self.lastMousePos = self.inputHelper.mousePos();
+			// }
 			
 			// self.solver.borrow_mut().update(OPTIMAL_DT);
+			self.renderManager.lineRendererMut().pushLine3(Vec3::new(-50.0, 0.0, -50.0), Vec3::ONE, Vec3::new(50.0, 0.0, -50.0), Vec3::ONE);
+			self.renderManager.lineRendererMut().pushLine3(Vec3::new(50.0, 0.0, -50.0), Vec3::ONE, Vec3::new(50.0, 0.0, 50.0), Vec3::ONE);
+			self.renderManager.lineRendererMut().pushLine3(Vec3::new(50.0, 0.0, 50.0), Vec3::ONE, Vec3::new(-50.0, 0.0, 50.0), Vec3::ONE);
+			self.renderManager.lineRendererMut().pushLine3(Vec3::new(-50.0, 0.0, 50.0), Vec3::ONE, Vec3::new(-50.0, 0.0, -50.0), Vec3::ONE);
 			
 			// Imgui
 			dear_imgui_sdl3::sdl3_new_frame(&mut self.imgui.context);
@@ -315,6 +369,7 @@ impl CatBox {
 				  ui.text(format!("Total frames: {}", totalFrames));
 				  ui.separator();
 				  
+				  ui.text(format!("Mouse captured (Press 1): {}", self.flags.get(F_MOUSE_CAPTURED)));
 				  ui.text(format!("Mouse Position: ({:.2},{:.2})", self.inputHelper.mousePos().x, self.inputHelper.mousePos().y));
 				  
 				  let windowSize = self.window.borrow().size();
@@ -357,7 +412,7 @@ impl CatBox {
 					  itemWidth.end();
 					  
 					  if ui.small_button("Reset") {
-						  self.camera.transform.position = Vec3::ZERO;
+						  // self.camera.transform.position = Vec3::ZERO;
 						  self.camera.frustum.fov = 500.0;
 						  updateProjection = true;
 					  }

@@ -80,15 +80,15 @@ impl Transform {
 		self.position += translation;
 	}
 	
-	pub fn translateLocalForward(&mut self, delta: Vec3) {
+	pub fn translateLocalForward(&mut self, delta: f32) {
 		self.position += self.localFront * delta;
 	}
 	
-	pub fn translateLocalRight(&mut self, delta: Vec3) {
+	pub fn translateLocalRight(&mut self, delta: f32) {
 		self.position += self.localRight * delta;
 	}
 	
-	pub fn translateLocalUp(&mut self, delta: Vec3) {
+	pub fn translateLocalUp(&mut self, delta: f32) {
 		self.position += self.localUp * delta;
 	}
 }
