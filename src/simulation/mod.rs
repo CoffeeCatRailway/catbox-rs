@@ -1,5 +1,4 @@
 mod transform;
-pub mod camera;
 pub mod ball;
 mod solver;
 pub mod region;

@@ -16,10 +16,10 @@ use crate::gl_check_error;
 use crate::graphics::{RenderManager, Renderable};
 use crate::graphics::shaders;
 use crate::simulation::ball::{Ball, BallRenderable};
-use crate::simulation::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 use crate::simulation::{Transform, Solver};
 use crate::types::{newGlRef, newPhysicalRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
 use crate::window::InputHelper;
+use crate::window::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 
 const F_RUNNING: u8 = 0;
 
