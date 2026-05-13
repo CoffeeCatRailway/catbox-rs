@@ -56,7 +56,7 @@ pub struct CatBox {
 	// solver: SolverRef,
 	renderManager: RenderManager,
 	clearColor: [f32; 4],
-	lastMousePos: Vec2,
+	// lastMousePos: Vec2,
 	
 	camera: Camera,
 	projectionMatrix: Mat4,
@@ -207,7 +207,7 @@ impl CatBox {
 			// solver,
 			renderManager,
 			clearColor: [0.27, 0.59, 0.27, 1.0],
-			lastMousePos: Vec2::ZERO,
+			// lastMousePos: Vec2::ZERO,
 			
 			camera,
 			projectionMatrix: Mat4::IDENTITY,
