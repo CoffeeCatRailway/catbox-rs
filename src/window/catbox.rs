@@ -350,10 +350,21 @@ impl CatBox {
 			// }
 			
 			// self.solver.borrow_mut().update(OPTIMAL_DT);
-			self.renderManager.lineRendererMut().pushLine3(Vec3::new(-50.0, 0.0, -50.0), Vec3::ONE, Vec3::new(50.0, 0.0, -50.0), Vec3::ONE);
-			self.renderManager.lineRendererMut().pushLine3(Vec3::new(50.0, 0.0, -50.0), Vec3::ONE, Vec3::new(50.0, 0.0, 50.0), Vec3::ONE);
-			self.renderManager.lineRendererMut().pushLine3(Vec3::new(50.0, 0.0, 50.0), Vec3::ONE, Vec3::new(-50.0, 0.0, 50.0), Vec3::ONE);
-			self.renderManager.lineRendererMut().pushLine3(Vec3::new(-50.0, 0.0, 50.0), Vec3::ONE, Vec3::new(-50.0, 0.0, -50.0), Vec3::ONE);
+			{
+				let s: f32 = 500.0;
+				let hs = s / 2.0;
+				let n = 50;
+				for i in 0..n+1 {
+					let x = (i as f32 / n as f32) * s - hs;
+					let mut col = Vec3::ONE;
+					if x.abs() - 0.0 < f32::EPSILON {
+						col = Vec3::X;
+					}
+					self.renderManager.lineRendererMut().pushLine3(Vec3::new(x, 0.0, hs), col, Vec3::new(x, 0.0, -hs), col);
+					(col.x, col.z) = (col.z, col.x);
+					self.renderManager.lineRendererMut().pushLine3(Vec3::new(hs, 0.0, x), col, Vec3::new(-hs, 0.0, x), col);
+				}
+			}
 			
 			// Imgui
 			dear_imgui_sdl3::sdl3_new_frame(&mut self.imgui.context);
@@ -411,11 +422,11 @@ impl CatBox {
 					  }
 					  itemWidth.end();
 					  
-					  if ui.small_button("Reset") {
-						  // self.camera.transform.position = Vec3::ZERO;
-						  self.camera.frustum.fov = 500.0;
-						  updateProjection = true;
-					  }
+					  // if ui.small_button("Reset") {
+						//   self.camera.transform.position = Vec3::ZERO;
+						//   self.camera.frustum.fov = 500.0;
+						//   updateProjection = true;
+					  // }
 				  }
 			  });
 			
