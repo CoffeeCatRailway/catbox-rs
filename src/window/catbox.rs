@@ -15,11 +15,9 @@ use tracing::{info, warn};
 use crate::gl_check_error;
 use crate::graphics::{RenderManager, Renderable};
 use crate::graphics::shaders;
-use crate::simulation::Transform;
 // use crate::simulation::ball::{Ball, BallRenderable};
-// use crate::simulation::{Transform, Solver};
-use crate::types::{newGlRef, newRenderableRef, newSdlWindowRef, GlRef, SdlWindowRef};
-// use crate::types::{newGlRef, newPhysicalRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
+use crate::simulation::{Solver, Transform};
+use crate::types::{newGlRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
 use crate::window::InputHelper;
 use crate::window::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 
@@ -53,7 +51,7 @@ pub struct CatBox {
 	
 	imgui: Imgui,
 	
-	// solver: SolverRef,
+	solver: SolverRef,
 	renderManager: RenderManager,
 	clearColor: [f32; 4],
 	// lastMousePos: Vec2,
@@ -141,7 +139,7 @@ impl CatBox {
 		// let baseShader = shaders::baseShader(gl.clone())?;
 		// let instanceShader = shaders::instanceShader(gl.clone())?;
 		//
-		// let solver = newSolverRef(Solver::new(Vec3::splat(1000.0), gl.clone(), baseShader)?);
+		let solver = newSolverRef(Solver::new()?);
 		let mut renderManager = RenderManager::new(gl.clone())?;
 		renderManager.lineRendererMut().enable(true);
 		// renderManager.addRenderable(solver.clone());
@@ -204,7 +202,7 @@ impl CatBox {
 				renderer: imguiRenderer,
 			},
 			
-			// solver,
+			solver,
 			renderManager,
 			clearColor: [0.27, 0.59, 0.27, 1.0],
 			// lastMousePos: Vec2::ZERO,
@@ -349,7 +347,7 @@ impl CatBox {
 			// 	self.lastMousePos = self.inputHelper.mousePos();
 			// }
 			
-			// self.solver.borrow_mut().update(OPTIMAL_DT);
+			self.solver.borrow_mut().update(OPTIMAL_DT);
 			{
 				let s: f32 = 500.0;
 				let hs = s / 2.0;
@@ -430,7 +428,7 @@ impl CatBox {
 				  }
 			  });
 			
-			// self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
+			self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
 			
 			if updateProjection {
 				self.updateProjectionMatrix();
@@ -494,7 +492,7 @@ impl CatBox {
 	
 	pub fn destroy(&mut self) {
 		warn!("Destroying window");
-		// self.solver.borrow_mut().destroy();
+		self.solver.borrow_mut().destroy();
 		self.renderManager.destroy();
 		#[cfg(feature = "multi-viewport")]
 		glow_mvp::shutdown_multi_viewport_support(&mut self.imgui.context);

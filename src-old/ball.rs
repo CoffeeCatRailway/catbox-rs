@@ -33,7 +33,7 @@ impl BallRenderable {
 	fn data() -> (Vec<Vertex>, Vec<u32>) {
 		let segments = 20;
 		let mut vertices = Vec::with_capacity(segments + 1);
-		let mut indices = Vec::with_capacity(8 * 3);
+		let mut indices = Vec::with_capacity(segments * 3);
 		
 		vertices.push(Default::default());
 		for i in 0..segments {

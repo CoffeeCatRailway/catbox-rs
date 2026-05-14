@@ -1,9 +1,9 @@
 mod transform;
-// pub mod ball;
-// mod solver;
+mod solver;
 pub mod region;
+pub mod physical;
 
 pub use transform::Transform;
 
-// pub use solver::Physical;
-// pub use solver::Solver;
+pub use solver::Physical;
+pub use solver::Solver;

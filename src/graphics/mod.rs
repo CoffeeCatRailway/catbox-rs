@@ -3,8 +3,11 @@ mod line_renderer;
 mod render_manager;
 pub mod mesh;
 pub mod shaders;
+mod mesh_primitives;
 
 pub use line_renderer::LineRenderer;
 
 pub use render_manager::Renderable;
 pub use render_manager::RenderManager;
+
+pub use mesh_primitives::*;
