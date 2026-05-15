@@ -23,6 +23,7 @@ use crate::window::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 
 const F_RUNNING: u8 = 0;
 const F_MOUSE_CAPTURED: u8 = 1;
+const F_WIREFRAME: u8 = 2;
 
 const WIN_TITLE: &str = "Physics CatBox";
 const WIN_WIDTH: u32 = 800;
@@ -76,7 +77,6 @@ impl CatBox {
 		
 		glAttributes.set_context_profile(GLProfile::Core);
 		glAttributes.set_context_version(4, 5);
-		glAttributes.set_depth_size(0);
 		
 		info!("Window and GL context");
 		let window = video.window(WIN_TITLE, WIN_WIDTH, WIN_HEIGHT)
@@ -98,6 +98,16 @@ impl CatBox {
 			});
 			newGlRef(gl)
 		};
+		
+		unsafe {
+			gl.enable(glow::CULL_FACE);
+			gl.cull_face(glow::BACK);
+			gl.front_face(glow::CCW);
+			
+			gl.enable(glow::DEPTH_TEST);
+			gl.depth_func(glow::LESS);
+			gl.depth_mask(true);
+		}
 		
 		info!("Imgui context");
 		let mut imgui = ImguiContext::create();
@@ -135,8 +145,8 @@ impl CatBox {
 		glow_mvp::enable(&mut imguiRenderer, &mut imgui);
 		
 		// Initialize renderers, shaders and camera
-		// info!("Initializing locals");
 		// let baseShader = shaders::baseShader(gl.clone())?;
+		info!("Initializing locals");
 		// let instanceShader = shaders::instanceShader(gl.clone())?;
 		//
 		let solver = newSolverRef(Solver::new()?);
@@ -269,6 +279,60 @@ impl CatBox {
 		}
 	}
 	
+	fn input(&mut self, dt: f32) {
+		// Toggle wireframe
+		if self.inputHelper.isKeyJustPressed(Keycode::_2) {
+			self.flags.flip(F_WIREFRAME);
+			unsafe {
+				if self.flags.get(F_WIREFRAME) {
+					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::LINE);
+				} else {
+					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
+				}
+			}
+		}
+		
+		// Toggle mouse capture
+		let mut mouseCaptured = self.flags.get(F_MOUSE_CAPTURED);
+		if self.inputHelper.isKeyJustPressed(Keycode::_1) {
+			self.flags.flip(F_MOUSE_CAPTURED);
+			mouseCaptured = self.flags.get(F_MOUSE_CAPTURED);
+			
+			self.mouseUtil.set_relative_mouse_mode(&*self.window.borrow(), mouseCaptured);
+			info!("Mouse captured: {}", mouseCaptured);
+			
+			let mut imguiConfigFlags = self.imgui.context.io().config_flags();
+			if mouseCaptured {
+				imguiConfigFlags.insert(ConfigFlags::NO_MOUSE);
+			} else {
+				imguiConfigFlags.remove(ConfigFlags::NO_MOUSE);
+			}
+			self.imgui.context.io_mut().set_config_flags(imguiConfigFlags);
+		}
+		
+		// Camera WASD
+		if mouseCaptured && !self.imgui.context.io().want_capture_keyboard() {
+			if self.inputHelper.isKeyPressed(Keycode::W) {
+				self.camera.transform.translateLocalForward(30.0 * dt);
+			}
+			if self.inputHelper.isKeyPressed(Keycode::S) {
+				self.camera.transform.translateLocalForward(-30.0 * dt);
+			}
+			if self.inputHelper.isKeyPressed(Keycode::A) {
+				self.camera.transform.translateLocalRight(-30.0 * dt);
+			}
+			if self.inputHelper.isKeyPressed(Keycode::D) {
+				self.camera.transform.translateLocalRight(30.0 * dt);
+			}
+			if self.inputHelper.isKeyPressed(Keycode::Space) {
+				self.camera.transform.translateGlobal(Vec3::Y * 30.0 * dt);
+			}
+			if self.inputHelper.isKeyPressed(Keycode::LCtrl) {
+				self.camera.transform.translateGlobal(Vec3::Y * -30.0 * dt);
+			}
+		}
+	}
+	
 	pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
 		info!("Starting CatBox loop");
 		self.flags.set(F_RUNNING);
@@ -293,59 +357,7 @@ impl CatBox {
 			// update
 			self.imgui.context.io_mut().set_delta_time(dt);
 			
-			let mut mouseCaptured = self.flags.get(F_MOUSE_CAPTURED);
-			if self.inputHelper.isKeyJustPressed(Keycode::_1) {
-				self.flags.flip(F_MOUSE_CAPTURED);
-				mouseCaptured = self.flags.get(F_MOUSE_CAPTURED);
-				
-				self.mouseUtil.set_relative_mouse_mode(&*self.window.borrow(), mouseCaptured);
-				info!("Mouse captured: {}", mouseCaptured);
-				
-				let mut imguiConfigFlags = self.imgui.context.io().config_flags();
-				if mouseCaptured {
-					imguiConfigFlags.insert(ConfigFlags::NO_MOUSE);
-				} else {
-					imguiConfigFlags.remove(ConfigFlags::NO_MOUSE);
-				}
-				self.imgui.context.io_mut().set_config_flags(imguiConfigFlags);
-			}
-			if mouseCaptured && !self.imgui.context.io().want_capture_keyboard() {
-				if self.inputHelper.isKeyPressed(Keycode::W) {
-					self.camera.transform.translateLocalForward(30.0 * dt);
-				}
-				if self.inputHelper.isKeyPressed(Keycode::S) {
-					self.camera.transform.translateLocalForward(-30.0 * dt);
-				}
-				if self.inputHelper.isKeyPressed(Keycode::A) {
-					self.camera.transform.translateLocalRight(-30.0 * dt);
-				}
-				if self.inputHelper.isKeyPressed(Keycode::D) {
-					self.camera.transform.translateLocalRight(30.0 * dt);
-				}
-				if self.inputHelper.isKeyPressed(Keycode::Space) {
-					self.camera.transform.translateGlobal(Vec3::Y * 30.0 * dt);
-				}
-				if self.inputHelper.isKeyPressed(Keycode::LCtrl) {
-					self.camera.transform.translateGlobal(Vec3::Y * -30.0 * dt);
-				}
-			}
-			// todo: fix for 3d world drag
-			// if self.inputHelper.isMouseJustPressed(MouseButton::Middle) {
-			// 	self.lastMousePos = self.inputHelper.mousePos();
-			// }
-			// if self.inputHelper.isMousePressed(MouseButton::Middle) {
-			// 	let mouseDiff = self.lastMousePos - self.inputHelper.mousePos();
-			// 	if mouseDiff.length() > 0.0 {
-			// 		let lastMouseWorld = screenToWorldSpace(self.lastMousePos, self.width, self.height, self.projectionMatrix, self.viewMatrix);
-			// 		let mouseDiffWorld = screenToWorldSpace(self.lastMousePos + mouseDiff, self.width, self.height, self.projectionMatrix, self.viewMatrix);
-			// 		let worldDiff = lastMouseWorld - mouseDiffWorld;
-			// 		// println!("{}", worldDiff.z);
-			//
-			// 		self.camera.transform.position.x -= worldDiff.x;
-			// 		self.camera.transform.position.y -= worldDiff.y;
-			// 	}
-			// 	self.lastMousePos = self.inputHelper.mousePos();
-			// }
+			self.input(dt);
 			
 			self.solver.borrow_mut().update(OPTIMAL_DT);
 			{
@@ -368,7 +380,7 @@ impl CatBox {
 			dear_imgui_sdl3::sdl3_new_frame(&mut self.imgui.context);
 			let ui = self.imgui.context.frame();
 			
-			ui.dockspace_over_main_viewport();
+			// ui.dockspace_over_main_viewport();
 			
 			ui.window("App Info")
 			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
@@ -438,31 +450,32 @@ impl CatBox {
 			
 			// render
 			unsafe {
-				self.gl.clear(glow::COLOR_BUFFER_BIT);
+				self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
 				self.gl.clear_color(self.clearColor[0], self.clearColor[1], self.clearColor[2], self.clearColor[3]);
 				gl_check_error!(self.gl);
-			}
-			
-			// calculate camera matrices
-			self.viewMatrix = self.camera.getViewMatrix();
-			let projViewMat = self.projectionMatrix * self.viewMatrix;
-			
-			self.renderManager.draw(&projViewMat, dt)?;
-			
-			if self.imgui.renderer.is_destroyed {
-				self.imgui.renderer.create_device_objects(&self.gl)?;
-			}
-			self.imgui.renderer.render_with_context(&self.gl, drawData)?;
-			
-			#[cfg(feature = "multi-viewport")]
-			{
-				let ioFlags = self.imgui.context.io().config_flags();
-				if ioFlags.contains(ConfigFlags::VIEWPORTS_ENABLE) {
-					self.imgui.context.update_platform_windows();
-					self.imgui.context.render_platform_windows_default();
-					// Restore main GL context
 					self.window.borrow().gl_make_current(&self.glContext)?;
+				
+				// calculate camera matrices
+				self.viewMatrix = self.camera.getViewMatrix();
+				let projViewMat = self.projectionMatrix * self.viewMatrix;
+				
+				self.renderManager.draw(&projViewMat, dt)?;
+				
+				if wireframe {
+					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
 				}
+				if self.imgui.renderer.is_destroyed {
+					self.imgui.renderer.create_device_objects(&self.gl)?;
+				}
+				self.imgui.renderer.render_with_context(&self.gl, drawData)?;
+				
+				#[cfg(feature = "multi-viewport")]
+				{
+					let ioFlags = self.imgui.context.io().config_flags();
+					if ioFlags.contains(ConfigFlags::VIEWPORTS_ENABLE) {
+						self.imgui.context.update_platform_windows();
+						self.window.borrow().gl_make_current(&self.glContext)?;
+					}
 			}
 			
 			self.window.borrow().gl_swap_window();
