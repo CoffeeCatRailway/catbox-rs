@@ -1,26 +1,11 @@
 use bool_flags::Flags8;
 use bytemuck::{cast_slice, offset_of, Pod, Zeroable};
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec4};
 use glow::{Buffer, HasContext, VertexArray};
 use tracing::{error, info, warn};
 use crate::gl_check_error;
+use crate::graphics::mesh::Vertex;
 use crate::types::{GlRef, ShaderRef};
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, Pod, Zeroable)]
-pub struct Vertex {
-	pub position: Vec3,
-	pub color: Vec3,
-}
-
-impl Default for Vertex {
-	fn default() -> Self {
-		Self {
-			position: Vec3::ZERO,
-			color: Vec3::ONE,
-		}
-	}
-}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]

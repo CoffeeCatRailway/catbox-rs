@@ -13,11 +13,12 @@ use sdl3::timer;
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::gl_check_error;
-use crate::graphics::{RenderManager, Renderable};
+use crate::graphics::{RenderManager, Renderable, SimpleRenderable};
+use crate::graphics::mesh::{MeshBuilder, Triangle, Vertex};
 use crate::graphics::shaders;
 // use crate::simulation::ball::{Ball, BallRenderable};
 use crate::simulation::{Solver, Transform};
-use crate::types::{newGlRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
+use crate::types::{newGlRef, newMeshRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
 use crate::window::InputHelper;
 use crate::window::camera::{screenToWorldSpace, Camera, Frustum, Projection};
 
@@ -145,8 +146,8 @@ impl CatBox {
 		glow_mvp::enable(&mut imguiRenderer, &mut imgui);
 		
 		// Initialize renderers, shaders and camera
-		// let baseShader = shaders::baseShader(gl.clone())?;
 		info!("Initializing locals");
+		let baseShader = shaders::baseShader(gl.clone())?;
 		// let instanceShader = shaders::instanceShader(gl.clone())?;
 		//
 		let solver = newSolverRef(Solver::new()?);
@@ -167,6 +168,64 @@ impl CatBox {
 			},
 			..Camera::default()
 		};
+		
+		let mut mesh = {
+			let a = Vertex {
+				position: Vec3::new(10.0, 10.0, 0.0),
+				color: Vec3::ONE,
+			};
+			let b = Vertex {
+				position: Vec3::new(-10.0, 10.0, 0.0),
+				color: Vec3::ONE,
+			};
+			let c = Vertex {
+				position: Vec3::new(10.0, -10.0, 0.0),
+				color: Vec3::ONE,
+			};
+			let d = Vertex {
+				position: Vec3::new(-10.0, -10.0, 0.0),
+				color: Vec3::ONE,
+			};
+			MeshBuilder::new().triangle(Triangle(a, b, d)).triangle(Triangle(a, d, c)).buildSimpleMesh(gl.clone())
+		};
+		mesh.upload(baseShader.clone())?;
+		
+		let simpleRenderable = SimpleRenderable {
+			transform: Default::default(),
+			mesh: newMeshRef(mesh),
+			shader: baseShader.clone(),
+		};
+		let simpleRenderable = newRenderableRef(simpleRenderable);
+		renderManager.addRenderable(simpleRenderable);
+		
+		let mut mesh = {
+			let a = Vertex {
+				position: Vec3::new(10.0, 10.0, -10.0),
+				color: Vec3::Y,
+			};
+			let b = Vertex {
+				position: Vec3::new(-10.0, 10.0, -10.0),
+				color: Vec3::Y,
+			};
+			let c = Vertex {
+				position: Vec3::new(10.0, -10.0, -10.0),
+				color: Vec3::Y,
+			};
+			let d = Vertex {
+				position: Vec3::new(-10.0, -10.0, -10.0),
+				color: Vec3::Y,
+			};
+			MeshBuilder::new().triangle(Triangle(a, b, d)).triangle(Triangle(a, d, c)).buildSimpleMesh(gl.clone())
+		};
+		mesh.upload(baseShader.clone())?;
+		
+		let simpleRenderable = SimpleRenderable {
+			transform: Default::default(),
+			mesh: newMeshRef(mesh),
+			shader: baseShader.clone(),
+		};
+		let simpleRenderable = newRenderableRef(simpleRenderable);
+		renderManager.addRenderable(simpleRenderable);
 		
 		// Setup physicals
 		// let a: u32 = 30*30;
@@ -382,6 +441,7 @@ impl CatBox {
 			
 			// ui.dockspace_over_main_viewport();
 			
+			let wireframe = self.flags.get(F_WIREFRAME);
 			ui.window("App Info")
 			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 			  .build(|| {
@@ -392,6 +452,8 @@ impl CatBox {
 				  
 				  ui.text(format!("Mouse captured (Press 1): {}", self.flags.get(F_MOUSE_CAPTURED)));
 				  ui.text(format!("Mouse Position: ({:.2},{:.2})", self.inputHelper.mousePos().x, self.inputHelper.mousePos().y));
+				  
+				  ui.text(format!("Toggle wireframe (Press 2): {}", wireframe));
 				  
 				  let windowSize = self.window.borrow().size();
 				  ui.text(format!("Window Size: ({},{})", windowSize.0, windowSize.1));
@@ -424,7 +486,7 @@ impl CatBox {
 				  ui.separator();
 				  
 				  if ui.collapsing_header("Camera", TreeNodeFlags::COLLAPSING_HEADER) {
-					  ui.text(format!("Position: ({:.3}, {:.3})", self.camera.transform.position.x, self.camera.transform.position.y));
+					  ui.text(format!("Position: ({:.3}, {:.3}, {:.3})", self.camera.transform.position.x, self.camera.transform.position.y, self.camera.transform.position.z));
 					  let uiWidth = ui.window_width();
 					  let itemWidth = ui.push_item_width(uiWidth * 0.6);
 					  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
@@ -453,7 +515,6 @@ impl CatBox {
 				self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
 				self.gl.clear_color(self.clearColor[0], self.clearColor[1], self.clearColor[2], self.clearColor[3]);
 				gl_check_error!(self.gl);
-					self.window.borrow().gl_make_current(&self.glContext)?;
 				
 				// calculate camera matrices
 				self.viewMatrix = self.camera.getViewMatrix();
@@ -474,11 +535,17 @@ impl CatBox {
 					let ioFlags = self.imgui.context.io().config_flags();
 					if ioFlags.contains(ConfigFlags::VIEWPORTS_ENABLE) {
 						self.imgui.context.update_platform_windows();
+						self.imgui.context.render_platform_windows_default();
+						// Restore main GL context
 						self.window.borrow().gl_make_current(&self.glContext)?;
 					}
+				}
+				if wireframe {
+					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::LINE);
+				}
+				
+				self.window.borrow().gl_swap_window();
 			}
-			
-			self.window.borrow().gl_swap_window();
 			
 			// fps counter
 			fps = fps.saturating_add(1);

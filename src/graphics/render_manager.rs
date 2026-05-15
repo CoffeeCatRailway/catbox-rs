@@ -1,6 +1,7 @@
 use bool_flags::Flags8;
 use glam::Mat4;
 use crate::graphics::LineRenderer;
+use crate::simulation::Transform;
 use crate::types::{GlRef, MeshRef, RenderableRef, ShaderRef};
 
 #[allow(unused)]
@@ -40,6 +41,27 @@ pub trait Renderable {
 		if let Some(mesh) = self.meshRef() {
 			mesh.borrow_mut().destroy();
 		}
+	}
+}
+
+#[allow(unused)]
+pub struct SimpleRenderable {
+	pub transform: Transform,
+	pub mesh: MeshRef,
+	pub shader: ShaderRef,
+}
+
+impl Renderable for SimpleRenderable {
+	fn meshRef(&self) -> Option<&MeshRef> {
+		Some(&self.mesh)
+	}
+	
+	fn shaderRef(&self) -> Option<&ShaderRef> {
+		Some(&self.shader)
+	}
+	
+	fn modelMatrix(&self) -> Mat4 {
+		self.transform.getModelMatrix()
 	}
 }
 
