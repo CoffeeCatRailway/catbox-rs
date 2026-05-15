@@ -3,7 +3,7 @@ use bool_flags::Flags8;
 use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
-use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
+use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
 use glam::{vec3, Mat4, Vec2, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
@@ -126,7 +126,7 @@ impl CatBox {
 		}
 		
 		// Initial SDL3 platform backend
-		dear_imgui_sdl3::init_platform_for_opengl(&mut imgui, &window.borrow(), &glContext)?;
+		dear_imgui_sdl3::init_platform_for_opengl(&mut imgui, &*window.borrow(), &glContext)?;
 		
 		// Basic style scaling
 		let windowScale = window.borrow().display_scale();
@@ -442,64 +442,54 @@ impl CatBox {
 			// ui.dockspace_over_main_viewport();
 			
 			let wireframe = self.flags.get(F_WIREFRAME);
+			let mut updateProjection = false;
 			ui.window("App Info")
 			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 			  .build(|| {
-				  ui.text(format!("ImGUI FPS: {:.3}", ui.io().framerate()));
-				  ui.text(format!("Delta Time: {}", dt));
-				  ui.text(format!("Total frames: {}", totalFrames));
-				  ui.separator();
-				  
-				  ui.text(format!("Mouse captured (Press 1): {}", self.flags.get(F_MOUSE_CAPTURED)));
-				  ui.text(format!("Mouse Position: ({:.2},{:.2})", self.inputHelper.mousePos().x, self.inputHelper.mousePos().y));
-				  
-				  ui.text(format!("Toggle wireframe (Press 2): {}", wireframe));
-				  
-				  let windowSize = self.window.borrow().size();
-				  ui.text(format!("Window Size: ({},{})", windowSize.0, windowSize.1));
-				  ui.separator();
-				  
-				  let uiWidth = ui.window_width();
-				  let itemWidth = ui.push_item_width(uiWidth * 0.6);
-				  ui.color_edit4("Clear Color", &mut self.clearColor);
-				  itemWidth.end();
-			  });
-			
-			let mut updateProjection = false;
-			ui.window("Controls")
-			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
-			  .build(|| {
-				  if ui.collapsing_header("Line Renderer", TreeNodeFlags::COLLAPSING_HEADER) {
-					  let lineRendererMut = self.renderManager.lineRendererMut();
-					  if !lineRendererMut.isEnabled() {
-						  if ui.small_button("Enable##LineRenderer") {
-							  lineRendererMut.enable(true);
+				  let flags = ChildFlags::AUTO_RESIZE_X | ChildFlags::AUTO_RESIZE_Y;
+				  ui.child_window("##info")
+					  .child_flags(flags)
+					  .build(ui, || {
+						  ui.text(format!("ImGUI FPS: {:.3}", ui.io().framerate()));
+						  ui.text(format!("Delta Time: {}", dt));
+						  ui.text(format!("Total frames: {}", totalFrames));
+						  ui.separator();
+						  
+						  ui.text(format!("Mouse captured (Press 1): {}", self.flags.get(F_MOUSE_CAPTURED)));
+						  ui.text(format!("Mouse Position: ({:.2},{:.2})", self.inputHelper.mousePos().x, self.inputHelper.mousePos().y));
+						  
+						  ui.text(format!("Toggle wireframe (Press 2): {}", wireframe));
+						  
+						  let windowSize = self.window.borrow().size();
+						  ui.text(format!("Window Size: ({},{})", windowSize.0, windowSize.1));
+						  ui.separator();
+						  
+						  let uiWidth = ui.window_width();
+						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
+						  ui.color_edit4("Clear Color", &mut self.clearColor);
+						  itemWidth.end();
+					  });
+				  ui.same_line();
+				  ui.separator_vertical();
+				  ui.same_line();
+				  ui.child_window("##controls")
+					  .child_flags(flags)
+					  .build(ui, || {
+						  ui.text("Line Renderer:");
+						  let lineRendererMut = self.renderManager.lineRendererMut();
+						  ui.text(format!("Buffer capacity: {}", lineRendererMut.getBufferCapacity()));
+						  ui.text(format!("Last floats pushed: {}", lineRendererMut.getLastFloatsPushed()));
+						  ui.separator();
+						  
+						  ui.text("Camera:");
+						  ui.text(format!("Position: ({:.3}, {:.3}, {:.3})", self.camera.transform.position.x, self.camera.transform.position.y, self.camera.transform.position.z));
+						  let uiWidth = ui.window_width();
+						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
+						  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
+							  updateProjection = true;
 						  }
-					  } else {
-						  if ui.small_button("Disable##LineRenderer") {
-							  lineRendererMut.enable(false);
-						  }
-					  }
-					  ui.text(format!("Buffer capacity: {}", lineRendererMut.getBufferCapacity()));
-					  ui.text(format!("Last floats pushed: {}", lineRendererMut.getLastFloatsPushed()));
-				  }
-				  ui.separator();
-				  
-				  if ui.collapsing_header("Camera", TreeNodeFlags::COLLAPSING_HEADER) {
-					  ui.text(format!("Position: ({:.3}, {:.3}, {:.3})", self.camera.transform.position.x, self.camera.transform.position.y, self.camera.transform.position.z));
-					  let uiWidth = ui.window_width();
-					  let itemWidth = ui.push_item_width(uiWidth * 0.6);
-					  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
-						  updateProjection = true;
-					  }
-					  itemWidth.end();
-					  
-					  // if ui.small_button("Reset") {
-						//   self.camera.transform.position = Vec3::ZERO;
-						//   self.camera.frustum.fov = 500.0;
-						//   updateProjection = true;
-					  // }
-				  }
+						  itemWidth.end();
+					  });
 			  });
 			
 			self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
