@@ -31,8 +31,8 @@ const WIN_WIDTH: u32 = 800;
 const WIN_HEIGHT: u32 = 600;
 
 const FPS: u64 = 60;
-const OPTIMAL_WAIT_TIME: u64 = 1000 / FPS;
-const OPTIMAL_DT: f32 = OPTIMAL_WAIT_TIME as f32 / 1000.0;
+const OPTIMAL_WAIT_TIME: f32 = 1000.0 / FPS as f32;
+const OPTIMAL_DT: f32 = OPTIMAL_WAIT_TIME / 1000.0;
 
 struct Imgui {
 	context: ImguiContext,
@@ -414,6 +414,7 @@ impl CatBox {
 			}
 			
 			// update
+			info!("{}", dt);
 			self.imgui.context.io_mut().set_delta_time(dt);
 			
 			self.input(dt);
@@ -550,9 +551,9 @@ impl CatBox {
 			
 			// timing
 			let elapsedTicks = timer::ticks() - startTick;
-			let waitTime = OPTIMAL_WAIT_TIME.saturating_sub(elapsedTicks);
-			dt = waitTime as f32 / 1000.0;
-			if waitTime > 0 {
+			let waitTime = (OPTIMAL_WAIT_TIME - elapsedTicks as f32).max(0.0);
+			dt = waitTime / 1000.0;
+			if waitTime as u32 > 0 {
 				// info!("{}", waitTime);
 				timer::delay(waitTime as u32);
 			}

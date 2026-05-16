@@ -16,9 +16,9 @@ glam = { version = "0.32", features = ["bytemuck"] }
 bytemuck = { version = "1.25", features = ["derive"] }
 bool-flags = "0.1"
 
-dear-imgui-rs = { git = "https://github.com/Latias94/dear-imgui-rs", features = ["glam"] }
-dear-imgui-sdl3 = { git = "https://github.com/Latias94/dear-imgui-rs" }
-dear-imgui-glow = { git = "https://github.com/Latias94/dear-imgui-rs" }
+dear-imgui-rs = { version = "0.13", features = ["glam"] }
+dear-imgui-sdl3 = "0.13"
+dear-imgui-glow = "0.13"
 
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
