@@ -170,9 +170,10 @@ impl Shader {
 			return;
 		}
 		unsafe {
-			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
-			self.gl.uniform_1_i32(loc, value);
-			gl_check_error!(self.gl);
+			if let Some(loc) = self.gl.get_uniform_location(self.program, name) {
+				self.gl.uniform_1_i32(Some(&loc), value);
+				gl_check_error!(self.gl);
+			}
 		}
 	}
 	
@@ -181,9 +182,10 @@ impl Shader {
 			return;
 		}
 		unsafe {
-			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
-			self.gl.uniform_1_u32(loc, value);
-			gl_check_error!(self.gl);
+			if let Some(loc) = self.gl.get_uniform_location(self.program, name) {
+				self.gl.uniform_1_u32(Some(&loc), value);
+				gl_check_error!(self.gl);
+			}
 		}
 	}
 	
@@ -192,9 +194,10 @@ impl Shader {
 			return;
 		}
 		unsafe {
-			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
-			self.gl.uniform_1_f32(loc, value);
-			gl_check_error!(self.gl);
+			if let Some(loc) = self.gl.get_uniform_location(self.program, name) {
+				self.gl.uniform_1_f32(Some(&loc), value);
+				gl_check_error!(self.gl);
+			}
 		}
 	}
 	
@@ -207,9 +210,10 @@ impl Shader {
 			return;
 		}
 		unsafe {
-			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
-			self.gl.uniform_2_f32(loc, x, y);
-			gl_check_error!(self.gl);
+			if let Some(loc) = self.gl.get_uniform_location(self.program, name) {
+				self.gl.uniform_2_f32(Some(&loc), x, y);
+				gl_check_error!(self.gl);
+			}
 		}
 	}
 	
@@ -222,9 +226,10 @@ impl Shader {
 			return;
 		}
 		unsafe {
-			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
-			self.gl.uniform_3_f32(loc, x, y, z);
-			gl_check_error!(self.gl);
+			if let Some(loc) = self.gl.get_uniform_location(self.program, name) {
+				self.gl.uniform_3_f32(Some(&loc), x, y, z);
+				gl_check_error!(self.gl);
+			}
 		}
 	}
 	
@@ -237,9 +242,10 @@ impl Shader {
 			return;
 		}
 		unsafe {
-			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
-			self.gl.uniform_4_f32(loc, x, y, z, w);
-			gl_check_error!(self.gl);
+			if let Some(loc) = self.gl.get_uniform_location(self.program, name) {
+				self.gl.uniform_4_f32(Some(&loc), x, y, z, w);
+				gl_check_error!(self.gl);
+			}
 		}
 	}
 	
@@ -248,9 +254,10 @@ impl Shader {
 			return;
 		}
 		unsafe {
-			let loc = Some(&self.gl.get_uniform_location(self.program, name).unwrap());
-			self.gl.uniform_matrix_4_f32_slice(loc, false, &mat.to_cols_array());
-			gl_check_error!(self.gl);
+			if let Some(loc) = self.gl.get_uniform_location(self.program, name) {
+				self.gl.uniform_matrix_4_f32_slice(Some(&loc), false, &mat.to_cols_array());
+				gl_check_error!(self.gl);
+			}
 		}
 	}
 }
