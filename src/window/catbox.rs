@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::f32::consts::PI;
 use std::thread;
 use std::time::{Duration, Instant};
 use bool_flags::Flags8;
@@ -16,7 +17,7 @@ use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::gl_check_error;
 use crate::graphics::{RenderManager, Renderable, SimpleRenderable};
-use crate::graphics::mesh::{MeshBuilder, Triangle, Vertex};
+use crate::graphics::mesh::{MeshBuilder, Primitives2D, Primitives3D, Vertex};
 use crate::graphics::shaders;
 // use crate::simulation::ball::{Ball, BallRenderable};
 use crate::simulation::{Solver, Transform};
@@ -149,7 +150,7 @@ impl CatBox {
 		
 		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
-		let baseShader = shaders::simpleShader(gl.clone())?;
+		let simpleLightShader = shaders::simpleLightShader(gl.clone())?;
 		// let instanceShader = shaders::instanceShader(gl.clone())?;
 		//
 		let solver = newSolverRef(Solver::new()?);
@@ -171,60 +172,19 @@ impl CatBox {
 			..Camera::default()
 		};
 		
-		let mut mesh = {
-			let a = Vertex {
-				position: Vec3::new(10.0, 10.0, 0.0),
-				color: Vec3::ONE,
-			};
-			let b = Vertex {
-				position: Vec3::new(-10.0, 10.0, 0.0),
-				color: Vec3::ONE,
-			};
-			let c = Vertex {
-				position: Vec3::new(10.0, -10.0, 0.0),
-				color: Vec3::ONE,
-			};
-			let d = Vertex {
-				position: Vec3::new(-10.0, -10.0, 0.0),
-				color: Vec3::ONE,
-			};
-			MeshBuilder::new().triangle(Triangle(a, b, d)).triangle(Triangle(a, d, c)).buildSimpleMesh(gl.clone())
-		};
-		mesh.upload(baseShader.clone())?;
+		// let mut mesh = Primitives2D::circleXY(20, 20.0).buildSimpleMesh(gl.clone());
+		// let mut mesh = Primitives2D::squareXY(10.0, 10.0).buildSimpleMesh(gl.clone());
+		let mut mesh = Primitives3D::sphereUV(3, 3, 10.0).buildSimpleMesh(gl.clone());
+		mesh.upload(simpleLightShader.clone())?;
 		
 		let simpleRenderable = SimpleRenderable {
-			transform: Default::default(),
+			transform: {
+				let mut transform = Transform::default();
+				// transform.setRotationFromDirection(Vec3::NEG_X * PI / 4.0);
+				transform
+			},
 			mesh: newMeshRef(mesh),
-			shader: baseShader.clone(),
-		};
-		let simpleRenderable = newRenderableRef(simpleRenderable);
-		renderManager.addRenderable(simpleRenderable);
-		
-		let mut mesh = {
-			let a = Vertex {
-				position: Vec3::new(10.0, 10.0, -10.0),
-				color: Vec3::Y,
-			};
-			let b = Vertex {
-				position: Vec3::new(-10.0, 10.0, -10.0),
-				color: Vec3::Y,
-			};
-			let c = Vertex {
-				position: Vec3::new(10.0, -10.0, -10.0),
-				color: Vec3::Y,
-			};
-			let d = Vertex {
-				position: Vec3::new(-10.0, -10.0, -10.0),
-				color: Vec3::Y,
-			};
-			MeshBuilder::new().triangle(Triangle(a, b, d)).triangle(Triangle(a, d, c)).buildSimpleMesh(gl.clone())
-		};
-		mesh.upload(baseShader.clone())?;
-		
-		let simpleRenderable = SimpleRenderable {
-			transform: Default::default(),
-			mesh: newMeshRef(mesh),
-			shader: baseShader.clone(),
+			shader: simpleLightShader.clone(),
 		};
 		let simpleRenderable = newRenderableRef(simpleRenderable);
 		renderManager.addRenderable(simpleRenderable);

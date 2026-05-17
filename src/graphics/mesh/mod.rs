@@ -1,4 +1,5 @@
 mod mesh;
+mod primitives;
 mod builder;
 
 use std::hash::{Hash, Hasher};
@@ -6,6 +7,7 @@ use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
 
 pub use mesh::*;
+pub use primitives::*;
 pub use builder::*;
 
 #[repr(C)]
