@@ -20,10 +20,10 @@ impl MeshBuilder {
 		self
 	}
 	
-	pub fn triangleFromIndices(&mut self, v0: u32, v1: u32, v2: u32) -> (&mut MeshBuilder, Triangle) {
+	pub fn triangleFromIndices(&mut self, i0: u32, i1: u32, i2: u32) -> (&mut MeshBuilder, Triangle) {
 		let (v0, v1, v2) = {
-			let mut iter = self.vertices.iter().cloned();
-			(iter.nth(v0 as usize).unwrap(), iter.nth(v1 as usize).unwrap(), iter.nth(v2 as usize).unwrap())
+			let vec = self.vertices.iter().cloned().collect::<Vec<_>>();
+			(vec[i0 as usize], vec[i1 as usize], vec[i2 as usize])
 		};
 		let triangle = Triangle(v0, v1, v2);
 		self.triangles.insert(triangle);
