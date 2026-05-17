@@ -147,7 +147,7 @@ impl CatBox {
 		
 		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
-		let baseShader = shaders::baseShader(gl.clone())?;
+		let baseShader = shaders::simpleShader(gl.clone())?;
 		// let instanceShader = shaders::instanceShader(gl.clone())?;
 		//
 		let solver = newSolverRef(Solver::new()?);

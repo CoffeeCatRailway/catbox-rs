@@ -2,26 +2,23 @@ use std::sync::OnceLock;
 use crate::graphics::shader::{Shader, ShaderType};
 use crate::types::{newShaderRef, GlRef, ShaderRef};
 
-pub const BASE_FRAGMENT: &str = include_str!("../../resources/shaders/base.frag");
-pub const BASE_VERTEX: &str = include_str!("../../resources/shaders/simple.vert");
-pub const BASE_FRAGMENT: &str = include_str!("../../resources/shaders/simple.frag");
+pub const SIMPLE_VERTEX: &str = include_str!("../../resources/shaders/simple.vert");
+pub const SIMPLE_FRAGMENT: &str = include_str!("../../resources/shaders/simple.frag");
+static SIMPLE_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
 pub const INSTANCE_VERTEX: &str = include_str!("../../resources/shaders/instance.vert");
 pub const INSTANCE_FRAGMENT: &str = include_str!("../../resources/shaders/instance.frag");
-
-static BASE_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
-
 static INSTANCE_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
-pub fn baseShader(gl: GlRef) -> Result<ShaderRef, String> {
-	if BASE_SHADER_REF.get().is_none() {
+pub fn simpleShader(gl: GlRef) -> Result<ShaderRef, String> {
+	if SIMPLE_SHADER_REF.get().is_none() {
 		let shader = Shader::new(gl)?
-			.attachFromSource(ShaderType::Vertex, BASE_VERTEX)?
-			.attachFromSource(ShaderType::Fragment, BASE_FRAGMENT)?
+			.attachFromSource(ShaderType::Vertex, SIMPLE_VERTEX)?
+			.attachFromSource(ShaderType::Fragment, SIMPLE_FRAGMENT)?
 			.link()?;
-		BASE_SHADER_REF.set(newShaderRef(shader)).expect("Failed to set base shader reference!");
+		SIMPLE_SHADER_REF.set(newShaderRef(shader)).expect("Failed to set simple shader reference!");
 	}
-	Ok(BASE_SHADER_REF.get().unwrap().clone())
+	Ok(SIMPLE_SHADER_REF.get().unwrap().clone())
 }
 
 pub fn instanceShader(gl: GlRef) -> Result<ShaderRef, String> {
@@ -42,6 +39,6 @@ fn destroyShaderRef(shader: &OnceLock<ShaderRef>) {
 }
 
 pub fn destroyAllShaders() {
-	destroyShaderRef(&BASE_SHADER_REF);
+	destroyShaderRef(&SIMPLE_SHADER_REF);
 	destroyShaderRef(&INSTANCE_SHADER_REF);
 }

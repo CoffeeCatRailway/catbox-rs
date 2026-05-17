@@ -40,7 +40,7 @@ impl LineRenderer {
 		unsafe {
 			info!("Creating line renderer");
 			let vec = Vec::with_capacity(capacity);
-			let shader = shaders::baseShader(gl.clone())?;
+			let shader = shaders::simpleShader(gl.clone())?;
 			
 			let vao = gl.create_vertex_array()?;
 			let vbo = gl.create_named_buffer()?;
