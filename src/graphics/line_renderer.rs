@@ -156,7 +156,7 @@ impl LineRenderer {
 		}
 		
 		self.shader.read().unwrap().bind();
-		self.shader.read().unwrap().setMatrix4f("u_pvm", pvMatrix);
+		self.shader.read().unwrap().setMatrix4f("u_projViewMatrix", pvMatrix);
 		
 		unsafe {
 			self.gl.bind_vertex_array(Some(self.vao));

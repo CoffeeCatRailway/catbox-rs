@@ -16,8 +16,8 @@ pub trait Renderable {
 			let shader = shader.read().unwrap();
 			
 			shader.bind();
-			let pvm = projViewMat * self.modelMatrix();
-			shader.setMatrix4f("u_pvm", &pvm);
+			shader.setMatrix4f("u_projViewMatrix", projViewMat);
+			shader.setMatrix4f("u_modelMatrix", &self.modelMatrix());
 			
 			mesh.draw();
 		}

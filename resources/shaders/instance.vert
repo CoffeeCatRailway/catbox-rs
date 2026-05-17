@@ -1,6 +1,6 @@
 #version 330 core
 
-uniform mat4 u_pvm;
+uniform mat4 u_projViewMatrix;
 
 in vec3 i_position;
 
@@ -10,6 +10,6 @@ in vec4 i_color;
 out vec4 f_color;
 
 void main() {
-    gl_Position = u_pvm * i_model * vec4(i_position, 1.0);
+    gl_Position = u_projViewMatrix * i_model * vec4(i_position, 1.0);
     f_color = i_color;
 }
