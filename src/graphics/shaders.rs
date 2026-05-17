@@ -2,8 +2,9 @@ use std::sync::OnceLock;
 use crate::graphics::shader::{Shader, ShaderType};
 use crate::types::{newShaderRef, GlRef, ShaderRef};
 
-pub const BASE_VERTEX: &str = include_str!("../../resources/shaders/base.vert");
 pub const BASE_FRAGMENT: &str = include_str!("../../resources/shaders/base.frag");
+pub const BASE_VERTEX: &str = include_str!("../../resources/shaders/simple.vert");
+pub const BASE_FRAGMENT: &str = include_str!("../../resources/shaders/simple.frag");
 
 pub const INSTANCE_VERTEX: &str = include_str!("../../resources/shaders/instance.vert");
 pub const INSTANCE_FRAGMENT: &str = include_str!("../../resources/shaders/instance.frag");
