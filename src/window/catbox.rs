@@ -1,4 +1,6 @@
 use std::error::Error;
+use std::thread;
+use std::time::{Duration, Instant};
 use bool_flags::Flags8;
 use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
@@ -397,11 +399,11 @@ impl CatBox {
 		self.flags.set(F_RUNNING);
 		
 		let mut fps: u32 = 0;
-		let mut lastTick: u64 = 0;
+		let mut frameLast = Instant::now();
 		let mut dt: f32 = OPTIMAL_DT;
 		let mut totalFrames: u64 = 0;
 		while self.flags.get(F_RUNNING) {
-			let startTick = timer::ticks();
+			let frameStart = Instant::now();
 			
 			// events
 			self.inputHelper.update();
@@ -414,7 +416,6 @@ impl CatBox {
 			}
 			
 			// update
-			info!("{}", dt);
 			self.imgui.context.io_mut().set_delta_time(dt);
 			
 			self.input(dt);
@@ -541,21 +542,21 @@ impl CatBox {
 			// fps counter
 			fps = fps.saturating_add(1);
 			totalFrames = totalFrames.saturating_add(1);
-			if startTick >= lastTick + 1000 {
+			if frameStart >= frameLast + Duration::from_millis(1000) {
 				let newTitle = format!("{} - FPS: {}", WIN_TITLE, fps);
 				self.window.borrow_mut().set_title(&newTitle)?;
 				
-				lastTick = startTick;
+				frameLast = frameStart;
 				fps = 0;
 			}
 			
 			// timing
-			let elapsedTicks = timer::ticks() - startTick;
-			let waitTime = (OPTIMAL_WAIT_TIME - elapsedTicks as f32).max(0.0);
+			let elapsedMillis = frameStart.elapsed().as_millis();
+			let waitTime = (OPTIMAL_WAIT_TIME - elapsedMillis as f32).max(f32::EPSILON);
 			dt = waitTime / 1000.0;
 			if waitTime as u32 > 0 {
 				// info!("{}", waitTime);
-				timer::delay(waitTime as u32);
+				thread::sleep(Duration::from_millis(waitTime as u64));
 			}
 		}
 		Ok(())
