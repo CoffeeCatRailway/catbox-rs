@@ -50,13 +50,8 @@ impl MeshBuilder {
 		self
 	}
 	
-	fn calcIndices(&self) -> Vec<u32> {
-		let mut lastIndex: u32 = 0;
-		let mut indexMap: HashMap<Vertex, u32> = HashMap::new();
-		for vertex in self.vertices.iter() {
-			indexMap.insert(vertex.clone(), lastIndex);
-			lastIndex += 1;
-		}
+	fn buildData(&self) -> (Vec<Vertex>, Vec<u32>) {
+		let indexMap: HashMap<Vertex, u32> = self.vertices.iter().cloned().enumerate().map(|(i, v)| (v, i as u32)).collect();
 		
 		let mut indices: Vec<u32> = Vec::new();
 		for triangle in self.triangles.iter() {
@@ -64,11 +59,8 @@ impl MeshBuilder {
 			indices.push(*indexMap.get(&triangle.1).unwrap_or_else(|| &0));
 			indices.push(*indexMap.get(&triangle.2).unwrap_or_else(|| &0));
 		}
-		indices
-	}
-	
-	pub fn buildData(&self) -> (Vec<Vertex>, Vec<u32>) {
-		(self.vertices.iter().cloned().collect(), self.calcIndices())
+		
+		(self.vertices.iter().cloned().collect(), indices)
 	}
 	
 	pub fn buildSimpleMesh(&self, gl: GlRef) -> Mesh {
