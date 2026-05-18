@@ -511,8 +511,8 @@ impl CatBox {
 			}
 			
 			// timing
-			let elapsedMillis = frameStart.elapsed().as_millis();
-			let waitTime = (OPTIMAL_WAIT_TIME - elapsedMillis as f32).max(f32::EPSILON);
+			let elapsedMillis = frameStart.elapsed().as_micros() as f32 / 1000.0;
+			let waitTime = (OPTIMAL_WAIT_TIME - elapsedMillis).max(f32::EPSILON);
 			dt = waitTime / 1000.0;
 			if waitTime as u32 > 0 {
 				// info!("{}", waitTime);
