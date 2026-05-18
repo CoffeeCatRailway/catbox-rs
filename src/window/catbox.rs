@@ -1,29 +1,26 @@
 use std::error::Error;
-use std::f32::consts::PI;
 use std::thread;
 use std::time::{Duration, Instant};
 use bool_flags::Flags8;
 use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
-use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
-use glam::{vec3, Mat4, Vec2, Vec3};
+use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, WindowFlags};
+use glam::{vec3, Mat4, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
-use sdl3::mouse::{MouseButton, MouseUtil};
-use sdl3::timer;
+use sdl3::mouse::MouseUtil;
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::gl_check_error;
-use crate::graphics::{RenderManager, Renderable, SimpleRenderable};
-use crate::graphics::mesh::{MeshBuilder, Primitives2D, Primitives3D, Vertex};
+use crate::graphics::{RenderManager, SimpleRenderable};
+use crate::graphics::mesh::{Primitives2D, Primitives3D, Vertex};
 use crate::graphics::shaders;
-// use crate::simulation::ball::{Ball, BallRenderable};
 use crate::simulation::{Solver, Transform};
 use crate::types::{newGlRef, newMeshRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
 use crate::window::InputHelper;
-use crate::window::camera::{screenToWorldSpace, Camera, Frustum, Projection};
+use crate::window::camera::{Camera, Frustum, Projection};
 
 const F_RUNNING: u8 = 0;
 const F_MOUSE_CAPTURED: u8 = 1;
