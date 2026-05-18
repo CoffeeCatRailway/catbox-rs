@@ -9,8 +9,8 @@ in vec3 f_lightPos;
 out vec4 o_color;
 
 void main() {
-//	vec3 normal = normalize(f_normal);
-	vec3 normal = normalize(cross(dFdx(f_position), dFdy(f_position)));
+	vec3 normal = normalize(f_normal);
+//	vec3 normal = normalize(cross(dFdx(f_position), dFdy(f_position)));
 	
 	vec3 lightDir = normalize(f_lightPos - f_position);
 //	float diff = max(dot(normal, lightDir), 0.0);

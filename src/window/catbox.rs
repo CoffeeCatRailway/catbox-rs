@@ -15,7 +15,7 @@ use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::gl_check_error;
 use crate::graphics::{RenderManager, SimpleRenderable};
-use crate::graphics::mesh::{Primitives2D, Primitives3D, Vertex};
+use crate::graphics::mesh::{Primitives2D, Primitives3D};
 use crate::graphics::shaders;
 use crate::simulation::{Solver, Transform};
 use crate::types::{newGlRef, newMeshRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
@@ -169,9 +169,12 @@ impl CatBox {
 			..Camera::default()
 		};
 		
+		let meshNow = Instant::now();
 		// let mut mesh = Primitives2D::circleXY(20, 20.0).buildSimpleMesh(gl.clone());
 		// let mut mesh = Primitives2D::squareXY(10.0, 10.0).buildSimpleMesh(gl.clone());
-		let mut mesh = Primitives3D::sphereUV(3, 3, 10.0).buildSimpleMesh(gl.clone());
+		let mut mesh = Primitives3D::sphereUV(10, 10, 10.0).buildSimpleMesh(gl.clone());
+		let meshEnd = meshNow.elapsed().as_micros();
+		info!("Mesh build took: {}ms", meshEnd as f32 / 1000.0);
 		mesh.upload(simpleLightShader.clone())?;
 		
 		let simpleRenderable = SimpleRenderable {
