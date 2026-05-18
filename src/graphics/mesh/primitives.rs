@@ -94,7 +94,7 @@ impl Primitives3D {
 			..Default::default()
 		});
 		
-		let lastIndex = builder.vertexCount() - 1;
+		let lastIndex = builder.vertices().len() - 1;
 		for i in 0..slices {
 			let i0 = i + 1;
 			let i1 = (i + 1) % slices + 1;

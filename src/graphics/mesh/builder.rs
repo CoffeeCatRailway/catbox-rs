@@ -20,8 +20,12 @@ impl MeshBuilder {
 		}
 	}
 	
-	pub fn vertexCount(&self) -> usize {
-		self.vertices.len()
+	pub fn vertices(&self) -> &Vec<Rc<Cell<Vertex>>> {
+		&self.indexMap
+	}
+	
+	pub fn triangles(&self) -> &HashSet<Triangle> {
+		&self.triangles
 	}
 	
 	pub fn vertex(&mut self, vertex: Vertex) -> &mut MeshBuilder {
