@@ -138,7 +138,7 @@ impl Mesh {
 			self.vboMesh = Some(vbo);
 			
 			let locPos = shader.read().unwrap().getAttribLocation("i_position").unwrap();
-			let locNorm = shader.read().unwrap().getAttribLocation("i_normal").unwrap();
+			let locNorm = shader.read().unwrap().getAttribLocation("i_normal");
 			let locCol = shader.read().unwrap().getAttribLocation("i_color").unwrap();
 			
 			self.gl.enable_vertex_array_attrib(vao, locPos);
@@ -146,10 +146,12 @@ impl Mesh {
 			self.gl.vertex_array_attrib_binding_f32(vao, locPos, 0);
 			gl_check_error!(self.gl);
 			
-			self.gl.enable_vertex_array_attrib(vao, locNorm);
-			self.gl.vertex_array_attrib_format_f32(vao, locNorm, 3, glow::FLOAT, false, offset_of!(Vertex, normal) as u32);
-			self.gl.vertex_array_attrib_binding_f32(vao, locNorm, 0);
-			gl_check_error!(self.gl);
+			if let Some(locNorm) = locNorm {
+				self.gl.enable_vertex_array_attrib(vao, locNorm);
+				self.gl.vertex_array_attrib_format_f32(vao, locNorm, 3, glow::FLOAT, false, offset_of!(Vertex, normal) as u32);
+				self.gl.vertex_array_attrib_binding_f32(vao, locNorm, 0);
+				gl_check_error!(self.gl);
+			}
 			
 			if self.isInstance() {
 				let vbo = self.gl.create_named_buffer()?;
