@@ -38,7 +38,7 @@ impl Default for Vertex {
     fn default() -> Self {
         Self {
             position: Vec3::ZERO,
-            normal: Vec3::ONE,
+            normal: Vec3::Y,
             color: Vec3::ONE,
         }
     }
