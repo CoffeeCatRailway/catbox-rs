@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::f32::consts::PI;
 use std::thread;
 use std::time::{Duration, Instant};
 use bool_flags::Flags8;
@@ -171,8 +172,10 @@ impl CatBox {
 		
 		let meshNow = Instant::now();
 		// let mut mesh = Primitives2D::circleXY(20, 20.0).buildSimpleMesh(gl.clone());
-		let mut mesh = Primitives2D::squareXY(10.0, 10.0).subdivideMesh().buildSimpleMesh(gl.clone());
+		// let mut mesh = Primitives2D::squareXY(10.0, 10.0).subdivideMesh().buildSimpleMesh(gl.clone());
 		// let mut mesh = Primitives3D::sphereUV(10, 10, 10.0).buildSimpleMesh(gl.clone());
+		// let mut mesh = Primitives3D::tetrahedron(10.0).buildSimpleMesh(gl.clone());
+		let mut mesh = Primitives3D::cube(10.0, 10.0, 10.0).buildSimpleMesh(gl.clone());
 		let meshEnd = meshNow.elapsed().as_micros();
 		info!("Mesh build took: {}ms", meshEnd as f32 / 1000.0);
 		mesh.upload(simpleLightShader.clone())?;

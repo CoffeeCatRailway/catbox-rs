@@ -8,10 +8,11 @@ use tracing::info;
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::types::GlRef;
 
+#[derive(Debug, Clone)]
 pub struct MeshBuilder {
 	vertices: HashMap<Vertex, Rc<Cell<Vertex>>>,
 	indexMap: Vec<Rc<Cell<Vertex>>>,
-	triangles: HashSet<Triangle>,
+	triangles: HashSet<Triangle>, // todo: change to usize triplet
 }
 
 impl MeshBuilder {

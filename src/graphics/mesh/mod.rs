@@ -18,6 +18,16 @@ pub struct Vertex {
     pub color: Vec3,
 }
 
+impl Vertex {
+	pub fn autoNormal(position: Vec3, color: Vec3) -> Vertex {
+		Self {
+			position,
+			normal: position.normalize(),
+			color,
+		}
+	}
+}
+
 impl Eq for Vertex {}
 
 impl Hash for Vertex {

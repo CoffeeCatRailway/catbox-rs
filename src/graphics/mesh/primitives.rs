@@ -66,6 +66,52 @@ impl Primitives2D {
 }
 
 impl Primitives3D {
+	pub fn tetrahedron(radius: f32) -> MeshBuilder {
+		let mut builder = MeshBuilder::new();
+		
+		builder
+			.vertex(Vertex::autoNormal(Vec3::new(radius, radius, radius), Vec3::ONE))
+			.vertex(Vertex::autoNormal(Vec3::new(radius, -radius, -radius), Vec3::ONE))
+			.vertex(Vertex::autoNormal(Vec3::new(-radius, radius, -radius), Vec3::ONE))
+			.vertex(Vertex::autoNormal(Vec3::new(-radius, -radius, radius), Vec3::ONE))
+		
+			.triangleIndices(0, 1, 2).0
+			.triangleIndices(0, 2, 3).0
+			.triangleIndices(0, 3, 1).0
+			.triangleIndices(3, 2, 1);
+		
+		builder
+	}
+	
+	pub fn cube(w: f32, h: f32, d: f32) -> MeshBuilder {
+		let mut builder = MeshBuilder::new();
+		
+		builder
+			.vertex(Vertex::autoNormal(Vec3::new(-w, -h, -d), Vec3::ONE))
+			.vertex(Vertex::autoNormal(Vec3::new(w, -h, -d), Vec3::ONE))
+			.vertex(Vertex::autoNormal(Vec3::new(w, h, -d), Vec3::ONE))
+			.vertex(Vertex::autoNormal(Vec3::new(-w, h, -d), Vec3::ONE))
+			.vertex(Vertex::autoNormal(Vec3::new(-w, -h, d), Vec3::ONE))
+			.vertex(Vertex::autoNormal(Vec3::new(w, -h, d), Vec3::ONE))
+			.vertex(Vertex::autoNormal(Vec3::new(w, h, d), Vec3::ONE))
+			.vertex(Vertex::autoNormal(Vec3::new(-w, h, d), Vec3::ONE))
+			
+			.triangleIndices(3, 2, 1).0 // back
+			.triangleIndices(3, 1, 0).0
+			.triangleIndices(2, 6, 5).0 // right
+			.triangleIndices(2, 5, 1).0
+			.triangleIndices(5, 6, 7).0 // front
+			.triangleIndices(5, 7, 4).0
+			.triangleIndices(0, 4, 7).0 // left
+			.triangleIndices(0, 7, 3).0
+			.triangleIndices(3, 7, 6).0 // top
+			.triangleIndices(3, 6, 2).0
+			.triangleIndices(1, 5, 4).0 // bottom
+			.triangleIndices(1, 4, 0).0;
+		
+		builder
+	}
+	
 	pub fn sphereUV(stacks: usize, slices: usize, radius: f32) -> MeshBuilder {
 		let mut builder = MeshBuilder::new();
 		
