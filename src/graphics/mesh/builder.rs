@@ -1,7 +1,10 @@
+#![allow(unused)]
+
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
+use tracing::info;
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::types::GlRef;
 
@@ -37,7 +40,15 @@ impl MeshBuilder {
 		self
 	}
 	
-	pub fn triangleFromIndices(&mut self, i0: usize, i1: usize, i2: usize) -> (&mut MeshBuilder, Triangle) {
+	pub fn triangle(&mut self, triangle: Triangle) -> &mut MeshBuilder {
+		if !self.triangles.contains(&triangle) {
+			self.vertex(triangle.0.get()).vertex(triangle.1.get()).vertex(triangle.2.get());
+			self.triangles.insert(triangle);
+		}
+		self
+	}
+	
+	pub fn triangleIndices(&mut self, i0: usize, i1: usize, i2: usize) -> (&mut MeshBuilder, Triangle) {
 		let v0 = self.indexMap[i0].clone();
 		let v1 = self.indexMap[i1].clone();
 		let v2 = self.indexMap[i2].clone();
@@ -46,7 +57,7 @@ impl MeshBuilder {
 		(self, triangle)
 	}
 	
-	pub fn triangle(&mut self, v0: Vertex, v1: Vertex, v2: Vertex) -> (&mut MeshBuilder, Triangle) {
+	pub fn triangleVertices(&mut self, v0: Vertex, v1: Vertex, v2: Vertex) -> (&mut MeshBuilder, Triangle) {
 		self.vertex(v0).vertex(v1).vertex(v2);
 		let triangle = Triangle(self.vertices[&v0].clone(), self.vertices[&v1].clone(), self.vertices[&v2].clone());
 		self.triangles.insert(triangle.clone());
@@ -57,7 +68,22 @@ impl MeshBuilder {
 		self.triangles.remove(&triangle);
 		let triangles = triangle.subdivide();
 		for tri in triangles {
-			self.triangle(tri.0.get(), tri.1.get(), tri.2.get());
+			self.triangleVertices(tri.0.get(), tri.1.get(), tri.2.get());
+		}
+		self
+	}
+	
+	pub fn subdivideMesh(&mut self) -> &mut MeshBuilder {
+		let oldTriangles = self.triangles.clone();
+		self.triangles.clear();
+		let mut newTriangles = HashSet::new();
+		for tri in oldTriangles {
+			for subTri in tri.subdivide() {
+				newTriangles.insert(subTri);
+			}
+		}
+		for tri in newTriangles {
+			self.triangle(tri);
 		}
 		self
 	}
@@ -76,6 +102,7 @@ impl MeshBuilder {
 			}
 			Some(indices)
 		};
+		// info!("{}", self.triangles.len());
 		
 		(self.indexMap.iter().map(|rc| rc.get()).collect(), indices)
 	}
