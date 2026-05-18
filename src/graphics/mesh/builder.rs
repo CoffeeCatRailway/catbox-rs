@@ -115,10 +115,10 @@ impl Triangle {
             color: (b.color + c.color) / 2.0,
         }));
         [
-            Triangle(self.0.clone(), ac.clone(), ab.clone()),
-            Triangle(ac.clone(), self.1.clone(), bc.clone()),
-            Triangle(ab.clone(), bc.clone(), self.2.clone()),
-            Triangle(ab.clone(), ac.clone(), bc.clone()),
+            Triangle(self.0.clone(), ab.clone(), ac.clone()),
+            Triangle(ac.clone(), bc.clone(), self.2.clone()),
+            Triangle(ab.clone(), self.1.clone(), bc.clone()),
+            Triangle(ab.clone(), bc.clone(), ac.clone()),
         ]
     }
 }
