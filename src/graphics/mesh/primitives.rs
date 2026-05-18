@@ -101,21 +101,21 @@ impl Primitives3D {
 			builder.triangleFromIndices(0, i1, i0);
 			let i0 = i + slices * (stacks - 2) + 1;
 			let i1 = (i + 1) % slices + slices * (stacks - 2) + 1;
-			// builder.triangleFromIndices(lastIndex, i0, i1);
+			builder.triangleFromIndices(lastIndex, i0, i1);
 		}
 		
-		// for j in 0..(stacks - 2) {
-		// 	let j0 = j * slices + 1;
-		// 	let j1 = (j + 1) * slices + 1;
-		// 	for i in 0..slices {
-		// 		let i0 = j0 + i;
-		// 		let i1 = j0 + (i + 1) % slices;
-		// 		let i2 = j1 + (i + 1) % slices;
-		// 		let i3 = j1 + i;
-		// 		builder.triangleFromIndices(i0, i1, i2);
-		// 		builder.triangleFromIndices(i0, i2, i3);
-		// 	}
-		// }
+		for j in 0..(stacks - 2) {
+			let j0 = j * slices + 1;
+			let j1 = (j + 1) * slices + 1;
+			for i in 0..slices {
+				let i0 = j0 + i;
+				let i1 = j0 + (i + 1) % slices;
+				let i2 = j1 + (i + 1) % slices;
+				let i3 = j1 + i;
+				builder.triangleFromIndices(i0, i1, i2);
+				builder.triangleFromIndices(i0, i2, i3);
+			}
+		}
 		
 		builder
 	}
