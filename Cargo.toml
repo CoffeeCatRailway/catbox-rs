@@ -1,6 +1,6 @@
 [package]
 name = "catbox-rs"
-version = "0.11.0-pre1"
+version = "0.11.1"
 edition = "2024"
 readme = "README.md"
 #license = "GPL-3"
