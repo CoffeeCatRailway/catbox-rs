@@ -110,6 +110,10 @@ impl Primitives3D {
 		builder
 	}
 	
+	pub fn sphereCube(radius: f32) -> MeshBuilder {
+		Self::cube(1.0, 1.0, 1.0).subdivide().subdivide().subdivide().projectToSphere(radius)
+	}
+	
 	pub fn sphereUV(stacks: usize, slices: usize, radius: f32) -> MeshBuilder {
 		let mut builder = MeshBuilder::new();
 		
@@ -161,6 +165,55 @@ impl Primitives3D {
 			}
 		}
 		
+		builder
+	}
+	
+	// order >= 6 is +1m
+	pub fn icosphere(radius: f32, order: u32) -> MeshBuilder {
+		let mut builder = MeshBuilder::new();
+		
+		let phi = (1.0 + f32::sqrt(5.0)) / 2.0;
+		let (a, b) = (1.0, 1.0 / phi);
+		
+		builder.vertex(Vertex::autoNormal(Vec3::new(0.0, b, -a), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(b, a, 0.0), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(-b, a, 0.0), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(0.0, b, a), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(0.0, -b, a), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(-a, 0.0, b), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(0.0, -b, -a), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(a, 0.0, -b), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(a, 0.0, b), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(-a, 0.0, -b), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(b, -a, 0.0), Vec3::ONE));
+		builder.vertex(Vertex::autoNormal(Vec3::new(-b, -a, 0.0), Vec3::ONE));
+		
+		builder.triangleIndices(2, 1, 0);
+		builder.triangleIndices(1, 2, 3);
+		builder.triangleIndices(5, 4, 3);
+		builder.triangleIndices(4, 8, 3);
+		builder.triangleIndices(7, 6, 0);
+		builder.triangleIndices(6, 9, 0);
+		builder.triangleIndices(11, 10, 4);
+		builder.triangleIndices(10, 11, 6);
+		builder.triangleIndices(9, 5, 2);
+		builder.triangleIndices(5, 9, 11);
+		builder.triangleIndices(8, 7, 1);
+		builder.triangleIndices(7, 8, 10);
+		builder.triangleIndices(2, 5, 3);
+		builder.triangleIndices(8, 1, 3);
+		builder.triangleIndices(9, 2, 0);
+		builder.triangleIndices(1, 7, 0);
+		builder.triangleIndices(11, 9, 6);
+		builder.triangleIndices(7, 10, 6);
+		builder.triangleIndices(5, 11, 4);
+		builder.triangleIndices(10, 8, 4);
+		
+		for _ in 0..order {
+			builder.subdivide();
+		}
+		
+		builder.projectToSphere(radius);
 		builder
 	}
 }

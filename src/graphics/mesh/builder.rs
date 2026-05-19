@@ -142,7 +142,6 @@ impl MeshBuilder {
 			let n = p.length();
 			borrow.position = (1.0 / n) * p * radius;
 			borrow.normal = borrow.position.normalize_or_zero();
-			println!("{}, {}", borrow.position, borrow.normal);
 		}
 		self.to_owned()
 	}

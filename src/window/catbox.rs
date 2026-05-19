@@ -173,9 +173,12 @@ impl CatBox {
 		let meshNow = Instant::now();
 		// let mesh = Primitives2D::circleXY(20, 20.0);
 		// let mesh = Primitives2D::squareXY(10.0, 10.0).subdivideMesh();
+		
 		// let mesh = Primitives3D::sphereUV(10, 10, 10.0);
 		// let mesh = Primitives3D::tetrahedron(10.0);
-		let mesh = Primitives3D::cube(10.0, 10.0, 10.0).subdivide().subdivide().subdivide().projectToSphere(10.0);
+		// let mesh = Primitives3D::cube(10.0, 10.0, 10.0);
+		// let mesh = Primitives3D::sphereCube(10.0);
+		let mesh = Primitives3D::icosphere(10.0, 1);
 		
 		info!("Mesh vertex/triangle count: {}/{}", mesh.vertices().len(), mesh.triangles().len());
 		let mut mesh = mesh.buildSimpleMesh(gl.clone());
