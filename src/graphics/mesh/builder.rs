@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
-use glam::Vec3;
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::types::GlRef;
 
@@ -35,6 +34,7 @@ pub struct MeshBuilder {
 	triangles: HashSet<Triangle>,
 }
 
+#[allow(unused)]
 impl MeshBuilder {
 	pub fn new() -> Self {
 		Self {
@@ -132,6 +132,17 @@ impl MeshBuilder {
 		for tri in triangles.iter() {
 			self.subdivideTriangle(tri);
 		}
+		self.to_owned()
+	}
+	
+	pub fn dual(&mut self) -> MeshBuilder {
+		// todo https://danielsieger.com/blog/2021/01/03/generating-platonic-solids.html
+		self.to_owned()
+	}
+	
+	pub fn centroid(&mut self, triangle: &Triangle) -> MeshBuilder {
+		// todo
+		// need to find a way to calculate for triangles on same plane
 		self.to_owned()
 	}
 	
