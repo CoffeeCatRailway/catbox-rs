@@ -1,111 +1,166 @@
-#![allow(unused)]
-
-use std::cell::Cell;
-use std::collections::{HashMap, HashSet};
+use std::cell::RefCell;
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::rc::Rc;
-use tracing::info;
+use glam::Vec3;
 use crate::graphics::mesh::{Mesh, Vertex};
 use crate::types::GlRef;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct VertexRef(Rc<RefCell<Vertex>>);
+
+impl From<Vertex> for VertexRef {
+	fn from(vertex: Vertex) -> Self {
+		VertexRef(Rc::new(RefCell::new(vertex)))
+	}
+}
+
+impl Deref for VertexRef {
+	type Target = Rc<RefCell<Vertex>>;
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+
+impl Hash for VertexRef {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.borrow().hash(state);
+	}
+}
+
 #[derive(Debug, Clone)]
 pub struct MeshBuilder {
-	vertices: HashMap<Vertex, Rc<Cell<Vertex>>>,
-	indexMap: Vec<Rc<Cell<Vertex>>>,
-	triangles: HashSet<Triangle>, // todo: change to usize triplet
+	vertices: Vec<VertexRef>,
+	triangles: HashSet<Triangle>,
 }
 
 impl MeshBuilder {
 	pub fn new() -> Self {
 		Self {
-			vertices: HashMap::with_capacity(3),
-			indexMap: Vec::with_capacity(3),
+			vertices: Vec::with_capacity(3),
 			triangles: HashSet::with_capacity(1),
 		}
 	}
 	
-	pub fn vertices(&self) -> &Vec<Rc<Cell<Vertex>>> {
-		&self.indexMap
+	pub fn vertices(&self) -> &Vec<VertexRef> {
+		&self.vertices
 	}
 	
 	pub fn triangles(&self) -> &HashSet<Triangle> {
 		&self.triangles
 	}
 	
-	pub fn vertex(&mut self, vertex: Vertex) -> &mut MeshBuilder {
-		if !self.vertices.contains_key(&vertex) {
-			let rc = Rc::new(Cell::new(vertex));
-			self.vertices.insert(vertex, rc.clone());
-			self.indexMap.push(rc.clone());
+	pub fn findVertex(&self, vertex: &Vertex) -> Option<VertexRef> {
+		self.vertices.iter().find(|v| *v.borrow() == *vertex).cloned()
+	}
+	
+	pub fn findVertexIndex(&self, vertex: &Vertex) -> Option<usize> {
+		self.vertices.iter().rposition(|v| *v.borrow() == *vertex)
+	}
+	
+	pub fn vertex(&mut self, vertex: Vertex) -> VertexRef {
+		let found = self.findVertex(&vertex);
+		if found.is_none() {
+			let vertex = VertexRef::from(vertex);
+			self.vertices.push(vertex.clone());
+			return vertex;
 		}
-		self
+		found.unwrap()
 	}
 	
-	pub fn triangle(&mut self, triangle: Triangle) -> &mut MeshBuilder {
-		if !self.triangles.contains(&triangle) {
-			self.vertex(triangle.0.get()).vertex(triangle.1.get()).vertex(triangle.2.get());
-			self.triangles.insert(triangle);
+	pub fn findTriangle(&self, triangle: &Triangle) -> Option<Triangle> {
+		self.triangles.get(triangle).cloned()
+	}
+	
+	pub fn triangleIndices(&mut self, i0: usize, i1: usize, i2: usize) -> Triangle {
+		let triangle = Triangle(i0, i1, i2);
+		let found = self.findTriangle(&triangle);
+		if found.is_none() {
+			self.triangles.insert(triangle.clone());
+			return triangle;
 		}
-		self
+		found.unwrap()
 	}
 	
-	pub fn triangleIndices(&mut self, i0: usize, i1: usize, i2: usize) -> (&mut MeshBuilder, Triangle) {
-		let v0 = self.indexMap[i0].clone();
-		let v1 = self.indexMap[i1].clone();
-		let v2 = self.indexMap[i2].clone();
-		let triangle = Triangle(v0, v1, v2);
-		self.triangles.insert(triangle.clone());
-		(self, triangle)
+	pub fn triangleVertices(&mut self, v0: Vertex, v1: Vertex, v2: Vertex) -> Triangle {
+		self.vertex(v0);
+		self.vertex(v1);
+		self.vertex(v2);
+		self.triangleIndices(self.findVertexIndex(&v0).unwrap(), self.findVertexIndex(&v1).unwrap(), self.findVertexIndex(&v2).unwrap())
 	}
 	
-	pub fn triangleVertices(&mut self, v0: Vertex, v1: Vertex, v2: Vertex) -> (&mut MeshBuilder, Triangle) {
-		self.vertex(v0).vertex(v1).vertex(v2);
-		let triangle = Triangle(self.vertices[&v0].clone(), self.vertices[&v1].clone(), self.vertices[&v2].clone());
-		self.triangles.insert(triangle.clone());
-		(self, triangle)
-	}
-	
-	pub fn subdivideTriangle(&mut self, triangle: &Triangle) -> &mut MeshBuilder {
+	pub fn subdivideTriangle(&mut self, triangle: &Triangle) -> MeshBuilder {
 		self.triangles.remove(&triangle);
-		let triangles = triangle.subdivide();
-		for tri in triangles {
-			self.triangleVertices(tri.0.get(), tri.1.get(), tri.2.get());
-		}
-		self
+		let a = self.vertices[triangle.0].borrow().clone();
+		let b = self.vertices[triangle.1].borrow().clone();
+		let c = self.vertices[triangle.2].borrow().clone();
+		
+		let ab = self.vertex(Vertex {
+			position: (a.position + b.position) / 2.0,
+			normal: (a.normal + b.normal) / 2.0,
+			color: (a.color + b.color) / 2.0,
+		});
+		let bc = self.vertex(Vertex {
+			position: (b.position + c.position) / 2.0,
+			normal: (b.normal + c.normal) / 2.0,
+			color: (b.color + c.color) / 2.0,
+		});
+		let ac = self.vertex(Vertex {
+			position: (a.position + c.position) / 2.0,
+			normal: (a.normal + c.normal) / 2.0,
+			color: (a.color + c.color) / 2.0,
+		});
+		
+		let ab = self.findVertexIndex(&*ab.borrow()).unwrap();
+		let bc = self.findVertexIndex(&*bc.borrow()).unwrap();
+		let ac = self.findVertexIndex(&*ac.borrow()).unwrap();
+		
+		let a = triangle.0;
+		let b = triangle.1;
+		let c = triangle.2;
+		
+		self.triangleIndices(a, ab, ac);
+		self.triangleIndices(b, bc, ab);
+		self.triangleIndices(c, ac, bc);
+		self.triangleIndices(ab, bc, ac);
+		self.to_owned()
 	}
 	
-	pub fn subdivideMesh(&mut self) -> &mut MeshBuilder {
-		let oldTriangles = self.triangles.clone();
-		self.triangles.clear();
-		let mut newTriangles = HashSet::new();
-		for tri in oldTriangles {
-			for subTri in tri.subdivide() {
-				newTriangles.insert(subTri);
-			}
+	pub fn subdivide(&mut self) -> MeshBuilder {
+		let triangles = self.triangles.clone();
+		for tri in triangles.iter() {
+			self.subdivideTriangle(tri);
 		}
-		for tri in newTriangles {
-			self.triangle(tri);
+		self.to_owned()
+	}
+	
+	pub fn projectToSphere(&mut self, radius: f32) -> MeshBuilder {
+		for v in self.vertices.iter() {
+			let mut borrow = v.borrow_mut();
+			let p = borrow.position;
+			let n = p.length();
+			borrow.position = (1.0 / n) * p * radius;
+			borrow.normal = borrow.position.normalize_or_zero();
+			println!("{}, {}", borrow.position, borrow.normal);
 		}
-		self
+		self.to_owned()
 	}
 	
 	fn buildData(&self) -> (Vec<Vertex>, Option<Vec<u32>>) {
-		let indexMap: HashMap<Vertex, u32> = self.indexMap.iter().cloned().enumerate().map(|(i, v)| (v.get(), i as u32)).collect();
-		
 		let indices = if self.triangles.is_empty() {
 			None
 		} else {
 			let mut indices: Vec<u32> = Vec::new();
 			for triangle in self.triangles.iter() {
-				indices.push(*indexMap.get(&triangle.0.get()).unwrap_or_else(|| &0));
-				indices.push(*indexMap.get(&triangle.1.get()).unwrap_or_else(|| &0));
-				indices.push(*indexMap.get(&triangle.2.get()).unwrap_or_else(|| &0));
+				indices.push(triangle.0 as u32);
+				indices.push(triangle.1 as u32);
+				indices.push(triangle.2 as u32);
 			}
 			Some(indices)
 		};
-		// info!("{}", self.triangles.len());
 		
-		(self.indexMap.iter().map(|rc| rc.get()).collect(), indices)
+		(self.vertices.iter().map(|v| *v.borrow()).collect(), indices)
 	}
 	
 	pub fn buildSimpleMesh(&self, gl: GlRef) -> Mesh {
@@ -119,44 +174,15 @@ impl MeshBuilder {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Triangle(pub Rc<Cell<Vertex>>, pub Rc<Cell<Vertex>>, pub Rc<Cell<Vertex>>);
-
-impl Triangle {
-    pub fn subdivide(&self) -> [Triangle; 4] {
-        let a = self.0.clone().get();
-        let b = self.1.clone().get();
-        let c = self.2.clone().get();
-        let ab = Rc::new(Cell::new(Vertex {
-            position: (a.position + b.position) / 2.0,
-            normal: (a.normal + b.normal) / 2.0,
-            color: (a.color + b.color) / 2.0,
-        }));
-        let ac = Rc::new(Cell::new(Vertex {
-            position: (a.position + c.position) / 2.0,
-            normal: (a.normal + c.normal) / 2.0,
-            color: (a.color + c.color) / 2.0,
-        }));
-        let bc = Rc::new(Cell::new(Vertex {
-            position: (b.position + c.position) / 2.0,
-            normal: (b.normal + c.normal) / 2.0,
-            color: (b.color + c.color) / 2.0,
-        }));
-        [
-            Triangle(self.0.clone(), ab.clone(), ac.clone()),
-            Triangle(ac.clone(), bc.clone(), self.2.clone()),
-            Triangle(ab.clone(), self.1.clone(), bc.clone()),
-            Triangle(ab.clone(), bc.clone(), ac.clone()),
-        ]
-    }
-}
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct Triangle(pub usize, pub usize, pub usize);
 
 impl Eq for Triangle {}
 
 impl Hash for Triangle {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.get().hash(state);
-        self.1.get().hash(state);
-        self.2.get().hash(state);
+        self.0.hash(state);
+        self.1.hash(state);
+        self.2.hash(state);
     }
 }
