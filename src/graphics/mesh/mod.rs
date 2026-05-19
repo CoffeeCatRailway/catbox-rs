@@ -22,7 +22,7 @@ impl Vertex {
 	pub fn autoNormal(position: Vec3, color: Vec3) -> Vertex {
 		Self {
 			position,
-			normal: position.normalize(),
+			normal: position.normalize_or_zero(),
 			color,
 		}
 	}
