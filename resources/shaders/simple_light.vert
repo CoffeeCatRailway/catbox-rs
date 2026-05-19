@@ -16,6 +16,7 @@ void main() {
 	gl_Position = u_projViewMatrix * modelPos;
 	
 	f_position = modelPos.xyz;
-	f_normal = i_normal;
+	f_normal = (u_modelMatrix * vec4(i_normal, 1.0)).xyz;
+//    f_normal = mat3(transpose(inverse(u_modelMatrix))) * i_normal;
 	f_color = i_color;
 }
