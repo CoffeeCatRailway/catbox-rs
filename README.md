@@ -7,16 +7,17 @@ This is also a continuation of my Java attempt [CatBox](https://github.com/Coffe
 ### Features:
 - [x] Line Renderer for debug info
 - [x] Camera controller
-- [ ] ~~Primitive Shape Renderer (Circle, Box, Triangle-WIP)~~ Reworked into `Renderable`
-- [x] Simple object (ball)
-- [x] Collide with world boundaries
 - [x] Imgui
+- [x] ~~Primitive Shape Renderer (Circle, Box, Triangle-WIP)~~ Reworked into `Renderable`
+- [x] Mesh builder for 3D
+- [ ] Simple object (ball)
+- [ ] Collide with world boundaries
 - [ ] Separate solver thread (Maybe later)
-- [x] Collide with other objects
-    - [x] Sweep and Prune (5-18 fps)
-    - [x] Space partition (QuadTree or BSP, 15+ fps)
+- [ ] Collide with other objects
+    - [ ] Sweep and Prune (5-18 fps)
+    - [ ] Space partition (QuadTree or BSP, 15+ fps)
     - [ ] Combination
 - [ ] Constraints (Fixed distance & Spring)
 - [ ] Constraint collision (Box)
 - [ ] Editor/Interface to interact with and add/remove objects
-- [x] Environment controls (Gravity, Pause/Step, Step time or DT)
+- [ ] Environment controls (Gravity, Pause/Step, Step time or DT)
