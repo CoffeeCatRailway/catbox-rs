@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::f32::consts::PI;
+use std::f32::consts::{PI, TAU};
 use std::thread;
 use std::time::{Duration, Instant};
 use bool_flags::Flags8;
@@ -178,7 +178,7 @@ impl CatBox {
 		// let mesh = Primitives3D::tetrahedron(10.0);
 		// let mesh = Primitives3D::cube(10.0, 10.0, 10.0);
 		// let mesh = Primitives3D::sphereCube(10.0);
-		let mesh = Primitives3D::icosphere(10.0, 1);
+		let mesh = Primitives3D::icosphere(10.0, 2);
 		
 		info!("Mesh vertex/triangle count: {}/{}", mesh.vertices().len(), mesh.triangles().len());
 		let mut mesh = mesh.buildSimpleMesh(gl.clone());
@@ -245,7 +245,7 @@ impl CatBox {
 			
 			solver,
 			renderManager,
-			clearColor: [0.27, 0.59, 0.27, 1.0],
+			clearColor: [96.0 / 255.0, 190.0 / 255.0, 200.0 / 255.0, 1.0],
 			// lastMousePos: Vec2::ZERO,
 			
 			camera,
@@ -372,6 +372,7 @@ impl CatBox {
 		let mut frameLast = Instant::now();
 		let mut dt: f32 = OPTIMAL_DT;
 		let mut totalFrames: u64 = 0;
+		let mut t = 0.0;
 		while self.flags.get(F_RUNNING) {
 			let frameStart = Instant::now();
 			
@@ -389,6 +390,12 @@ impl CatBox {
 			self.imgui.context.io_mut().set_delta_time(dt);
 			
 			self.input(dt);
+			
+			let sun = self.renderManager.sunLightMut();
+			t += dt;
+			t = t % TAU;
+			sun.propertiesMut().position.x = t.sin();
+			sun.propertiesMut().position.z = t.cos();
 			
 			self.solver.borrow_mut().update(OPTIMAL_DT);
 			{

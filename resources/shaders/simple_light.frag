@@ -31,7 +31,7 @@ void main() {
         lightDir = normalize(u_sunLight.position - f_position);
     }
 //    float diff = max(dot(normal, lightDir), 0.0);
-    float diff = dot(normal, lightDir) * 0.5 + 0.5;
+    float diff = (dot(normal, lightDir) * 0.5 + 0.5) * 0.9;
     vec3 diffuse = u_sunLight.diffuseStrength * diff * u_sunLight.ambient;
 
     vec3 viewDir = normalize(u_viewPos - f_position);
