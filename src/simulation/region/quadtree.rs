@@ -4,8 +4,10 @@ use std::fmt::Debug;
 use glam::{Mat4, Vec3};
 use tracing::warn;
 use crate::graphics::{LineRenderer, Renderable};
+use crate::graphics::light::Light;
 use crate::simulation::region::AABB;
 use crate::types::{MeshRef, ShaderRef};
+use crate::window::camera::Camera;
 
 #[derive(Clone)]
 pub struct QuadTree<T> {
@@ -145,7 +147,7 @@ impl<T> Renderable for QuadTree<T> {
         None
     }
     
-    fn render(&self, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer) -> Result<(), String> {
+    fn render(&self, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
 		if !lineRenderer.isEnabled() {
 			return Ok(())
 		}
@@ -159,10 +161,10 @@ impl<T> Renderable for QuadTree<T> {
             return Ok(());
         }
         
-        self.northWest.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer)?;
-        self.northEast.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer)?;
-        self.southWest.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer)?;
-        self.southEast.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer)?;
+        self.northWest.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
+        self.northEast.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
+        self.southWest.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
+        self.southEast.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
         
         Ok(())
     }

@@ -2,8 +2,10 @@ use std::fmt::Debug;
 use glam::{Mat4, Vec3};
 use tracing::warn;
 use crate::graphics::{LineRenderer, Renderable};
+use crate::graphics::light::Light;
 use crate::simulation::region::AABB;
 use crate::types::{MeshRef, ShaderRef};
+use crate::window::camera::Camera;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Orientation {
@@ -156,7 +158,7 @@ impl<T> Renderable for BSPGrid<T> {
 		None
 	}
 	
-	fn render(&self, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer) -> Result<(), String> {
+	fn render(&self, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
 		if !lineRenderer.isEnabled() {
 			return Ok(())
 		}
@@ -170,8 +172,8 @@ impl<T> Renderable for BSPGrid<T> {
 			return Ok(());
 		}
 		
-		self.left.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer)?;
-		self.right.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer)?;
+		self.left.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
+		self.right.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
 		
 		Ok(())
 	}

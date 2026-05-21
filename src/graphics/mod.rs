@@ -3,6 +3,7 @@ mod line_renderer;
 mod render_manager;
 pub mod mesh;
 pub mod shaders;
+pub mod light;
 
 pub use line_renderer::LineRenderer;
 

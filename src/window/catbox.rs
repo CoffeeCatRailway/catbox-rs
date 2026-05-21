@@ -482,7 +482,7 @@ impl CatBox {
 				self.viewMatrix = self.camera.getViewMatrix();
 				let projViewMat = self.projectionMatrix * self.viewMatrix;
 				
-				self.renderManager.draw(&projViewMat, dt)?;
+				self.renderManager.draw(&projViewMat, dt, &self.camera)?;
 				
 				if wireframe {
 					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
