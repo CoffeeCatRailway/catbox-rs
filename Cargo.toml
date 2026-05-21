@@ -15,6 +15,7 @@ glow = "0.17"
 glam = { version = "0.32", features = ["bytemuck"] }
 bytemuck = { version = "1.25", features = ["derive"] }
 bool-flags = "0.1"
+image = "0.25"
 
 dear-imgui-rs = { version = "0.13", features = ["glam"] }
 dear-imgui-sdl3 = "0.13"

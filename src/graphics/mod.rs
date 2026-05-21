@@ -4,6 +4,8 @@ mod render_manager;
 pub mod mesh;
 pub mod shaders;
 pub mod light;
+pub mod material;
+pub mod texture;
 
 pub use line_renderer::LineRenderer;
 

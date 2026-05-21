@@ -6,13 +6,18 @@ use sdl3::video::Window as SdlWindow;
 use crate::graphics::mesh::Mesh;
 use crate::graphics::Renderable;
 use crate::graphics::shader::Shader;
+use crate::graphics::texture::Texture;
 use crate::simulation::{Physical, Solver};
+
+// todo: cleanup
 
 pub type SdlWindowRef = Rc<RefCell<SdlWindow>>;
 
 pub type GlRef = Arc<GlowContext>;
 
 pub type ShaderRef = Arc<RwLock<Shader>>;
+
+pub type TextureRef = Rc<Texture>;
 
 pub type RenderableRef = Rc<RefCell<dyn Renderable>>;
 
@@ -32,6 +37,10 @@ pub fn newGlRef(gl: GlowContext) -> GlRef {
 
 pub fn newShaderRef(shader: Shader) -> ShaderRef {
 	Arc::new(RwLock::new(shader))
+}
+
+pub fn newTextureRef(texture: Texture) -> TextureRef {
+	Rc::new(texture)
 }
 
 pub fn newRenderableRef<T: Renderable + 'static>(renderable: T) -> RenderableRef {
