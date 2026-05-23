@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::f32::consts::{PI, TAU};
+use std::rc::Rc;
 use std::thread;
 use std::time::{Duration, Instant};
 use bool_flags::Flags8;
@@ -88,9 +89,9 @@ impl CatBox {
 						  .build()?;
 		let window = newSdlWindowRef(window);
 		
-		let glContext = window.borrow().gl_create_context()?;
+		let glContext = window.gl_create_context()?;
 		
-		window.borrow().gl_make_current(&glContext)?;
+		window.gl_make_current(&glContext)?;
 		video.gl_set_swap_interval(SwapInterval::Immediate)?;
 		
 		let gl = unsafe {
@@ -127,10 +128,10 @@ impl CatBox {
 		}
 		
 		// Initial SDL3 platform backend
-		dear_imgui_sdl3::init_platform_for_opengl(&mut imgui, &*window.borrow(), &glContext)?;
+		dear_imgui_sdl3::init_platform_for_opengl(&mut imgui, &window, &glContext)?;
 		
 		// Basic style scaling
-		let windowScale = window.borrow().display_scale();
+		let windowScale = window.display_scale();
 		{
 			let style = imgui.style_mut();
 			style.set_font_scale_dpi(windowScale);
@@ -257,7 +258,7 @@ impl CatBox {
 	}
 	
 	fn updateProjectionMatrix(&mut self) {
-		let windowSize = self.window.borrow().size();
+		let windowSize = self.window.size();
 		let windowAspect = windowSize.0 as f32 / windowSize.1 as f32;
 		
 		let projection = Projection::Perspective(windowAspect);
@@ -289,7 +290,7 @@ impl CatBox {
 					self.updateProjectionMatrix();
 				},
 				WindowEvent::CloseRequested => {
-					if window_id == self.window.borrow().id() {
+					if window_id == self.window.id() {
 						self.requestClose();
 					}
 				},
@@ -329,7 +330,7 @@ impl CatBox {
 			self.flags.flip(F_MOUSE_CAPTURED);
 			mouseCaptured = self.flags.get(F_MOUSE_CAPTURED);
 			
-			self.mouseUtil.set_relative_mouse_mode(&*self.window.borrow(), mouseCaptured);
+			self.mouseUtil.set_relative_mouse_mode(&self.window, mouseCaptured);
 			info!("Mouse captured: {}", mouseCaptured);
 			
 			let mut imguiConfigFlags = self.imgui.context.io().config_flags();
@@ -439,7 +440,7 @@ impl CatBox {
 						  
 						  ui.text(format!("Toggle wireframe (Press 2): {}", wireframe));
 						  
-						  let windowSize = self.window.borrow().size();
+						  let windowSize = self.window.size();
 						  ui.text(format!("Window Size: ({},{})", windowSize.0, windowSize.1));
 						  ui.separator();
 						  
@@ -506,14 +507,14 @@ impl CatBox {
 						self.imgui.context.update_platform_windows();
 						self.imgui.context.render_platform_windows_default();
 						// Restore main GL context
-						self.window.borrow().gl_make_current(&self.glContext)?;
+						self.window.gl_make_current(&self.glContext)?;
 					}
 				}
 				if wireframe {
 					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::LINE);
 				}
 				
-				self.window.borrow().gl_swap_window();
+				self.window.gl_swap_window();
 			}
 			
 			// fps counter
@@ -521,7 +522,7 @@ impl CatBox {
 			totalFrames = totalFrames.saturating_add(1);
 			if frameStart >= frameLast + Duration::from_millis(1000) {
 				let newTitle = format!("{} - FPS: {}", WIN_TITLE, fps);
-				self.window.borrow_mut().set_title(&newTitle)?;
+				Rc::get_mut(&mut self.window).unwrap().set_title(&newTitle)?;
 				
 				frameLast = frameStart;
 				fps = 0;
