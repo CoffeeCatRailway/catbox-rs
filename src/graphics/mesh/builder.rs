@@ -100,16 +100,19 @@ impl MeshBuilder {
 			position: (a.position + b.position) / 2.0,
 			normal: (a.normal + b.normal) / 2.0,
 			color: (a.color + b.color) / 2.0,
+			uv: (a.uv + b.uv) / 2.0,
 		});
 		let bc = self.vertex(Vertex {
 			position: (b.position + c.position) / 2.0,
 			normal: (b.normal + c.normal) / 2.0,
 			color: (b.color + c.color) / 2.0,
+			uv: (b.uv + c.uv) / 2.0,
 		});
 		let ac = self.vertex(Vertex {
 			position: (a.position + c.position) / 2.0,
 			normal: (a.normal + c.normal) / 2.0,
 			color: (a.color + c.color) / 2.0,
+			uv: (a.uv + c.uv) / 2.0,
 		});
 		
 		let ab = self.findVertexIndex(&*ab.borrow()).unwrap();

@@ -69,10 +69,10 @@ impl Primitives3D {
 	pub fn tetrahedron(radius: f32) -> MeshBuilder {
 		let mut builder = MeshBuilder::new();
 		
-		builder.vertex(Vertex::autoNormal(Vec3::new(radius, radius, radius), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(radius, -radius, -radius), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(-radius, radius, -radius), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(-radius, -radius, radius), Vec3::ONE));
+		builder.vertex(Vertex::withColor(Vec3::new(radius, radius, radius), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(radius, -radius, -radius), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(-radius, radius, -radius), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(-radius, -radius, radius), Vec3::ZERO, Vec3::ONE).normalPos());
 		
 		builder.triangleIndices(0, 1, 2);
 		builder.triangleIndices(0, 2, 3);
@@ -85,14 +85,14 @@ impl Primitives3D {
 	pub fn cube(w: f32, h: f32, d: f32) -> MeshBuilder {
 		let mut builder = MeshBuilder::new();
 		
-		builder.vertex(Vertex::autoNormal(Vec3::new(-w, -h, -d), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(w, -h, -d), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(w, h, -d), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(-w, h, -d), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(-w, -h, d), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(w, -h, d), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(w, h, d), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(-w, h, d), Vec3::ONE));
+		builder.vertex(Vertex::withColor(Vec3::new(-w, -h, -d), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(w, -h, -d), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(w, h, -d), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(-w, h, -d), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(-w, -h, d), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(w, -h, d), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(w, h, d), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(-w, h, d), Vec3::ZERO, Vec3::ONE).normalPos());
 		
 		builder.triangleIndices(3, 2, 1); // back
 		builder.triangleIndices(3, 1, 0);
@@ -175,18 +175,18 @@ impl Primitives3D {
 		let phi = (1.0 + f32::sqrt(5.0)) / 2.0;
 		let (a, b) = (1.0, 1.0 / phi);
 		
-		builder.vertex(Vertex::autoNormal(Vec3::new(0.0, b, -a), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(b, a, 0.0), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(-b, a, 0.0), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(0.0, b, a), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(0.0, -b, a), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(-a, 0.0, b), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(0.0, -b, -a), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(a, 0.0, -b), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(a, 0.0, b), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(-a, 0.0, -b), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(b, -a, 0.0), Vec3::ONE));
-		builder.vertex(Vertex::autoNormal(Vec3::new(-b, -a, 0.0), Vec3::ONE));
+		builder.vertex(Vertex::withColor(Vec3::new(0.0, b, -a), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(b, a, 0.0), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(-b, a, 0.0), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(0.0, b, a), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(0.0, -b, a), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(-a, 0.0, b), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(0.0, -b, -a), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(a, 0.0, -b), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(a, 0.0, b), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(-a, 0.0, -b), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(b, -a, 0.0), Vec3::ZERO, Vec3::ONE).normalPos());
+		builder.vertex(Vertex::withColor(Vec3::new(-b, -a, 0.0), Vec3::ZERO, Vec3::ONE).normalPos());
 		
 		builder.triangleIndices(2, 1, 0);
 		builder.triangleIndices(1, 2, 3);

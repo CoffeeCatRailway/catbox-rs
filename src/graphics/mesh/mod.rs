@@ -4,7 +4,7 @@ mod builder;
 
 use std::hash::{Hash, Hasher};
 use bytemuck::{Pod, Zeroable};
-use glam::Vec3;
+use glam::{Vec2, Vec3};
 
 pub use mesh::*;
 pub use primitives::*;
@@ -16,15 +16,40 @@ pub struct Vertex {
     pub position: Vec3,
     pub normal: Vec3,
     pub color: Vec3,
+	pub uv: Vec2,
 }
 
 impl Vertex {
-	pub fn autoNormal(position: Vec3, color: Vec3) -> Vertex {
+	pub fn new(position: Vec3, normal: Vec3, color: Vec3, uv: Vec2) -> Self {
 		Self {
 			position,
-			normal: position.normalize_or_zero(),
+			normal,
 			color,
+			uv,
 		}
+	}
+	
+	pub fn withColor(position: Vec3, normal: Vec3, color: Vec3) -> Vertex {
+		Self {
+			position,
+			normal,
+			color,
+			uv: Vec2::ZERO,
+		}
+	}
+	
+	pub fn withUV(position: Vec3, normal: Vec3, uv: Vec2) -> Self {
+		Self {
+			position,
+			normal,
+			color: Vec3::ONE,
+			uv,
+		}
+	}
+	
+	pub fn normalPos(mut self) -> Self {
+		self.normal = self.position.normalize_or_zero();
+		self
 	}
 }
 
@@ -41,6 +66,8 @@ impl Hash for Vertex {
         self.color.x.to_bits().hash(state);
         self.color.y.to_bits().hash(state);
         self.color.z.to_bits().hash(state);
+		self.uv.x.to_bits().hash(state);
+		self.uv.y.to_bits().hash(state);
     }
 }
 
@@ -48,8 +75,9 @@ impl Default for Vertex {
     fn default() -> Self {
         Self {
             position: Vec3::ZERO,
-            normal: Vec3::Y,
+            normal: Vec3::ZERO,
             color: Vec3::ONE,
+			uv: Vec2::ZERO,
         }
     }
 }
