@@ -3,7 +3,7 @@ use bytemuck::{cast_slice, offset_of, Pod, Zeroable};
 use glam::{Mat4, Vec4};
 use glow::{Buffer, HasContext, VertexArray};
 use tracing::{error, info, warn};
-use crate::gl_check_error;
+use crate::{gl_check_error, LogError};
 use crate::graphics::mesh::Vertex;
 use crate::types::{GlRef, ShaderRef};
 
@@ -91,7 +91,7 @@ impl Mesh {
 	}
 	
 	pub fn updateInstanceData(&mut self, modelMatrices: &Vec<InstanceMeshData>) -> Result<(), String> {
-		self.checkDestroyed()?;
+		self.checkDestroyed().logErr()?;
 		if !self.isInstance() {
 			return Err("Can't update instance data to non-instance mesh!".to_string());
 		}
@@ -110,10 +110,10 @@ impl Mesh {
 	}
 	
 	pub fn upload(&mut self, shader: ShaderRef) -> Result<(), String> {
-		self.checkDestroyed()?;
+		self.checkDestroyed().logErr()?;
 		unsafe {
-			let vao = self.gl.create_vertex_array()?;
-			let vbo = self.gl.create_named_buffer()?;
+			let vao = self.gl.create_vertex_array().logErr()?;
+			let vbo = self.gl.create_named_buffer().logErr()?;
 			self.gl.bind_vertex_array(Some(vao));
 			gl_check_error!(self.gl);
 			info!("Uploading mesh {:?}", vao.0);
@@ -124,7 +124,7 @@ impl Mesh {
 			gl_check_error!(self.gl);
 			
 			if let Some(indices) = &self.indices {
-				let ibo = self.gl.create_named_buffer()?;
+				let ibo = self.gl.create_named_buffer().logErr()?;
 				gl_check_error!(self.gl);
 				
 				self.gl.named_buffer_data_u8_slice(ibo, cast_slice(indices), glow::STATIC_DRAW);
@@ -154,7 +154,7 @@ impl Mesh {
 			}
 			
 			if self.isInstance() {
-				let vbo = self.gl.create_named_buffer()?;
+				let vbo = self.gl.create_named_buffer().logErr()?;
 				gl_check_error!(self.gl);
 				
 				let vec4Size = size_of::<Vec4>() as u32;

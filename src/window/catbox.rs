@@ -15,7 +15,7 @@ use sdl3::keyboard::Keycode;
 use sdl3::mouse::MouseUtil;
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
-use crate::gl_check_error;
+use crate::{gl_check_error, LogError};
 use crate::graphics::{RenderManager, SimpleRenderable};
 use crate::graphics::mesh::{Primitives2D, Primitives3D};
 use crate::graphics::shaders;
@@ -72,8 +72,8 @@ impl CatBox {
 	
 		// Initialize sdl, gl and imgui
 		info!("SDL3 context");
-		let sdl = sdl3::init()?;
-		let video = sdl.video()?;
+		let sdl = sdl3::init().logErr()?;
+		let video = sdl.video().logErr()?;
 		let glAttributes = video.gl_attr();
 		
 		let inputHelper = InputHelper::new();
@@ -86,13 +86,13 @@ impl CatBox {
 						  .opengl()
 						  .resizable()
 						  .position_centered()
-						  .build()?;
+						  .build().logErr()?;
 		let window = newSdlWindowRef(window);
 		
-		let glContext = window.gl_create_context()?;
+		let glContext = window.gl_create_context().logErr()?;
 		
-		window.gl_make_current(&glContext)?;
-		video.gl_set_swap_interval(SwapInterval::Immediate)?;
+		window.gl_make_current(&glContext).logErr()?;
+		video.gl_set_swap_interval(SwapInterval::Immediate).logErr()?;
 		
 		let gl = unsafe {
 			use std::ffi::c_void;
@@ -106,15 +106,17 @@ impl CatBox {
 			gl.enable(glow::CULL_FACE);
 			gl.cull_face(glow::BACK);
 			gl.front_face(glow::CCW);
+			gl_check_error!(gl);
 			
 			gl.enable(glow::DEPTH_TEST);
 			gl.depth_func(glow::LESS);
 			gl.depth_mask(true);
+			gl_check_error!(gl);
 		}
 		
 		info!("Imgui context");
 		let mut imgui = ImguiContext::create();
-		imgui.set_ini_filename(Some("imgui.ini"))?;
+		imgui.set_ini_filename(Some("imgui.ini")).logErr()?;
 		{
 			let io = imgui.io_mut();
 			let mut flags= io.config_flags();
@@ -128,7 +130,7 @@ impl CatBox {
 		}
 		
 		// Initial SDL3 platform backend
-		dear_imgui_sdl3::init_platform_for_opengl(&mut imgui, &window, &glContext)?;
+		dear_imgui_sdl3::init_platform_for_opengl(&mut imgui, &window, &glContext).logErr()?;
 		
 		// Basic style scaling
 		let windowScale = window.display_scale();
@@ -141,7 +143,7 @@ impl CatBox {
 		// #[cfg_attr(not(feature = "multi-viewport"), allow(unused))] // What was this for??
 		let mut imguiRenderer = {
 			let textureMap = Box::new(SimpleTextureMap::default());
-			GlowRenderer::with_external_context(&gl, &mut imgui, textureMap)?
+			GlowRenderer::with_external_context(&gl, &mut imgui, textureMap).logErr()?
 		};
 		imguiRenderer.set_framebuffer_srgb_enabled(false);
 		#[cfg(feature = "multi-viewport")]
@@ -149,11 +151,11 @@ impl CatBox {
 		
 		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
-		let simpleLightShader = shaders::simpleLightShader(gl.clone())?;
-		// let instanceShader = shaders::instanceShader(gl.clone())?;
+		let simpleLightShader = shaders::simpleLightShader(gl.clone()).logErr()?;
+		// let instanceShader = shaders::instanceShader(gl.clone()).logErr()?;
 		//
-		let solver = newSolverRef(Solver::new()?);
-		let mut renderManager = RenderManager::new(gl.clone())?;
+		let solver = newSolverRef(Solver::new().logErr()?);
+		let mut renderManager = RenderManager::new(gl.clone()).logErr()?;
 		renderManager.lineRendererMut().enable(true);
 		// renderManager.addRenderable(solver.clone());
 		
@@ -186,7 +188,7 @@ impl CatBox {
 		
 		let meshEnd = meshNow.elapsed().as_micros();
 		info!("Mesh build took: {}ms", meshEnd as f32 / 1000.0);
-		mesh.upload(simpleLightShader.clone())?;
+		mesh.upload(simpleLightShader.clone()).logErr()?;
 		
 		let simpleRenderable = SimpleRenderable {
 			transform: {
@@ -223,7 +225,7 @@ impl CatBox {
 		// }
 		//
 		// let ballRenderable = BallRenderable::new(gl.clone(), instanceShader.clone(), solver.clone());
-		// ballRenderable.meshRef().unwrap().borrow_mut().upload(instanceShader.clone())?;
+		// ballRenderable.meshRef().unwrap().borrow_mut().upload(instanceShader.clone()).logErr()?;
 		//
 		// let ballRenderable = newRenderableRef(ballRenderable);
 		// renderManager.addRenderable(ballRenderable.clone());
@@ -321,6 +323,7 @@ impl CatBox {
 				} else {
 					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
 				}
+				gl_check_error!(self.gl);
 			}
 		}
 		
@@ -490,15 +493,15 @@ impl CatBox {
 				self.viewMatrix = self.camera.getViewMatrix();
 				let projViewMat = self.projectionMatrix * self.viewMatrix;
 				
-				self.renderManager.draw(&projViewMat, dt, &self.camera)?;
+				self.renderManager.draw(&projViewMat, dt, &self.camera).logErr()?;
 				
 				if wireframe {
 					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
 				}
 				if self.imgui.renderer.is_destroyed {
-					self.imgui.renderer.create_device_objects(&self.gl)?;
+					self.imgui.renderer.create_device_objects(&self.gl).logErr()?;
 				}
-				self.imgui.renderer.render_with_context(&self.gl, drawData)?;
+				self.imgui.renderer.render_with_context(&self.gl, drawData).logErr()?;
 				
 				#[cfg(feature = "multi-viewport")]
 				{
@@ -507,12 +510,13 @@ impl CatBox {
 						self.imgui.context.update_platform_windows();
 						self.imgui.context.render_platform_windows_default();
 						// Restore main GL context
-						self.window.gl_make_current(&self.glContext)?;
+						self.window.gl_make_current(&self.glContext).logErr()?;
 					}
 				}
 				if wireframe {
 					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::LINE);
 				}
+				gl_check_error!(self.gl);
 				
 				self.window.gl_swap_window();
 			}
@@ -522,7 +526,7 @@ impl CatBox {
 			totalFrames = totalFrames.saturating_add(1);
 			if frameStart >= frameLast + Duration::from_millis(1000) {
 				let newTitle = format!("{} - FPS: {}", WIN_TITLE, fps);
-				Rc::get_mut(&mut self.window).unwrap().set_title(&newTitle)?;
+				Rc::get_mut(&mut self.window).unwrap().set_title(&newTitle).logErr()?;
 				
 				frameLast = frameStart;
 				fps = 0;

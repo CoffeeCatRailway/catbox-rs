@@ -2,7 +2,7 @@ use bool_flags::Flags8;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use glow::{HasContext, Program};
 use tracing::{error, info, warn};
-use crate::gl_check_error;
+use crate::{gl_check_error, LogError};
 use crate::types::GlRef;
 
 type GlowShader = glow::Shader;
@@ -44,7 +44,7 @@ impl Shader {
 	pub fn new(gl: GlRef) -> Result<Self, String> {
 		unsafe {
 			info!("Creating shader program");
-			let program = gl.create_program()?;
+			let program = gl.create_program().logErr()?;
 			gl_check_error!(gl);
 			Ok(Shader {
 				gl,
@@ -73,7 +73,7 @@ impl Shader {
 			};
 			info!("Attaching {} shader to program {}", typeStr, self.program.0);
 			
-			let shader = self.gl.create_shader(typeGlow)?;
+			let shader = self.gl.create_shader(typeGlow).logErr()?;
 			self.gl.shader_source(shader, source);
 			self.gl.compile_shader(shader);
 			gl_check_error!(self.gl);

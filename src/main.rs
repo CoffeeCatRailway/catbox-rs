@@ -7,6 +7,7 @@ mod window;
 mod thread_pool;
 
 use std::error::Error;
+use std::fmt::Display;
 use glow::HasContext;
 use tracing::{error, info};
 use crate::types::GlRef;
@@ -49,6 +50,22 @@ macro_rules! gl_check_error {
     };
 }
 
+pub trait LogError<T, E> {
+	fn logErr(self) -> Self;
+}
+
+impl<T, E> LogError<T, E> for Result<T, E>
+	where
+		E: Display,
+{
+	fn logErr(self) -> Self {
+		if let Err(ref e) = self {
+			error!("{}", e);
+		}
+		self
+	}
+}
+
 fn initializeTracing() -> Result<(), Box<dyn Error>> {
 	use std::fs::File;
 	use std::sync::Arc;
@@ -65,7 +82,7 @@ fn initializeTracing() -> Result<(), Box<dyn Error>> {
 		.with_filter(filter::LevelFilter::INFO);
 	
 	// file
-	let file = File::create("latest.log")?;
+	let file = File::create("latest.log").logErr().logErr()?;
 	let fileLog = fmt::layer()
 		.with_writer(Arc::new(file))
 		.with_ansi(false)
@@ -84,10 +101,10 @@ fn initializeTracing() -> Result<(), Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-	initializeTracing()?;
+	initializeTracing().logErr()?;
 
-	let mut catbox = CatBox::new()?;
-	catbox.run()?;
+	let mut catbox = CatBox::new().logErr()?;
+	catbox.run().logErr()?;
 	catbox.destroy();
 	
 	Ok(())

@@ -2,7 +2,7 @@ use bool_flags::Flags8;
 use glam::{Mat4, Vec2, Vec3};
 use glow::{Buffer, HasContext, VertexArray};
 use tracing::{info, warn};
-use crate::gl_check_error;
+use crate::{gl_check_error, LogError};
 use crate::graphics::shaders;
 use crate::simulation::region::AABB;
 use crate::types::{GlRef, ShaderRef};
@@ -40,10 +40,10 @@ impl LineRenderer {
 		unsafe {
 			info!("Creating line renderer");
 			let vec = Vec::with_capacity(capacity);
-			let shader = shaders::simpleShader(gl.clone())?;
+			let shader = shaders::simpleShader(gl.clone()).logErr()?;
 			
-			let vao = gl.create_vertex_array()?;
-			let vbo = gl.create_named_buffer()?;
+			let vao = gl.create_vertex_array().logErr()?;
+			let vbo = gl.create_named_buffer().logErr()?;
 			gl.bind_vertex_array(Some(vao));
 			gl_check_error!(gl);
 			

@@ -2,6 +2,7 @@ use bool_flags::Flags8;
 use glow::{HasContext, PixelUnpackData, Texture as GlowTexture};
 use image::ImageReader;
 use crate::types::GlRef;
+use crate::{gl_check_error, LogError};
 
 const F_DELETED: u8 = 0;
 
@@ -64,15 +65,15 @@ impl TextureBuilder {
 	
 	/// Load texture from file path (not supported on WASM - Unclear if I'll implement WASM yet)
 	pub fn loadFile(self, path: &str) -> Result<Texture, String> {
-		let img = ImageReader::open(path).map_err(|e| format!("Failed to open image '{}': {}", path, e))?
-			.decode().map_err(|e| format!("Failed to decode image '{}': {}", path, e))?
+		let img = ImageReader::open(path).map_err(|e| format!("Failed to open image '{}': {}", path, e)).logErr()?
+			.decode().map_err(|e| format!("Failed to decode image '{}': {}", path, e)).logErr()?
 			.to_rgba8();
 		self.loadRGBA(&img.as_raw(), img.width(), img.height())
 	}
 	
 	/// Load texture from embedded bytes
 	pub fn loadBytes(self, bytes: &[u8]) -> Result<Texture, String> {
-		let img = image::load_from_memory(bytes).map_err(|e| format!("Failed to decode image: {}", e))?
+		let img = image::load_from_memory(bytes).map_err(|e| format!("Failed to decode image: {}", e)).logErr()?
 			.to_rgba8();
 		self.loadRGBA(&img.as_raw(), img.width(), img.height())
 	}
@@ -80,11 +81,12 @@ impl TextureBuilder {
 	/// Load texture from raw RGBA bytes
 	pub fn loadRGBA(self, data: &[u8], width: u32, height: u32) -> Result<Texture, String> {
 		unsafe {
-			let texture = self.gl.create_texture()?;
+			let texture = self.gl.create_texture().logErr()?;
 			let pixels = PixelUnpackData::Slice(Some(data));
 			
 			self.gl.active_texture(glow::TEXTURE0 + self.unit);
 			self.gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+			gl_check_error!(self.gl);
 			
 			self.gl.tex_image_2d(
 				glow::TEXTURE_2D,
@@ -97,6 +99,7 @@ impl TextureBuilder {
 				glow::UNSIGNED_BYTE,
 				pixels,
 			);
+			gl_check_error!(self.gl);
 			
 			let filter = match self.filter {
 				FilterMode::Nearest => glow::NEAREST as i32,
@@ -112,6 +115,7 @@ impl TextureBuilder {
 			self.gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MAG_FILTER, filter);
 			self.gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_S, wrap);
 			self.gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_T, wrap);
+			gl_check_error!(self.gl);
 			
 			Ok(Texture {
 				gl: self.gl,
@@ -157,6 +161,7 @@ impl Texture {
 		unsafe {
 			self.gl.active_texture(glow::TEXTURE0 + self.unit);
 			self.gl.bind_texture(glow::TEXTURE_2D, self.handle);
+			gl_check_error!(self.gl);
 		}
 	}
 	

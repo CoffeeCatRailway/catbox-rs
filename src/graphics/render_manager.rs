@@ -2,6 +2,7 @@ use bool_flags::Flags8;
 use glam::{Mat4, Vec3};
 use crate::graphics::light::{Light, LightProperties};
 use crate::graphics::LineRenderer;
+use crate::LogError;
 use crate::simulation::Transform;
 use crate::types::{GlRef, MeshRef, RenderableRef, ShaderRef};
 use crate::window::camera::Camera;
@@ -79,6 +80,7 @@ const F_DESTROYED: u8 = 0;
 
 pub struct RenderManager {
 	flags: Flags8,
+	gl: GlRef,
 	renderables: Vec<RenderableRef>,
 	lineRenderer: LineRenderer,
 	
@@ -87,11 +89,12 @@ pub struct RenderManager {
 
 impl RenderManager {
 	pub fn new(gl: GlRef) -> Result<Self, String> {
-		let mut lineRenderer = LineRenderer::new(gl, 1024)?;
+		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024).logErr()?;
 		lineRenderer.enable(false);
 		lineRenderer.setLineWidth(1.5);
 		Ok(Self {
 			flags: Flags8::none(),
+			gl,
 			renderables: Vec::new(),
 			lineRenderer,
 			
@@ -109,11 +112,15 @@ impl RenderManager {
 	}
 	
 	pub fn draw(&mut self, projViewMat: &Mat4, dt: f32, camera: &Camera) -> Result<(), String> {
+		if self.flags.get(F_DESTROYED) {
+			return Err("Tried drawing render manager after it was destroyed!".into());
+		}
+		
 		for renderable in self.renderables.iter() {
 			let renderable = renderable.borrow();
 			if renderable.visible() {
-				renderable.render(projViewMat, dt, &mut self.lineRenderer, &self.sunLight, camera)?;
-				renderable.renderPost(projViewMat, dt, &mut self.lineRenderer, &self.sunLight, camera)?;
+				renderable.render(&self.gl, projViewMat, dt, &mut self.lineRenderer, &self.sunLight, camera).logErr()?;
+				renderable.renderPost(&self.gl, projViewMat, dt, &mut self.lineRenderer, &self.sunLight, camera).logErr()?;
 			}
 		}
 		self.lineRenderer.drawFlush(&projViewMat);
@@ -121,6 +128,11 @@ impl RenderManager {
 	}
 	
 	pub fn destroy(&mut self) {
+		if self.flags.get(F_DESTROYED) {
+			return;
+		}
+		
+		warn!("Destroying render manager and renderables");
 		self.flags.set(F_DESTROYED);
 		for renderable in self.renderables.iter() {
 			renderable.borrow_mut().destroy();
