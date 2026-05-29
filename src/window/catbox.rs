@@ -195,7 +195,8 @@ impl CatBox {
 		let mut simpleMaterial = Material::new(simpleLightShader.clone());
 		let texture = newTextureRef(Texture::fromBytes(
 			gl.clone(),
-			include_bytes!("../../resources/textures/earth_icosahedron.png")).logErr()?
+			// include_bytes!("../../resources/textures/earth_icosahedron.png")).logErr()?
+			include_bytes!("../../resources/textures/color_test_icosahedron.png")).logErr()?
 			// include_bytes!("../../resources/textures/color_test_4x2.png")).logErr()?
 		);
 		simpleMaterial.texture = Some(texture);
