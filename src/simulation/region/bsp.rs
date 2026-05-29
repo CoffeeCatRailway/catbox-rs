@@ -3,8 +3,11 @@ use glam::{Mat4, Vec3};
 use tracing::warn;
 use crate::graphics::{LineRenderer, Renderable};
 use crate::graphics::light::Light;
+use crate::graphics::material::Material;
+use crate::graphics::mesh::Mesh;
+use crate::LogError;
 use crate::simulation::region::AABB;
-use crate::types::{MeshRef, ShaderRef};
+use crate::types::GlRef;
 use crate::window::camera::Camera;
 
 #[derive(Copy, Clone, Debug)]
@@ -150,15 +153,23 @@ impl<T: Clone + Debug> BSPGrid<T> {
 }
 
 impl<T> Renderable for BSPGrid<T> {
-	fn meshRef(&self) -> Option<&MeshRef> {
+	fn mesh(&self) -> Option<&Mesh> {
 		None
 	}
 	
-	fn shaderRef(&self) -> Option<&ShaderRef> {
+	fn meshMut(&mut self) -> Option<&mut Mesh> {
 		None
 	}
 	
-	fn render(&self, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
+	fn material(&self) -> Option<&Material> {
+		None
+	}
+	
+	fn materialMut(&mut self) -> Option<&mut Material> {
+		None
+	}
+	
+	fn render(&self, _gl: &GlRef, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
 		if !lineRenderer.isEnabled() {
 			return Ok(())
 		}
@@ -172,8 +183,8 @@ impl<T> Renderable for BSPGrid<T> {
 			return Ok(());
 		}
 		
-		self.left.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
-		self.right.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
+		self.left.as_ref().unwrap().render(_gl, _projViewMat, _dt, lineRenderer, _sunLight, _camera).logErr()?;
+		self.right.as_ref().unwrap().render(_gl, _projViewMat, _dt, lineRenderer, _sunLight, _camera).logErr()?;
 		
 		Ok(())
 	}

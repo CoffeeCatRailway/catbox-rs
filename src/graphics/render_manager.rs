@@ -1,26 +1,38 @@
+use std::rc::Rc;
 use bool_flags::Flags8;
 use glam::{Mat4, Vec3};
+use tracing::warn;
 use crate::graphics::light::{Light, LightProperties};
 use crate::graphics::LineRenderer;
+use crate::graphics::material::Material;
+use crate::graphics::mesh::Mesh;
 use crate::LogError;
 use crate::simulation::Transform;
-use crate::types::{GlRef, MeshRef, RenderableRef, ShaderRef};
+use crate::types::{GlRef, MaterialRef, MeshRef, RenderableRef};
 use crate::window::camera::Camera;
 
 #[allow(unused)]
 pub struct SimpleRenderable {
 	pub transform: Transform,
 	pub mesh: MeshRef,
-	pub shader: ShaderRef,
+	pub material: MaterialRef,
 }
 
 impl Renderable for SimpleRenderable {
-	fn meshRef(&self) -> Option<&MeshRef> {
+	fn mesh(&self) -> Option<&Mesh> {
 		Some(&self.mesh)
 	}
 	
-	fn shaderRef(&self) -> Option<&ShaderRef> {
-		Some(&self.shader)
+	fn meshMut(&mut self) -> Option<&mut Mesh> {
+		Rc::get_mut(&mut self.mesh)
+	}
+	
+	fn material(&self) -> Option<&Material> {
+		Some(&self.material)
+	}
+	
+	fn materialMut(&mut self) -> Option<&mut Material> {
+		Rc::get_mut(&mut self.material)
 	}
 	
 	fn modelMatrix(&self) -> Mat4 {
@@ -30,16 +42,19 @@ impl Renderable for SimpleRenderable {
 
 #[allow(unused)]
 pub trait Renderable {
-	fn meshRef(&self) -> Option<&MeshRef>;
+	fn mesh(&self) -> Option<&Mesh>;
 	
-	fn shaderRef(&self) -> Option<&ShaderRef>;
+	fn meshMut(&mut self) -> Option<&mut Mesh>;
 	
-	fn render(&self, projViewMat: &Mat4, dt: f32, _lineRenderer: &mut LineRenderer, sunLight: &Light, camera: &Camera) -> Result<(), String> {
-		if let Some(mesh) = self.meshRef() && let Some(shader) = self.shaderRef() {
-			let mesh = mesh.borrow();
-			let shader = shader.read().unwrap();
+	fn material(&self) -> Option<&Material>;
+	
+	fn materialMut(&mut self) -> Option<&mut Material>;
+	
+	fn render(&self, gl: &GlRef, projViewMat: &Mat4, dt: f32, _lineRenderer: &mut LineRenderer, sunLight: &Light, camera: &Camera) -> Result<(), String> {
+		if let Some(mesh) = self.mesh() && let Some(material) = self.material() {
+			let shader = material.shader().read().unwrap();
 			
-			shader.bind();
+			material.apply(gl);
 			shader.setMatrix4f("u_projViewMatrix", projViewMat);
 			shader.setMatrix4f("u_modelMatrix", &self.modelMatrix());
 			
@@ -57,7 +72,7 @@ pub trait Renderable {
 		Ok(())
 	}
 	
-	fn renderPost(&self, _projViewMat: &Mat4, _dt: f32, _lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
+	fn renderPost(&self, _gl: &GlRef, _projViewMat: &Mat4, _dt: f32, _lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
 		Ok(())
 	}
 	
@@ -70,8 +85,8 @@ pub trait Renderable {
 	}
 	
 	fn destroy(&mut self) {
-		if let Some(mesh) = self.meshRef() {
-			mesh.borrow_mut().destroy();
+		if let Some(mesh) = self.meshMut() {
+			mesh.destroy();
 		}
 	}
 }

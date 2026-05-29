@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 use glow::{Context as GlowContext};
 use sdl3::video::Window as SdlWindow;
+use crate::graphics::material::Material;
 use crate::graphics::mesh::Mesh;
 use crate::graphics::Renderable;
 use crate::graphics::shader::Shader;
@@ -13,13 +14,15 @@ pub type SdlWindowRef = Rc<SdlWindow>;
 
 pub type GlRef = Arc<GlowContext>;
 
-pub type ShaderRef = Arc<RwLock<Shader>>;
+pub type ShaderRef = Arc<RwLock<Shader>>; // todo: try removing RwLock
 
-pub type TextureRef = Rc<Texture>;
+pub type TextureRef = Arc<Texture>;
+
+pub type MaterialRef = Rc<Material>;
+
+pub type MeshRef = Rc<Mesh>;
 
 pub type RenderableRef = Rc<RefCell<dyn Renderable>>;
-
-pub type MeshRef = Rc<RefCell<Mesh>>;
 
 pub type PhysicalRef = Arc<RwLock<dyn Physical>>;
 
@@ -38,15 +41,19 @@ pub fn newShaderRef(shader: Shader) -> ShaderRef {
 }
 
 pub fn newTextureRef(texture: Texture) -> TextureRef {
-	Rc::new(texture)
+	Arc::new(texture)
+}
+
+pub fn newMaterialRef(material: Material) -> MaterialRef {
+	Rc::new(material)
+}
+
+pub fn newMeshRef(mesh: Mesh) -> MeshRef {
+	Rc::new(mesh)
 }
 
 pub fn newRenderableRef<T: Renderable + 'static>(renderable: T) -> RenderableRef {
 	Rc::new(RefCell::new(renderable))
-}
-
-pub fn newMeshRef(mesh: Mesh) -> MeshRef {
-	Rc::new(RefCell::new(mesh))
 }
 
 pub fn newPhysicalRef<P: Physical + 'static>(physical: P) -> PhysicalRef {

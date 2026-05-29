@@ -1,25 +1,22 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use glam::Vec3;
 use crate::graphics::texture::Texture;
-use crate::types::{newTextureRef, GlRef, ShaderRef, TextureRef};
+use crate::types::{GlRef, ShaderRef, TextureRef};
 
 #[derive(Debug, Clone)]
 pub struct Material {
 	pub shader: ShaderRef,
 	pub texture: Option<TextureRef>,
 	pub color: Vec3,
-	defaultTexture: TextureRef,
 }
 
 impl Material {
-	pub fn new(gl: GlRef, shader: ShaderRef) -> Result<Self, String> {
-		let defaultTexture = newTextureRef(Texture::defaultTexture(gl)?); // todo: Find way to make global
-		Ok(Material {
+	pub fn new(shader: ShaderRef) -> Self {
+		Material {
 			shader,
 			texture: None,
 			color: Vec3::ONE,
-			defaultTexture,
-		})
+		}
 	}
 	
 	pub fn shader(&self) -> &ShaderRef {
@@ -27,7 +24,7 @@ impl Material {
 	}
 	
 	// pub fn shaderMut(&mut self) -> &mut Shader {
-	//
+	// 	Arc::get_mut(&mut self.shader).unwrap()
 	// }
 	
 	pub fn texture(&self) -> Option<&Texture> {
@@ -40,15 +37,14 @@ impl Material {
 	pub fn textureMut(&mut self) -> Option<&mut Texture> {
 		match &mut self.texture {
 			None => None,
-			Some(tex) => Some(Rc::get_mut(tex).unwrap())
+			Some(tex) => Some(Arc::get_mut(tex).unwrap())
 		}
 	}
 	
-	pub fn apply(&self) {
+	pub fn apply(&self, gl: &GlRef) {
 		self.shader.read().unwrap().bind();
-		
 		match &self.texture {
-			None => self.defaultTexture.bind(),
+			None => Texture::defaultTexture(gl).bind(),
 			Some(tex) => tex.bind(),
 		}
 	}

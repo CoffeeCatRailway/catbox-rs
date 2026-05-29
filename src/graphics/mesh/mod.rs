@@ -20,15 +20,6 @@ pub struct Vertex {
 }
 
 impl Vertex {
-	pub fn new(position: Vec3, normal: Vec3, color: Vec3, uv: Vec2) -> Self {
-		Self {
-			position,
-			normal,
-			color,
-			uv,
-		}
-	}
-	
 	pub fn withColor(position: Vec3, normal: Vec3, color: Vec3) -> Vertex {
 		Self {
 			position,

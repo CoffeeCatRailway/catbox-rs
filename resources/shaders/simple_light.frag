@@ -14,10 +14,12 @@ struct Light {
 
 uniform vec3 u_viewPos;
 uniform Light u_sunLight;
+uniform sampler2D u_texture;
 
 in vec3 f_position;
 in vec3 f_normal;
 in vec3 f_color;
+in vec2 f_uv;
 
 out vec4 o_color;
 
@@ -30,8 +32,9 @@ void main() {
     if (u_sunLight.type != LIGHT_DIRECTIONAL) {
         lightDir = normalize(u_sunLight.position - f_position);
     }
-//    float diff = max(dot(normal, lightDir), 0.0);
-    float diff = (dot(normal, lightDir) * 0.5 + 0.5) * 0.9;
+//    float diff = max(dot(normal, lightDir), 0.0); // 0-1 clamped
+//    float diff = dot(normal, lightDir) * 0.5 + 0.5; // 0-1
+    float diff = dot(normal, lightDir) * 0.425 + 0.475; // 0.05-0.9
     vec3 diffuse = u_sunLight.diffuseStrength * diff * u_sunLight.ambient;
 
     vec3 viewDir = normalize(u_viewPos - f_position);
@@ -39,6 +42,6 @@ void main() {
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
     vec3 specular = u_sunLight.specularStrength * spec * u_sunLight.ambient;
 
-    vec3 result = (ambient + diffuse + specular) * f_color;
-    o_color = vec4(result, 1.0);
+    vec3 result = (ambient + diffuse) * f_color;// + specular
+    o_color = vec4(result, 1.0) * texture(u_texture, f_uv);
 }

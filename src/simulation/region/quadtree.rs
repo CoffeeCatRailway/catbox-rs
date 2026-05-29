@@ -1,12 +1,13 @@
-#![allow(unused)]
-
 use std::fmt::Debug;
 use glam::{Mat4, Vec3};
 use tracing::warn;
 use crate::graphics::{LineRenderer, Renderable};
 use crate::graphics::light::Light;
+use crate::graphics::material::Material;
+use crate::graphics::mesh::Mesh;
+use crate::LogError;
 use crate::simulation::region::AABB;
-use crate::types::{MeshRef, ShaderRef};
+use crate::types::GlRef;
 use crate::window::camera::Camera;
 
 #[derive(Clone)]
@@ -21,6 +22,7 @@ pub struct QuadTree<T> {
     southEast: Option<Box<QuadTree<T>>>,
 }
 
+#[allow(unused)]
 impl<T> QuadTree<T> {
     pub fn new(capacity: usize, bounds: AABB) -> Self {
         Self {
@@ -68,6 +70,7 @@ impl<T> QuadTree<T> {
 	}
 }
 
+#[allow(unused)]
 impl<T: Clone + Debug> QuadTree<T> {
     pub fn subdivide<F: Fn(&T, &AABB) -> bool>(&mut self, overlaps: &F) {
         if self.northWest.is_some() {
@@ -139,15 +142,23 @@ impl<T: Clone + Debug> QuadTree<T> {
 }
 
 impl<T> Renderable for QuadTree<T> {
-    fn meshRef(&self) -> Option<&MeshRef> {
-        None
-    }
+	fn mesh(&self) -> Option<&Mesh> {
+		None
+	}
+	
+	fn meshMut(&mut self) -> Option<&mut Mesh> {
+		None
+	}
+	
+	fn material(&self) -> Option<&Material> {
+		None
+	}
+	
+	fn materialMut(&mut self) -> Option<&mut Material> {
+		None
+	}
     
-    fn shaderRef(&self) -> Option<&ShaderRef> {
-        None
-    }
-    
-    fn render(&self, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
+    fn render(&self, _gl: &GlRef, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
 		if !lineRenderer.isEnabled() {
 			return Ok(())
 		}
@@ -161,10 +172,10 @@ impl<T> Renderable for QuadTree<T> {
             return Ok(());
         }
         
-        self.northWest.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
-        self.northEast.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
-        self.southWest.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
-        self.southEast.as_ref().unwrap().render(_projViewMat, _dt, lineRenderer, _sunLight, _camera)?;
+        self.northWest.as_ref().unwrap().render(_gl, _projViewMat, _dt, lineRenderer, _sunLight, _camera).logErr()?;
+        self.northEast.as_ref().unwrap().render(_gl, _projViewMat, _dt, lineRenderer, _sunLight, _camera).logErr()?;
+        self.southWest.as_ref().unwrap().render(_gl, _projViewMat, _dt, lineRenderer, _sunLight, _camera).logErr()?;
+        self.southEast.as_ref().unwrap().render(_gl, _projViewMat, _dt, lineRenderer, _sunLight, _camera).logErr()?;
         
         Ok(())
     }

@@ -17,10 +17,12 @@ use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::{gl_check_error, LogError};
 use crate::graphics::{RenderManager, SimpleRenderable};
+use crate::graphics::material::Material;
 use crate::graphics::mesh::{Primitives2D, Primitives3D};
 use crate::graphics::shaders;
+use crate::graphics::texture::Texture;
 use crate::simulation::{Solver, Transform};
-use crate::types::{newGlRef, newMeshRef, newRenderableRef, newSdlWindowRef, newSolverRef, GlRef, SdlWindowRef, SolverRef};
+use crate::types::{newGlRef, newMaterialRef, newMeshRef, newRenderableRef, newSdlWindowRef, newSolverRef, newTextureRef, GlRef, SdlWindowRef, SolverRef};
 use crate::window::InputHelper;
 use crate::window::camera::{Camera, Frustum, Projection};
 
@@ -175,13 +177,13 @@ impl CatBox {
 		
 		let meshNow = Instant::now();
 		// let mesh = Primitives2D::circleXY(20, 20.0);
-		// let mesh = Primitives2D::squareXY(10.0, 10.0).subdivideMesh();
+		// let mesh = Primitives2D::squareXY(10.0, 10.0).subdivide();
 		
-		// let mesh = Primitives3D::sphereUV(10, 10, 10.0);
+		// let mesh = Primitives3D::sphereUV(8, 16, 10.0);
 		// let mesh = Primitives3D::tetrahedron(10.0);
 		// let mesh = Primitives3D::cube(10.0, 10.0, 10.0);
-		// let mesh = Primitives3D::sphereCube(10.0);
-		let mesh = Primitives3D::icosphere(10.0, 2);
+		// let mesh = Primitives3D::sphereCube(10.0, 3);
+		let mesh = Primitives3D::icosphere(10.0, 0);
 		
 		info!("Mesh vertex/triangle count: {}/{}", mesh.vertices().len(), mesh.triangles().len());
 		let mut mesh = mesh.buildSimpleMesh(gl.clone());
@@ -190,14 +192,21 @@ impl CatBox {
 		info!("Mesh build took: {}ms", meshEnd as f32 / 1000.0);
 		mesh.upload(simpleLightShader.clone()).logErr()?;
 		
+		let mut simpleMaterial = Material::new(simpleLightShader.clone());
+		let texture = newTextureRef(Texture::fromBytes(
+			gl.clone(),
+			include_bytes!("../../resources/textures/earth_icosahedron.png")).logErr()?
+			// include_bytes!("../../resources/textures/color_test_4x2.png")).logErr()?
+		);
+		simpleMaterial.texture = Some(texture);
 		let simpleRenderable = SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
-				// transform.setRotationFromDirection(Vec3::NEG_X * PI / 4.0);
+				transform.setRotationFromDirection(Vec3::NEG_X * PI / 2.0);
 				transform
 			},
 			mesh: newMeshRef(mesh),
-			shader: simpleLightShader.clone(),
+			material: newMaterialRef(simpleMaterial),
 		};
 		let simpleRenderable = newRenderableRef(simpleRenderable);
 		renderManager.addRenderable(simpleRenderable);
@@ -399,6 +408,7 @@ impl CatBox {
 			t += dt;
 			t = t % TAU;
 			sun.propertiesMut().position.x = t.sin();
+			// sun.propertiesMut().position.y = t.cos();
 			sun.propertiesMut().position.z = t.cos();
 			
 			self.solver.borrow_mut().update(OPTIMAL_DT);

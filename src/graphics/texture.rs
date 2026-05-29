@@ -1,8 +1,12 @@
+use std::sync::OnceLock;
 use bool_flags::Flags8;
 use glow::{HasContext, PixelUnpackData, Texture as GlowTexture};
 use image::ImageReader;
-use crate::types::GlRef;
+use tracing::{info, warn};
 use crate::{gl_check_error, LogError};
+use crate::types::{newTextureRef, GlRef, TextureRef};
+
+static DEFAULT_TEXTURE_REF: OnceLock<TextureRef> = OnceLock::new();
 
 const F_DELETED: u8 = 0;
 
@@ -136,7 +140,7 @@ impl Texture {
 	}
 	
 	/// Quick load from embedded bytes with default settings
-	pub fn loadBytes(gl: GlRef, bytes: &[u8]) -> Result<Texture, String> {
+	pub fn fromBytes(gl: GlRef, bytes: &[u8]) -> Result<Texture, String> {
 		TextureBuilder::new(gl).loadBytes(bytes)
 	}
 	
@@ -144,14 +148,15 @@ impl Texture {
 		TextureBuilder::new(gl)
 	}
 	
-	pub fn defaultTexture(gl: GlRef) -> Result<Texture, String> {
-		let data: [u8; 64] = [
-			255, 0, 255, 255, 	255, 0, 255, 255, 	0, 0, 0, 255, 		0, 0, 0, 255,
-			255, 0, 255, 255, 	255, 0, 255, 255, 	0, 0, 0, 255, 		0, 0, 0, 255,
-			0, 0, 0, 255, 		0, 0, 0, 255, 		255, 0, 255, 255, 	255, 0, 255, 255,
-			0, 0, 0, 255, 		0, 0, 0, 255, 		255, 0, 255, 255, 	255, 0, 255, 255,
-		];
-		TextureBuilder::new(gl).loadRGBA(&data, 4, 4)
+	pub fn defaultTexture(gl: &GlRef) -> TextureRef {
+		DEFAULT_TEXTURE_REF.get_or_init(|| {
+			info!("Building default texture");
+			let data = [255, 255, 255, 255];
+			newTextureRef(TextureBuilder::new(gl.clone())
+				.filter(FilterMode::Nearest)
+				.wrap(WrapMode::Repeat)
+				.loadRGBA(&data, 1, 1).expect("Failed to load default texture"))
+		}).clone()
 	}
 	
 	pub fn bind(&self) {
@@ -170,8 +175,16 @@ impl Texture {
 			return;
 		}
 		unsafe {
-			self.gl.delete_texture(self.handle.take().unwrap());
+			let handle = self.handle.take().unwrap();
+			warn!("Deleting texture {:?}", handle);
+			self.gl.delete_texture(handle);
 			self.flags.set(F_DELETED);
 		}
+	}
+}
+
+impl Drop for Texture {
+	fn drop(&mut self) {
+		self.delete();
 	}
 }
