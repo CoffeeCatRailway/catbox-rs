@@ -497,10 +497,10 @@ impl CatBox {
 						  if ui.is_item_hovered() {
 							  ui.tooltip_text("Press 2");
 						  }
+						  ui.separator();
 						  
 						  let windowSize = self.window.size();
 						  ui.text(format!("Window size: ({},{})", windowSize.0, windowSize.1));
-						  ui.separator();
 						  
 						  let uiWidth = ui.window_width();
 						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
@@ -519,8 +519,7 @@ impl CatBox {
 						  ui.text(format!("Last floats pushed: {}", lineRendererMut.getLastFloatsPushed()));
 						  ui.separator();
 						  
-						  ui.text("Camera:");
-						  ui.text(format!("Position: ({:.3}, {:.3}, {:.3})", self.camera.transform.position.x, self.camera.transform.position.y, self.camera.transform.position.z));
+						  ui.text(format!("Camera: ({:.2}, {:.2}, {:.2})", self.camera.transform.position.x, self.camera.transform.position.y, self.camera.transform.position.z));
 						  let uiWidth = ui.window_width();
 						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
 						  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
