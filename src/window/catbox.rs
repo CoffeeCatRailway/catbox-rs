@@ -195,8 +195,8 @@ impl CatBox {
 		let mut simpleMaterial = Material::new(simpleLightShader.clone());
 		let texture = newTextureRef(Texture::fromBytes(
 			gl.clone(),
-			// include_bytes!("../../resources/textures/earth_icosahedron.png")).logErr()?
-			include_bytes!("../../resources/textures/color_test_icosahedron.png")).logErr()?
+			include_bytes!("../../resources/textures/earth_icosahedron.png")).logErr()?
+			// include_bytes!("../../resources/textures/color_test_icosahedron.png")).logErr()?
 			// include_bytes!("../../resources/textures/color_test_4x2.png")).logErr()?
 		);
 		simpleMaterial.texture = Some(texture);
@@ -290,6 +290,7 @@ impl CatBox {
 	fn handleEvents(&mut self, event: &Event) {
 		match *event {
 			Event::Quit { .. } | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+				self.captureMouse(false);
 				self.requestClose();
 			},
 			Event::Window { win_event, window_id, .. } => match win_event {
@@ -323,36 +324,56 @@ impl CatBox {
 		}
 	}
 	
+	fn setWireFrame(&mut self, wireframe: bool) {
+		if wireframe == self.flags.get(F_WIREFRAME) {
+			return;
+		}
+		
+		unsafe {
+			if wireframe {
+				self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::LINE);
+				self.flags.set(F_WIREFRAME);
+				info!("Wireframe off");
+			} else {
+				self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
+				self.flags.clear(F_WIREFRAME);
+				info!("Wireframe on");
+			}
+			gl_check_error!(self.gl);
+		}
+	}
+	
+	fn captureMouse(&mut self, capture: bool) {
+		if capture == self.flags.get(F_MOUSE_CAPTURED) {
+			return;
+		}
+		
+		self.mouseUtil.set_relative_mouse_mode(&self.window, capture);
+		
+		let mut imguiConfigFlags = self.imgui.context.io().config_flags();
+		if capture {
+			self.flags.set(F_MOUSE_CAPTURED);
+			imguiConfigFlags.insert(ConfigFlags::NO_MOUSE);
+			info!("Mouse captured");
+		} else {
+			self.flags.clear(F_MOUSE_CAPTURED);
+			imguiConfigFlags.remove(ConfigFlags::NO_MOUSE);
+			info!("Mouse freed");
+		}
+		self.imgui.context.io_mut().set_config_flags(imguiConfigFlags);
+	}
+	
 	fn input(&mut self, dt: f32) {
 		// Toggle wireframe
 		if self.inputHelper.isKeyJustPressed(Keycode::_2) {
-			self.flags.flip(F_WIREFRAME);
-			unsafe {
-				if self.flags.get(F_WIREFRAME) {
-					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::LINE);
-				} else {
-					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
-				}
-				gl_check_error!(self.gl);
-			}
+			self.setWireFrame(!self.flags.get(F_WIREFRAME));
 		}
 		
 		// Toggle mouse capture
 		let mut mouseCaptured = self.flags.get(F_MOUSE_CAPTURED);
 		if self.inputHelper.isKeyJustPressed(Keycode::_1) {
-			self.flags.flip(F_MOUSE_CAPTURED);
+			self.captureMouse(!mouseCaptured);
 			mouseCaptured = self.flags.get(F_MOUSE_CAPTURED);
-			
-			self.mouseUtil.set_relative_mouse_mode(&self.window, mouseCaptured);
-			info!("Mouse captured: {}", mouseCaptured);
-			
-			let mut imguiConfigFlags = self.imgui.context.io().config_flags();
-			if mouseCaptured {
-				imguiConfigFlags.insert(ConfigFlags::NO_MOUSE);
-			} else {
-				imguiConfigFlags.remove(ConfigFlags::NO_MOUSE);
-			}
-			self.imgui.context.io_mut().set_config_flags(imguiConfigFlags);
 		}
 		
 		// Camera WASD
@@ -435,8 +456,9 @@ impl CatBox {
 			
 			// ui.dockspace_over_main_viewport();
 			
-			let wireframe = self.flags.get(F_WIREFRAME);
-			let mut updateProjection = false;
+			let mut wireframe = self.flags.get(F_WIREFRAME);
+			let mut mouseCaptured = self.flags.get(F_MOUSE_CAPTURED);
+			let mut uiUpdate = false;
 			ui.window("App Info")
 			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 			  .build(|| {
@@ -445,22 +467,44 @@ impl CatBox {
 					  .child_flags(flags)
 					  .build(ui, || {
 						  ui.text(format!("ImGUI FPS: {:.3}", ui.io().framerate()));
-						  ui.text(format!("Delta Time: {}", dt));
+						  ui.text(format!("Delta time: {}", dt));
 						  ui.text(format!("Total frames: {}", totalFrames));
 						  ui.separator();
 						  
-						  ui.text(format!("Mouse captured (Press 1): {}", self.flags.get(F_MOUSE_CAPTURED)));
-						  ui.text(format!("Mouse Position: ({:.2},{:.2})", self.inputHelper.mousePos().x, self.inputHelper.mousePos().y));
+						  let group = ui.begin_group();
+						  ui.text("Mouse capture:");
+						  ui.same_line();
 						  
-						  ui.text(format!("Toggle wireframe (Press 2): {}", wireframe));
+						  if ui.checkbox("##mouseCapture", &mut mouseCaptured) {
+							  uiUpdate = true;
+						  }
+						  
+						  ui.same_line();
+						  ui.text(format!("({:.2},{:.2})", self.inputHelper.mousePos().x, self.inputHelper.mousePos().y));
+						  group.end();
+						  if ui.is_item_hovered() {
+							  ui.tooltip_text("Press 1");
+						  }
+						  
+						  let group = ui.begin_group();
+						  ui.text("Wireframe:");
+						  ui.same_line();
+						  
+						  if ui.checkbox("##toggleWireframe", &mut wireframe) {
+							  uiUpdate = true;
+						  }
+						  group.end();
+						  if ui.is_item_hovered() {
+							  ui.tooltip_text("Press 2");
+						  }
 						  
 						  let windowSize = self.window.size();
-						  ui.text(format!("Window Size: ({},{})", windowSize.0, windowSize.1));
+						  ui.text(format!("Window size: ({},{})", windowSize.0, windowSize.1));
 						  ui.separator();
 						  
 						  let uiWidth = ui.window_width();
 						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
-						  ui.color_edit4("Clear Color", &mut self.clearColor);
+						  ui.color_edit4("Clear color", &mut self.clearColor);
 						  itemWidth.end();
 					  });
 				  ui.same_line();
@@ -480,7 +524,7 @@ impl CatBox {
 						  let uiWidth = ui.window_width();
 						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
 						  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
-							  updateProjection = true;
+							  uiUpdate = true;
 						  }
 						  itemWidth.end();
 					  });
@@ -488,7 +532,10 @@ impl CatBox {
 			
 			self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
 			
-			if updateProjection {
+			// Update anything borrowing 'self' afterward
+			if uiUpdate {
+				self.captureMouse(mouseCaptured);
+				self.setWireFrame(wireframe);
 				self.updateProjectionMatrix();
 			}
 			
