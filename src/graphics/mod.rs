@@ -4,11 +4,14 @@ mod render_manager;
 pub mod mesh;
 pub mod shaders;
 pub mod light;
-pub mod material;
-pub mod texture;
+mod visual_material;
+mod texture;
 
 pub use line_renderer::LineRenderer;
 
 pub use render_manager::Renderable;
 pub use render_manager::RenderManager;
 pub use render_manager::SimpleRenderable;
+
+pub use visual_material::*;
+pub use texture::*;

@@ -1,31 +1,23 @@
 use std::sync::Arc;
 use glam::Vec3;
-use crate::graphics::texture::Texture;
+use crate::graphics::Texture;
 use crate::types::{GlRef, ShaderRef, TextureRef};
 
 #[derive(Debug, Clone)]
-pub struct Material {
+pub struct VisualMaterial {
 	pub shader: ShaderRef,
 	pub texture: Option<TextureRef>,
 	pub color: Vec3,
 }
 
-impl Material {
+impl VisualMaterial {
 	pub fn new(shader: ShaderRef) -> Self {
-		Material {
+		VisualMaterial {
 			shader,
 			texture: None,
 			color: Vec3::ONE,
 		}
 	}
-	
-	pub fn shader(&self) -> &ShaderRef {
-		&self.shader
-	}
-	
-	// pub fn shaderMut(&mut self) -> &mut Shader {
-	// 	Arc::get_mut(&mut self.shader).unwrap()
-	// }
 	
 	pub fn texture(&self) -> Option<&Texture> {
 		match &self.texture {

@@ -1,9 +1,8 @@
 use std::fmt::Debug;
 use glam::{Mat4, Vec3};
 use tracing::warn;
-use crate::graphics::{LineRenderer, Renderable};
+use crate::graphics::{LineRenderer, Renderable, VisualMaterial};
 use crate::graphics::light::Light;
-use crate::graphics::material::Material;
 use crate::graphics::mesh::Mesh;
 use crate::LogError;
 use crate::simulation::region::AABB;
@@ -161,11 +160,11 @@ impl<T> Renderable for BSPGrid<T> {
 		None
 	}
 	
-	fn material(&self) -> Option<&Material> {
+	fn material(&self) -> Option<&VisualMaterial> {
 		None
 	}
 	
-	fn materialMut(&mut self) -> Option<&mut Material> {
+	fn materialMut(&mut self) -> Option<&mut VisualMaterial> {
 		None
 	}
 	

@@ -17,10 +17,9 @@ use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::{gl_check_error, LogError};
 use crate::graphics::{RenderManager, SimpleRenderable};
-use crate::graphics::material::Material;
+use crate::graphics::{VisualMaterial, Texture};
 use crate::graphics::mesh::{Primitives2D, Primitives3D};
 use crate::graphics::shaders;
-use crate::graphics::texture::Texture;
 use crate::simulation::{Solver, Transform};
 use crate::types::{newGlRef, newMaterialRef, newMeshRef, newRenderableRef, newSdlWindowRef, newSolverRef, newTextureRef, GlRef, SdlWindowRef, SolverRef};
 use crate::window::InputHelper;
@@ -192,7 +191,7 @@ impl CatBox {
 		info!("Mesh build took: {}ms", meshEnd as f32 / 1000.0);
 		mesh.upload(simpleLightShader.clone()).logErr()?;
 		
-		let mut simpleMaterial = Material::new(simpleLightShader.clone());
+		let mut simpleMaterial = VisualMaterial::new(simpleLightShader.clone());
 		let texture = newTextureRef(Texture::fromBytes(
 			gl.clone(),
 			include_bytes!("../../resources/textures/earth_icosahedron.png")).logErr()?

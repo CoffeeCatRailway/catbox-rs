@@ -4,7 +4,7 @@ use glam::{Mat4, Vec3};
 use tracing::warn;
 use crate::graphics::light::{Light, LightProperties};
 use crate::graphics::LineRenderer;
-use crate::graphics::material::Material;
+use crate::graphics::visual_material::VisualMaterial;
 use crate::graphics::mesh::Mesh;
 use crate::LogError;
 use crate::simulation::Transform;
@@ -27,11 +27,11 @@ impl Renderable for SimpleRenderable {
 		Rc::get_mut(&mut self.mesh)
 	}
 	
-	fn material(&self) -> Option<&Material> {
+	fn material(&self) -> Option<&VisualMaterial> {
 		Some(&self.material)
 	}
 	
-	fn materialMut(&mut self) -> Option<&mut Material> {
+	fn materialMut(&mut self) -> Option<&mut VisualMaterial> {
 		Rc::get_mut(&mut self.material)
 	}
 	
@@ -46,13 +46,13 @@ pub trait Renderable {
 	
 	fn meshMut(&mut self) -> Option<&mut Mesh>;
 	
-	fn material(&self) -> Option<&Material>;
+	fn material(&self) -> Option<&VisualMaterial>;
 	
-	fn materialMut(&mut self) -> Option<&mut Material>;
+	fn materialMut(&mut self) -> Option<&mut VisualMaterial>;
 	
 	fn render(&self, gl: &GlRef, projViewMat: &Mat4, dt: f32, _lineRenderer: &mut LineRenderer, sunLight: &Light, camera: &Camera) -> Result<(), String> {
 		if let Some(mesh) = self.mesh() && let Some(material) = self.material() {
-			let shader = material.shader().read().unwrap();
+			let shader = material.shader.read().unwrap();
 			
 			material.apply(gl);
 			shader.setMatrix4f("u_projViewMatrix", projViewMat);
