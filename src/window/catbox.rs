@@ -156,8 +156,13 @@ impl CatBox {
 		// let instanceShader = shaders::instanceShader(gl.clone()).logErr()?;
 		//
 		let solver = newSolverRef(Solver::new().logErr()?);
+		
 		let mut renderManager = RenderManager::new(gl.clone()).logErr()?;
 		renderManager.lineRendererMut().enable(true);
+		let sun = renderManager.sunLightMut().propertiesMut();
+		sun.ambient *= 0.5;
+		sun.diffuse *= 0.75;
+		
 		// renderManager.addRenderable(solver.clone());
 		
 		let camera = Camera {
@@ -181,8 +186,8 @@ impl CatBox {
 		// let mesh = Primitives3D::sphereUV(8, 16, 10.0);
 		// let mesh = Primitives3D::tetrahedron(10.0);
 		// let mesh = Primitives3D::cube(10.0, 10.0, 10.0);
-		// let mesh = Primitives3D::sphereCube(10.0, 3);
-		let mesh = Primitives3D::icosphere(10.0, 0);
+		let mesh = Primitives3D::sphereCube(10.0, 3);
+		// let mesh = Primitives3D::icosphere(10.0, 0);
 		
 		info!("Mesh vertex/triangle count: {}/{}", mesh.vertices().len(), mesh.triangles().len());
 		let mut mesh = mesh.buildSimpleMesh(gl.clone());
@@ -191,18 +196,26 @@ impl CatBox {
 		info!("Mesh build took: {}ms", meshEnd as f32 / 1000.0);
 		mesh.upload(simpleLightShader.clone()).logErr()?;
 		
-		let mut simpleMaterial = VisualMaterial::new(simpleLightShader.clone());
-		let texture = newTextureRef(Texture::fromBytes(
+		let textureDiffuse = newTextureRef(Texture::fromBytes(
 			gl.clone(),
-			include_bytes!("../../resources/textures/earth_icosahedron.png")).logErr()?
-			// include_bytes!("../../resources/textures/color_test_icosahedron.png")).logErr()?
-			// include_bytes!("../../resources/textures/color_test_4x2.png")).logErr()?
+			include_bytes!("../../resources/textures/container2.png")).logErr()?
 		);
-		simpleMaterial.texture = Some(texture);
+		let textureSpecular = newTextureRef(Texture::fromBytes(
+			gl.clone(),
+			include_bytes!("../../resources/textures/container2_specular.png")).logErr()?
+		);
+		let simpleMaterial = VisualMaterial {
+			shader: simpleLightShader.clone(),
+			// modulateColor: Vec3::ONE,
+			diffuse: Some(textureDiffuse),
+			specular: Some(textureSpecular),
+			shininess: 64.0,
+		};
+		
 		let simpleRenderable = SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
-				transform.setRotationFromDirection(Vec3::NEG_X * PI / 2.0);
+				transform.setRotationFromDirection(Vec3::NEG_X * PI / 4.0);
 				transform
 			},
 			mesh: newMeshRef(mesh),

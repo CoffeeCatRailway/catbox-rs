@@ -63,9 +63,8 @@ pub trait Renderable {
 			shader.setUniform1ui("u_sunLight.type", sunLight.toU32());
 			shader.setUniform3fv("u_sunLight.position", &sunProperties.position);
 			shader.setUniform3fv("u_sunLight.ambient", &sunProperties.ambient);
-			shader.setUniform1f("u_sunLight.ambientStrength", sunProperties.ambientStrength);
-			shader.setUniform1f("u_sunLight.diffuseStrength", sunProperties.diffuseStrength);
-			shader.setUniform1f("u_sunLight.specularStrength", sunProperties.specularStrength);
+			shader.setUniform3fv("u_sunLight.diffuse", &sunProperties.diffuse);
+			shader.setUniform3fv("u_sunLight.specular", &sunProperties.specular);
 			
 			mesh.draw();
 		}
@@ -115,8 +114,6 @@ impl RenderManager {
 			
 			sunLight: Light::Directional(LightProperties {
 				position: Vec3::NEG_ONE.normalize(),
-				ambientStrength: 0.1,
-				specularStrength: 0.5,
 				..Default::default()
 			}),
 		})

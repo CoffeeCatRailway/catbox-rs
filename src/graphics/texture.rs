@@ -15,7 +15,6 @@ pub struct Texture {
 	gl: GlRef,
 	flags: Flags8,
 	pub handle: Option<GlowTexture>,
-	pub unit: u32,
 	pub width: u32,
 	pub height: u32,
 }
@@ -37,7 +36,6 @@ pub enum WrapMode {
 
 pub struct TextureBuilder {
 	gl: GlRef,
-	unit: u32,
 	filter: FilterMode,
 	wrap: WrapMode,
 }
@@ -46,15 +44,9 @@ impl TextureBuilder {
 	pub fn new(gl: GlRef) -> Self {
 		Self {
 			gl,
-			unit: 0,
 			filter: FilterMode::default(),
 			wrap: WrapMode::default(),
 		}
-	}
-	
-	pub fn unit(mut self, unit: u32) -> Self {
-		self.unit = unit;
-		self
 	}
 	
 	pub fn filter(mut self, filter: FilterMode) -> Self {
@@ -88,7 +80,6 @@ impl TextureBuilder {
 			let texture = self.gl.create_texture().logErr()?;
 			let pixels = PixelUnpackData::Slice(Some(data));
 			
-			self.gl.active_texture(glow::TEXTURE0 + self.unit);
 			self.gl.bind_texture(glow::TEXTURE_2D, Some(texture));
 			gl_check_error!(self.gl);
 			
@@ -125,7 +116,6 @@ impl TextureBuilder {
 				gl: self.gl,
 				flags: Flags8::none(),
 				handle: Some(texture),
-				unit: self.unit,
 				width,
 				height,
 			})
@@ -159,12 +149,12 @@ impl Texture {
 		}).clone()
 	}
 	
-	pub fn bind(&self) {
+	pub fn bind(&self, active: u32) {
 		if self.flags.get(F_DELETED) {
 			return;
 		}
 		unsafe {
-			self.gl.active_texture(glow::TEXTURE0 + self.unit);
+			self.gl.active_texture(glow::TEXTURE0 + active);
 			self.gl.bind_texture(glow::TEXTURE_2D, self.handle);
 			gl_check_error!(self.gl);
 		}

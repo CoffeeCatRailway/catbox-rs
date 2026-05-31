@@ -34,9 +34,8 @@ impl Light {
 pub struct LightProperties {
 	pub position: Vec3,
 	pub ambient: Vec3,
-	pub ambientStrength: f32,
-	pub diffuseStrength: f32,
-	pub specularStrength: f32,
+	pub diffuse: Vec3,
+	pub specular: Vec3,
 }
 
 impl Default for LightProperties {
@@ -44,9 +43,8 @@ impl Default for LightProperties {
 		Self {
 			position: Vec3::ZERO,
 			ambient: Vec3::ONE,
-			ambientStrength: 1.0,
-			diffuseStrength: 1.0,
-			specularStrength: 1.0,
+			diffuse: Vec3::ONE,
+			specular: Vec3::ONE,
 		}
 	}
 }
