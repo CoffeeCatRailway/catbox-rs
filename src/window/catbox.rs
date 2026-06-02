@@ -200,15 +200,11 @@ impl CatBox {
 			gl.clone(),
 			include_bytes!("../../resources/textures/container2.png")).logErr()?
 		);
-		let textureSpecular = newTextureRef(Texture::fromBytes(
-			gl.clone(),
-			include_bytes!("../../resources/textures/container2_specular.png")).logErr()?
-		);
 		let simpleMaterial = VisualMaterial {
 			shader: simpleLightShader.clone(),
-			// modulateColor: Vec3::ONE,
+			color: Vec3::ONE,
 			diffuse: Some(textureDiffuse),
-			specular: Some(textureSpecular),
+			specular: Default::default(),
 			shininess: 64.0,
 		};
 		

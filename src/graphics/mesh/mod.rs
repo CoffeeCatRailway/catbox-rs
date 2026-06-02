@@ -15,27 +15,12 @@ pub use builder::*;
 pub struct Vertex {
     pub position: Vec3,
     pub normal: Vec3,
-    pub color: Vec3,
 	pub uv: Vec2,
 }
 
 impl Vertex {
-	pub fn withColor(position: Vec3, normal: Vec3, color: Vec3) -> Vertex {
-		Self {
-			position,
-			normal,
-			color,
-			..Default::default()
-		}
-	}
-	
-	pub fn withUV(position: Vec3, normal: Vec3, uv: Vec2) -> Self {
-		Self {
-			position,
-			normal,
-			uv,
-			..Default::default()
-		}
+	pub fn new(position: Vec3, normal: Vec3, uv: Vec2) -> Self {
+		Self { position, normal, uv }
 	}
 	
 	pub fn normalFromPosition(mut self) -> Self {
@@ -54,9 +39,6 @@ impl Hash for Vertex {
         self.normal.x.to_bits().hash(state);
         self.normal.y.to_bits().hash(state);
         self.normal.z.to_bits().hash(state);
-        self.color.x.to_bits().hash(state);
-        self.color.y.to_bits().hash(state);
-        self.color.z.to_bits().hash(state);
 		self.uv.x.to_bits().hash(state);
 		self.uv.y.to_bits().hash(state);
     }
@@ -67,7 +49,6 @@ impl Default for Vertex {
         Self {
             position: Vec3::ZERO,
             normal: Vec3::ZERO,
-            color: Vec3::ONE,
 			uv: Vec2::ZERO,
         }
     }

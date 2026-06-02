@@ -138,7 +138,7 @@ impl Texture {
 		TextureBuilder::new(gl)
 	}
 	
-	pub fn defaultTexture(gl: &GlRef) -> TextureRef {
+	pub fn default1x1White(gl: &GlRef) -> TextureRef {
 		DEFAULT_TEXTURE_REF.get_or_init(|| {
 			info!("Building default texture");
 			let data = [255, 255, 255, 255];

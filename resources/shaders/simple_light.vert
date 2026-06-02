@@ -10,7 +10,6 @@ in vec2 i_uv;
 
 out vec3 f_position;
 out vec3 f_normal;
-out vec3 f_color;
 out vec2 f_uv;
 
 void main() {
@@ -20,6 +19,5 @@ void main() {
 	f_position = modelPos.xyz;
 //	f_normal = (u_modelMatrix * vec4(i_normal, 1.0)).xyz;
     f_normal = mat3(transpose(inverse(u_modelMatrix))) * i_normal;
-	f_color = i_color;
     f_uv = i_uv;
 }

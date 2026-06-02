@@ -143,7 +143,6 @@ impl Mesh {
 			
 			let locPos = shader.read().unwrap().getAttribLocation("i_position").unwrap();
 			let locNorm = shader.read().unwrap().getAttribLocation("i_normal");
-			let locCol = shader.read().unwrap().getAttribLocation("i_color");
 			let locUV = shader.read().unwrap().getAttribLocation("i_uv");
 			
 			self.gl.enable_vertex_array_attrib(vao, locPos);
@@ -201,26 +200,12 @@ impl Mesh {
 				self.gl.vertex_array_attrib_binding_f32(vao, locModel + 3, 1);
 				gl_check_error!(self.gl);
 				
-				if let Some(locCol) = locCol {
-					self.gl.enable_vertex_array_attrib(vao, locCol);
-					self.gl.vertex_array_attrib_format_f32(vao, locCol, 4, glow::FLOAT, false, vec4Size * 4);
-					self.gl.vertex_array_attrib_binding_f32(vao, locCol, 1);
-					gl_check_error!(self.gl);
-				}
-				
 				self.gl.vertex_binding_divisor(1, 1);
 				gl_check_error!(self.gl);
 				// self.gl.vertex_attrib_divisor(locModel + 0, 1);
 				// self.gl.vertex_attrib_divisor(locModel + 1, 1);
 				// self.gl.vertex_attrib_divisor(locModel + 2, 1);
 				// self.gl.vertex_attrib_divisor(locModel + 3, 1);
-			} else {
-				if let Some(locCol) = locCol {
-					self.gl.enable_vertex_array_attrib(vao, locCol);
-					self.gl.vertex_array_attrib_format_f32(vao, locCol, 3, glow::FLOAT, false, offset_of!(Vertex, color) as u32);
-					self.gl.vertex_array_attrib_binding_f32(vao, locCol, 0);
-					gl_check_error!(self.gl);
-				}
 			}
 			
 			self.gl.bind_vertex_array(None);
