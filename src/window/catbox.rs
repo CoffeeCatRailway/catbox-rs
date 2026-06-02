@@ -438,12 +438,17 @@ impl CatBox {
 			
 			self.input(dt);
 			
-			let sun = self.renderManager.sunLightMut();
-			t += dt;
-			t = t % TAU;
-			sun.propertiesMut().position.x = t.sin();
-			// sun.propertiesMut().position.y = t.cos();
-			sun.propertiesMut().position.z = t.cos();
+			let sunPos = {
+				let sun = self.renderManager.sunLightMut();
+				t += dt / 2.0;
+				t = t % TAU;
+				sun.propertiesMut().position.x = t.sin();
+				// sun.propertiesMut().position.y = t.cos();
+				sun.propertiesMut().position.z = t.cos();
+				sun.properties().position
+			};
+			
+			self.renderManager.lineRendererMut().pushLine3(Vec3::ZERO, Vec3::ONE, sunPos * 20.0, Vec3::ONE);
 			
 			self.solver.borrow_mut().update(OPTIMAL_DT);
 			{
