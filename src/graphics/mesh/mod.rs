@@ -25,7 +25,7 @@ impl Vertex {
 			position,
 			normal,
 			color,
-			uv: Vec2::ZERO,
+			..Default::default()
 		}
 	}
 	
@@ -33,13 +33,13 @@ impl Vertex {
 		Self {
 			position,
 			normal,
-			color: Vec3::ONE,
 			uv,
+			..Default::default()
 		}
 	}
 	
-	pub fn normalPos(mut self) -> Self {
-		self.normal = self.position.normalize_or_zero();
+	pub fn normalFromPosition(mut self) -> Self {
+		self.normal = self.position.normalize_or(Vec3::Z);
 		self
 	}
 }
