@@ -35,6 +35,16 @@ impl Renderable for SimpleRenderable {
 		Rc::get_mut(&mut self.material)
 	}
 	
+	fn renderPost(&self, _gl: &GlRef, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
+		// let vertices = self.mesh.vertices();
+		// for vertex in vertices.iter() {
+		// 	let p = self.modelMatrix().mul_vec4(vertex.position.extend(1.0)).truncate();
+		// 	let n = self.modelMatrix().mul_vec4(vertex.normal.extend(1.0)).truncate().clamp_length_max(1.0);
+		// 	lineRenderer.pushLine3(p, Vec3::Z, p + n, Vec3::Z);
+		// }
+		Ok(())
+	}
+	
 	fn modelMatrix(&self) -> Mat4 {
 		self.transform.getModelMatrix()
 	}

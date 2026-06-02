@@ -83,6 +83,10 @@ impl Mesh {
 		self.flags.get(F_UPLOADED)
 	}
 	
+	pub fn vertices(&self) -> &Vec<Vertex> {
+		&self.vertices
+	}
+	
 	fn checkDestroyed(&self) -> Result<(), String> {
 		if self.isDestroyed() {
 			return Err("Mesh is already destroyed!".to_string());
