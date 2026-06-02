@@ -181,13 +181,13 @@ impl CatBox {
 		
 		let meshNow = Instant::now();
 		// let mesh = Primitives2D::circleXY(20, 20.0);
-		// let mesh = Primitives2D::squareXY(10.0, 10.0).subdivide();
+		// let mesh = Primitives2D::squareXY(1.0, 1.0);
 		
-		// let mesh = Primitives3D::sphereUV(8, 16, 10.0);
-		// let mesh = Primitives3D::tetrahedron(10.0);
-		// let mesh = Primitives3D::cube(10.0, 10.0, 10.0);
-		let mesh = Primitives3D::sphereCube(10.0, 3);
-		// let mesh = Primitives3D::icosphere(10.0, 0);
+		// let mesh = Primitives3D::sphereUV(8, 16, 1.0);
+		// let mesh = Primitives3D::tetrahedron(1.0);
+		// let mesh = Primitives3D::cube(1.0, 1.0, 1.0);
+		let mesh = Primitives3D::sphereCube(1.0, 3);
+		// let mesh = Primitives3D::icosphere(1.0, 0);
 		
 		info!("Mesh vertex/triangle count: {}/{}", mesh.vertices().len(), mesh.triangles().len());
 		let mut mesh = mesh.buildSimpleMesh(gl.clone());
@@ -215,6 +215,7 @@ impl CatBox {
 		let simpleRenderable = SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
+				transform.scale *= 10.0;
 				transform.setRotationFromDirection(Vec3::NEG_X * PI / 4.0);
 				transform
 			},
