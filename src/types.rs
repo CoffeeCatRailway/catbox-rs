@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 use glow::{Context as GlowContext};
 use sdl3::video::Window as SdlWindow;
-use crate::graphics::{VisualMaterial, Texture};
+use crate::graphics::{Material, Texture};
 use crate::graphics::mesh::Mesh;
 use crate::graphics::Renderable;
 use crate::graphics::shader::Shader;
@@ -17,7 +17,7 @@ pub type ShaderRef = Arc<RwLock<Shader>>; // todo: try removing RwLock
 
 pub type TextureRef = Arc<Texture>;
 
-pub type MaterialRef = Rc<VisualMaterial>;
+pub type MaterialRef = Rc<Material>;
 
 pub type MeshRef = Rc<Mesh>;
 
@@ -43,7 +43,7 @@ pub fn newTextureRef(texture: Texture) -> TextureRef {
 	Arc::new(texture)
 }
 
-pub fn newMaterialRef(material: VisualMaterial) -> MaterialRef {
+pub fn newMaterialRef(material: Material) -> MaterialRef {
 	Rc::new(material)
 }
 

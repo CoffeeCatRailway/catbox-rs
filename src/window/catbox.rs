@@ -17,7 +17,7 @@ use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::{gl_check_error, LogError};
 use crate::graphics::{RenderManager, SimpleRenderable};
-use crate::graphics::{VisualMaterial, Texture};
+use crate::graphics::{Material, Texture};
 use crate::graphics::mesh::{Primitives2D, Primitives3D};
 use crate::graphics::shaders;
 use crate::simulation::{Solver, Transform};
@@ -179,47 +179,125 @@ impl CatBox {
 			..Camera::default()
 		};
 		
-		let meshNow = Instant::now();
-		// let mesh = Primitives2D::circleXY(20, 20.0);
-		// let mesh = Primitives2D::squareXY(1.0, 1.0);
-		
-		// let mesh = Primitives3D::sphereUV(8, 16, 1.0);
-		// let mesh = Primitives3D::tetrahedron(1.0);
-		// let mesh = Primitives3D::cube(1.0, 1.0, 1.0);
-		let mesh = Primitives3D::sphereCube(1.0, 3);
-		// let mesh = Primitives3D::icosphere(1.0, 0);
-		
-		info!("Mesh vertex/triangle count: {}/{}", mesh.vertices().len(), mesh.triangles().len());
-		let mut mesh = mesh.buildSimpleMesh(gl.clone());
-		
-		let meshEnd = meshNow.elapsed().as_micros();
-		info!("Mesh build took: {}ms", meshEnd as f32 / 1000.0);
-		mesh.upload(simpleLightShader.clone()).logErr()?;
-		
-		let textureDiffuse = newTextureRef(Texture::fromBytes(
+		let textureContainer = newTextureRef(Texture::fromBytes(
 			gl.clone(),
 			include_bytes!("../../resources/textures/container2.png")).logErr()?
 		);
-		let simpleMaterial = VisualMaterial {
+		let material = newMaterialRef(Material {
 			shader: simpleLightShader.clone(),
 			color: Vec3::ONE,
-			diffuse: Some(textureDiffuse),
-			specular: Default::default(),
-			shininess: 64.0,
-		};
+			diffuse: Some(textureContainer.clone()),
+			specular: Vec3::ONE / 2.0,
+			shininess: 32.0,
+		});
 		
-		let simpleRenderable = SimpleRenderable {
+		let scale = 10.0;
+		
+		// sphere
+		let meshStart = Instant::now();
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
-				transform.scale *= 10.0;
-				transform.setRotationFromDirection(Vec3::NEG_X * PI / 4.0);
+				transform.position.y = 10.0;
 				transform
 			},
-			mesh: newMeshRef(mesh),
-			material: newMaterialRef(simpleMaterial),
-		};
-		let simpleRenderable = newRenderableRef(simpleRenderable);
-		renderManager.addRenderable(simpleRenderable);
+			mesh: newMeshRef({
+				let mut mesh = Primitives3D::sphereUV(4, 8, 1.0 * scale).buildSimpleMesh(gl.clone());
+				mesh.upload(simpleLightShader.clone()).logErr()?;
+				mesh
+			}),
+			material: material.clone(),
+		}));
+		info!("Mesh (UV Sphere) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
+		
+		// tetrahedron
+		let meshStart = Instant::now();
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = Transform::default();
+				transform.position.x = 1.0 * scale;
+				transform.position.y = 10.0;
+				transform
+			},
+			mesh: newMeshRef({
+				let mut mesh = Primitives3D::tetrahedron(1.0 * scale).buildSimpleMesh(gl.clone());
+				mesh.upload(simpleLightShader.clone()).logErr()?;
+				mesh
+			}),
+			material: material.clone(),
+		}));
+		info!("Mesh (Tetrahedron) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
+		
+		// cube
+		let meshStart = Instant::now();
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = Transform::default();
+				transform.position.x = -1.0 * scale;
+				transform.position.y = 10.0;
+				transform
+			},
+			mesh: newMeshRef({
+				let mut mesh = Primitives3D::cube(1.0 * scale, 1.0 * scale, 1.0 * scale).buildSimpleMesh(gl.clone());
+				mesh.upload(simpleLightShader.clone()).logErr()?;
+				mesh
+			}),
+			material: material.clone(),
+		}));
+		info!("Mesh (Cube) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
+		
+		// sphereCube
+		let meshStart = Instant::now();
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = Transform::default();
+				transform.position.x = -2.0 * scale;
+				transform.position.y = 10.0;
+				transform
+			},
+			mesh: newMeshRef({
+				let mut mesh = Primitives3D::sphereCube(1.0 * scale, 1).buildSimpleMesh(gl.clone());
+				mesh.upload(simpleLightShader.clone()).logErr()?;
+				mesh
+			}),
+			material: material.clone(),
+		}));
+		info!("Mesh (Cube Sphere) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
+		
+		// icosphere
+		let meshStart = Instant::now();
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = Transform::default();
+				transform.position.x = 2.0 * scale;
+				transform.position.y = 10.0;
+				transform
+			},
+			mesh: newMeshRef({
+				let mut mesh = Primitives3D::icosphere(1.0 * scale, 0).buildSimpleMesh(gl.clone());
+				mesh.upload(simpleLightShader.clone()).logErr()?;
+				mesh
+			}),
+			material: material.clone(),
+		}));
+		info!("Mesh (Icosphere, D20) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
+		
+		// floor
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: Transform::default(),
+			mesh: newMeshRef({
+				let mut mesh = Primitives3D::cube(100.0, 10.0, 100.0).buildSimpleMesh(gl.clone());
+				mesh.upload(simpleLightShader.clone()).logErr()?;
+				mesh
+			}),
+			material: newMaterialRef(Material {
+				shader: simpleLightShader.clone(),
+				color: Vec3::ONE,
+				diffuse: Some(textureContainer.clone()),
+				specular: Vec3::ZERO,
+				shininess: 64.0,
+			})
+		}));
 		
 		// Setup physicals
 		// let a: u32 = 30*30;

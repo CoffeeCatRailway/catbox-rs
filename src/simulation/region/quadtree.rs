@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use glam::{Mat4, Vec3};
 use tracing::warn;
-use crate::graphics::{LineRenderer, Renderable, VisualMaterial};
+use crate::graphics::{LineRenderer, Renderable, Material};
 use crate::graphics::light::Light;
 use crate::graphics::mesh::Mesh;
 use crate::LogError;
@@ -149,11 +149,11 @@ impl<T> Renderable for QuadTree<T> {
 		None
 	}
 	
-	fn material(&self) -> Option<&VisualMaterial> {
+	fn material(&self) -> Option<&Material> {
 		None
 	}
 	
-	fn materialMut(&mut self) -> Option<&mut VisualMaterial> {
+	fn materialMut(&mut self) -> Option<&mut Material> {
 		None
 	}
     

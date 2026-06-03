@@ -3,7 +3,7 @@ use crate::graphics::Texture;
 use crate::types::{GlRef, ShaderRef, TextureRef};
 
 #[derive(Debug, Clone)]
-pub struct VisualMaterial {
+pub struct Material {
 	pub shader: ShaderRef,
 	pub color: Vec3,
 	pub diffuse: Option<TextureRef>,
@@ -11,7 +11,7 @@ pub struct VisualMaterial {
 	pub shininess: f32,
 }
 
-impl VisualMaterial {
+impl Material {
 	pub fn apply(&self, gl: &GlRef) {
 		let shader = self.shader.read().unwrap();
 		shader.bind();
