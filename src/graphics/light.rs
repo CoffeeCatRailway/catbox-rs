@@ -9,8 +9,8 @@ pub enum Light {
 impl Light {
 	pub fn properties(&self) -> &LightProperties {
 		match self {
-			Light::Directional(properties) => &properties,
-			Light::Point(properties) => &properties,
+			Light::Directional(properties) => properties,
+			Light::Point(properties) => properties,
 		}
 	}
 	
@@ -21,7 +21,7 @@ impl Light {
 		}
 	}
 	
-	pub fn toU32(&self) -> u32 {
+	pub fn toU8(&self) -> u8 {
 		match self {
 			Light::Directional(_) => 0,
 			Light::Point(_) => 1,
@@ -33,6 +33,7 @@ impl Light {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct LightProperties {
 	pub position: Vec3,
+	
 	pub ambient: Vec3,
 	pub diffuse: Vec3,
 	pub specular: Vec3,
@@ -42,6 +43,7 @@ impl Default for LightProperties {
 	fn default() -> LightProperties {
 		Self {
 			position: Vec3::ZERO,
+			
 			ambient: Vec3::ONE,
 			diffuse: Vec3::ONE,
 			specular: Vec3::ONE,

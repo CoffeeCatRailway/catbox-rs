@@ -70,8 +70,7 @@ pub trait Renderable {
 			
 			shader.setUniform3fv("u_viewPos", &camera.transform.position);
 			let sunProperties = sunLight.properties();
-			shader.setUniform1ui("u_sunLight.type", sunLight.toU32());
-			shader.setUniform3fv("u_sunLight.position", &sunProperties.position);
+			shader.setUniform4fv("u_sunLight.position", &(sunProperties.position.extend(sunLight.toU8() as f32))); // w is type
 			shader.setUniform3fv("u_sunLight.ambient", &sunProperties.ambient);
 			shader.setUniform3fv("u_sunLight.diffuse", &sunProperties.diffuse);
 			shader.setUniform3fv("u_sunLight.specular", &sunProperties.specular);

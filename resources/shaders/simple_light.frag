@@ -1,7 +1,7 @@
 #version 330 core
 
-const uint LIGHT_DIRECTIONAL = 0u;
-const uint LIGHT_POINT = 1u;
+const float LIGHT_DIRECTIONAL = 0.0;
+const float LIGHT_POINT = 1.0;
 
 struct Material {
     vec3 color;
@@ -10,8 +10,7 @@ struct Material {
 };
 
 struct Light {
-    uint type;
-    vec3 position;
+    vec4 position; // w is type
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
@@ -37,11 +36,12 @@ void main() {
     vec3 normal = normalize(f_normal);
 //	normal = normalize(cross(dFdx(f_position), dFdy(f_position)));
 
-    vec3 lightDir = -u_sunLight.position;
-    if (u_sunLight.type != LIGHT_DIRECTIONAL) {
-        lightDir = u_sunLight.position - f_position;
+    vec3 lightDir = vec3(0.0, 1.0, 0.0);
+    if (u_sunLight.position.w == LIGHT_DIRECTIONAL) {
+        lightDir = normalize(-u_sunLight.position.xyz);
+    } else {
+        lightDir = normalize(u_sunLight.position.xyz - f_position);
     }
-    lightDir = normalize(lightDir);
 
     float diff = max(dot(normal, lightDir), 0.0); // 0-1 clamped
 //    float diff = dot(normal, lightDir) * 0.5 + 0.5; // 0-1
