@@ -6,8 +6,7 @@ const uint LIGHT_POINT = 1u;
 struct Material {
     vec3 color;
     sampler2D diffuse;
-    vec3 specular;
-    float shininess;
+    vec4 specular; // w is shininess
 };
 
 struct Light {
@@ -52,8 +51,8 @@ void main() {
     // specular
     vec3 viewDir = normalize(u_viewPos - f_position);
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), u_material.shininess);
-    vec3 specular = u_sunLight.specular * spec * u_material.specular;
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), u_material.specular.w);
+    vec3 specular = u_sunLight.specular * spec * u_material.specular.rgb;
 
     o_color = vec4(ambient + diffuse + specular, 1.0);
 }

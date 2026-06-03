@@ -24,7 +24,6 @@ impl Material {
 		};
 		diffuse.bind(0);
 		
-		shader.setUniform3fv("u_material.specular", &self.specular);
-		shader.setUniform1f("u_material.shininess", self.shininess);
+		shader.setUniform4fv("u_material.specular", &(self.specular.extend(self.shininess))); // w is shininess
 	}
 }
