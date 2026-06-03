@@ -69,8 +69,10 @@ impl Primitives2D {
 }
 
 impl Primitives3D {
-	pub fn tetrahedron(radius: f32) -> MeshBuilder {
+	pub fn tetrahedron(diameter: f32) -> MeshBuilder {
 		let mut builder = MeshBuilder::new();
+		
+		let radius = diameter / 2.0;
 		
 		builder.vertex(Vertex::new(Vec3::new(radius, radius, radius), Vec3::ZERO, Vec2::ZERO).normalFromPosition());
 		builder.vertex(Vertex::new(Vec3::new(radius, -radius, -radius), Vec3::ZERO, Vec2::ZERO).normalFromPosition());
@@ -87,6 +89,10 @@ impl Primitives3D {
 	
 	pub fn cube(w: f32, h: f32, d: f32) -> MeshBuilder {
 		let mut builder = MeshBuilder::new();
+		
+		let w = w / 2.0;
+		let h = h / 2.0;
+		let d = d / 2.0;
 		
 		let p0 = Vec3::new(-w, -h, -d);
 		let p1 = Vec3::new(w, -h, -d);
@@ -172,8 +178,10 @@ impl Primitives3D {
 		builder
 	}
 	
-	pub fn sphereCube(radius: f32, order: u32) -> MeshBuilder {
+	pub fn sphereCube(diameter: f32, order: u32) -> MeshBuilder {
 		let mut builder = Self::cube(1.0, 1.0, 1.0);
+		
+		let radius = diameter / 2.0;
 		
 		for _ in 0..order {
 			builder.subdivide();
@@ -184,8 +192,10 @@ impl Primitives3D {
 	}
 	
 	// https://danielsieger.com/blog/2021/03/27/generating-spheres.html
-	pub fn sphereUV(stacks: usize, slices: usize, radius: f32) -> MeshBuilder {
+	pub fn sphereUV(stacks: usize, slices: usize, diameter: f32) -> MeshBuilder {
 		let mut builder = MeshBuilder::new();
+		
+		let radius = diameter / 2.0;
 		
 		builder.vertex(Vertex::new(
 			Vec3::Y * radius,
@@ -248,8 +258,10 @@ impl Primitives3D {
 	}
 	
 	// order >= 6 is +1m
-	pub fn icosphere(radius: f32, order: u32) -> MeshBuilder {
+	pub fn icosphere(diameter: f32, order: u32) -> MeshBuilder {
 		let mut builder = MeshBuilder::new();
+		
+		let radius = diameter / 2.0;
 		
 		let H_ANGLE = PI / 180.0 * 72.0;
 		let V_ANGLE = (1.0_f32 / 2.0).atan();
