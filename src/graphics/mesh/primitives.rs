@@ -75,9 +75,9 @@ impl Primitives3D {
 		let radius = diameter / 2.0;
 		
 		builder.vertex(Vertex::new(Vec3::new(radius, radius, radius), Vec3::ZERO, Vec2::ZERO).normalFromPosition());
-		builder.vertex(Vertex::new(Vec3::new(radius, -radius, -radius), Vec3::ZERO, Vec2::ZERO).normalFromPosition());
-		builder.vertex(Vertex::new(Vec3::new(-radius, radius, -radius), Vec3::ZERO, Vec2::ZERO).normalFromPosition());
-		builder.vertex(Vertex::new(Vec3::new(-radius, -radius, radius), Vec3::ZERO, Vec2::ZERO).normalFromPosition());
+		builder.vertex(Vertex::new(Vec3::new(radius, -radius, -radius), Vec3::ZERO, Vec2::new(1.0, 0.0)).normalFromPosition());
+		builder.vertex(Vertex::new(Vec3::new(-radius, radius, -radius), Vec3::ZERO, Vec2::new(0.0, 1.0)).normalFromPosition());
+		builder.vertex(Vertex::new(Vec3::new(-radius, -radius, radius), Vec3::ZERO, Vec2::ONE).normalFromPosition());
 		
 		builder.triangleIndices(0, 1, 2);
 		builder.triangleIndices(0, 2, 3);
