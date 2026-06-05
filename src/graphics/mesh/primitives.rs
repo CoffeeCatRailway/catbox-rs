@@ -270,20 +270,20 @@ impl Primitives3D {
 		let mut hAngle2 = -PI / 2.0;
 		
 		let mut tmpVertices = Vec::new();
-		tmpVertices.push(Vec3::new(0.0, 0.0, radius));
+		tmpVertices.push(Vec3::new(0.0, radius, 0.0));
 		
 		for _ in 0..6 {
-			let z = radius * V_ANGLE.sin();
-			let xy = radius * V_ANGLE.cos();
+			let y = radius * V_ANGLE.sin();
+			let xz = radius * V_ANGLE.cos();
 			
-			tmpVertices.push(Vec3::new(xy * hAngle1.cos(), xy * hAngle1.sin(), z));
-			tmpVertices.push(Vec3::new(xy * hAngle2.cos(), xy * hAngle2.sin(), -z));
+			tmpVertices.push(Vec3::new(xz * hAngle1.sin(), y, xz * hAngle1.cos()));
+			tmpVertices.push(Vec3::new(xz * hAngle2.sin(), -y, xz * hAngle2.cos()));
 			
 			hAngle1 += H_ANGLE;
 			hAngle2 += H_ANGLE;
 		}
 		
-		tmpVertices.push(Vec3::new(0.0, 0.0, -radius));
+		tmpVertices.push(Vec3::new(0.0, -radius, 0.0));
 		
 		let S_STEP: f32 = 186.0 / 2048.0;
 		let T_STEP: f32 = 322.0 / 1024.0;
