@@ -3,9 +3,13 @@ use crate::graphics::shader::{Shader, ShaderType};
 use crate::LogError;
 use crate::types::{newShaderRef, GlRef, ShaderRef};
 
-pub const SIMPLE_VERTEX: &str = include_str!("../../resources/shaders/simple.vert");
-pub const SIMPLE_FRAGMENT: &str = include_str!("../../resources/shaders/simple.frag");
-static SIMPLE_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
+pub const SIMPLE_ATTRIB_COLOR_VERTEX: &str = include_str!("../../resources/shaders/simple_attrib_color.vert");
+pub const SIMPLE_ATTRIB_COLOR_FRAGMENT: &str = include_str!("../../resources/shaders/simple_attrib_color.frag");
+static SIMPLE_ATTRIB_COLOR_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
+
+pub const SIMPLE_MAT_COLOR_VERTEX: &str = include_str!("../../resources/shaders/simple_mat_color.vert");
+pub const SIMPLE_MAT_COLOR_FRAGMENT: &str = include_str!("../../resources/shaders/simple_mat_color.frag");
+static SIMPLE_MAT_COLOR_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
 pub const SIMPLE_LIGHT_VERTEX: &str = include_str!("../../resources/shaders/simple_light.vert");
 pub const SIMPLE_LIGHT_FRAGMENT: &str = include_str!("../../resources/shaders/simple_light.frag");
@@ -15,37 +19,40 @@ pub const INSTANCE_VERTEX: &str = include_str!("../../resources/shaders/instance
 pub const INSTANCE_FRAGMENT: &str = include_str!("../../resources/shaders/instance.frag");
 static INSTANCE_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
-pub fn simpleShader(gl: GlRef) -> Result<ShaderRef, String> {
-	if SIMPLE_SHADER_REF.get().is_none() {
-		let shader = Shader::new(gl).logErr()?
-			.attachFromSource(ShaderType::Vertex, SIMPLE_VERTEX).logErr()?
-			.attachFromSource(ShaderType::Fragment, SIMPLE_FRAGMENT).logErr()?
-			.link().logErr()?;
-		SIMPLE_SHADER_REF.set(newShaderRef(shader)).expect("Failed to set simple shader reference!");
-	}
-	Ok(SIMPLE_SHADER_REF.get().unwrap().clone())
+pub fn simpleAttribColorShader(gl: GlRef) -> ShaderRef {
+	SIMPLE_ATTRIB_COLOR_SHADER_REF.get_or_init(|| {
+		newShaderRef(Shader::new(gl).logErr().unwrap()
+			.attachFromSource(ShaderType::Vertex, SIMPLE_ATTRIB_COLOR_VERTEX).logErr().unwrap()
+			.attachFromSource(ShaderType::Fragment, SIMPLE_ATTRIB_COLOR_FRAGMENT).logErr().unwrap()
+			.link().logErr().unwrap())
+	}).clone()
 }
 
-pub fn simpleLightShader(gl: GlRef) -> Result<ShaderRef, String> {
-	if SIMPLE_LIGHT_SHADER_REF.get().is_none() {
-		let shader = Shader::new(gl).logErr()?
-			.attachFromSource(ShaderType::Vertex, SIMPLE_LIGHT_VERTEX).logErr()?
-			.attachFromSource(ShaderType::Fragment, SIMPLE_LIGHT_FRAGMENT).logErr()?
-			.link().logErr()?;
-		SIMPLE_LIGHT_SHADER_REF.set(newShaderRef(shader)).expect("Failed to set simple light shader reference!");
-	}
-	Ok(SIMPLE_LIGHT_SHADER_REF.get().unwrap().clone())
+pub fn simpleMatColorShader(gl: GlRef) -> ShaderRef {
+	SIMPLE_MAT_COLOR_SHADER_REF.get_or_init(|| {
+		newShaderRef(Shader::new(gl).logErr().unwrap()
+			.attachFromSource(ShaderType::Vertex, SIMPLE_MAT_COLOR_VERTEX).logErr().unwrap()
+			.attachFromSource(ShaderType::Fragment, SIMPLE_MAT_COLOR_FRAGMENT).logErr().unwrap()
+			.link().logErr().unwrap())
+	}).clone()
 }
 
-pub fn instanceShader(gl: GlRef) -> Result<ShaderRef, String> {
-	if INSTANCE_SHADER_REF.get().is_none() {
-		let shader = Shader::new(gl).logErr()?
-			.attachFromSource(ShaderType::Vertex, INSTANCE_VERTEX).logErr()?
-			.attachFromSource(ShaderType::Fragment, INSTANCE_FRAGMENT).logErr()?
-			.link().logErr()?;
-		INSTANCE_SHADER_REF.set(newShaderRef(shader)).expect("Failed to set instance shader reference!");
-	}
-	Ok(INSTANCE_SHADER_REF.get().unwrap().clone())
+pub fn simpleLightShader(gl: GlRef) -> ShaderRef {
+	SIMPLE_LIGHT_SHADER_REF.get_or_init(|| {
+		newShaderRef(Shader::new(gl).logErr().unwrap()
+			.attachFromSource(ShaderType::Vertex, SIMPLE_LIGHT_VERTEX).logErr().unwrap()
+			.attachFromSource(ShaderType::Fragment, SIMPLE_LIGHT_FRAGMENT).logErr().unwrap()
+			.link().logErr().unwrap())
+	}).clone()
+}
+
+pub fn instanceShader(gl: GlRef) -> ShaderRef {
+	INSTANCE_SHADER_REF.get_or_init(|| {
+		newShaderRef(Shader::new(gl).logErr().unwrap()
+			.attachFromSource(ShaderType::Vertex, INSTANCE_VERTEX).logErr().unwrap()
+			.attachFromSource(ShaderType::Fragment, INSTANCE_FRAGMENT).logErr().unwrap()
+			.link().logErr().unwrap())
+	}).clone()
 }
 
 fn destroyShaderRef(shader: &OnceLock<ShaderRef>) {
@@ -55,7 +62,8 @@ fn destroyShaderRef(shader: &OnceLock<ShaderRef>) {
 }
 
 pub fn destroyAllShaders() {
-	destroyShaderRef(&SIMPLE_SHADER_REF);
+	destroyShaderRef(&SIMPLE_ATTRIB_COLOR_SHADER_REF);
+	destroyShaderRef(&SIMPLE_MAT_COLOR_SHADER_REF);
 	destroyShaderRef(&SIMPLE_LIGHT_SHADER_REF);
 	destroyShaderRef(&INSTANCE_SHADER_REF);
 }

@@ -5,7 +5,6 @@ uniform mat4 u_modelMatrix;
 
 in vec3 i_position;
 in vec3 i_normal;
-in vec3 i_color;
 in vec2 i_uv;
 
 out vec3 f_position;
@@ -17,7 +16,6 @@ void main() {
 	gl_Position = u_projViewMatrix * modelPos;
 	
 	f_position = modelPos.xyz;
-//	f_normal = (u_modelMatrix * vec4(i_normal, 1.0)).xyz;
     f_normal = mat3(transpose(inverse(u_modelMatrix))) * i_normal;
     f_uv = i_uv;
 }

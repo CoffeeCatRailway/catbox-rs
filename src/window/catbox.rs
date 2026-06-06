@@ -18,10 +18,11 @@ use tracing::{info, warn};
 use crate::{gl_check_error, LogError};
 use crate::graphics::{RenderManager, SimpleRenderable};
 use crate::graphics::{Material, Texture};
+use crate::graphics::light::{Light, LightProperties};
 use crate::graphics::mesh::{Primitives2D, Primitives3D};
 use crate::graphics::shaders;
 use crate::simulation::{Solver, Transform};
-use crate::types::{newGlRef, newMaterialRef, newMeshRef, newRenderableRef, newSdlWindowRef, newSolverRef, newTextureRef, GlRef, SdlWindowRef, SolverRef};
+use crate::types::{newGlRef, newLightRef, newMaterialRef, newMeshRef, newRenderableRef, newSdlWindowRef, newSolverRef, newTextureRef, GlRef, LightRef, SdlWindowRef, SolverRef};
 use crate::window::InputHelper;
 use crate::window::camera::{Camera, Frustum, Projection};
 
@@ -57,6 +58,8 @@ pub struct CatBox {
 	imgui: Imgui,
 	
 	solver: SolverRef,
+	sunLight: LightRef,
+	sunAngle: f32,
 	renderManager: RenderManager,
 	clearColor: [f32; 4],
 	// lastMousePos: Vec2,
@@ -152,17 +155,64 @@ impl CatBox {
 		
 		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
-		let simpleLightShader = shaders::simpleLightShader(gl.clone()).logErr()?;
+		let simpleMatColorShader = shaders::simpleMatColorShader(gl.clone());
+		let simpleLightShader = shaders::simpleLightShader(gl.clone());
 		// let instanceShader = shaders::instanceShader(gl.clone()).logErr()?;
-		//
-		let solver = newSolverRef(Solver::new().logErr()?);
 		
 		let mut renderManager = RenderManager::new(gl.clone()).logErr()?;
 		renderManager.lineRendererMut().enable(true);
-		let sun = renderManager.sunLightMut().propertiesMut();
-		sun.ambient *= 0.5;
-		sun.diffuse *= 0.75;
 		
+		let sunAngle: f32 = TAU * 5.0/8.0;
+		let sunLight = Light::Directional(LightProperties {
+			position: Vec3::new(sunAngle.sin(), -1.0, sunAngle.cos()),
+			
+			color: Vec3::ONE,
+			ambient: 0.85,
+			diffuse: 0.9,
+			specular: 1.0,
+			
+			..Default::default()
+		});
+		let sunLight = newLightRef(sunLight);
+		renderManager.addLight(sunLight.clone());
+		
+		let mut addLight = |pos: Vec3, color: Vec3| {
+			renderManager.addLight(newLightRef(Light::Point(LightProperties {
+				position: pos,
+				
+				color,
+				ambient: 1.0,
+				diffuse: 1.0,
+				specular: 1.0,
+				intensity: 1.0,
+				
+				radius: 30.0,
+			})));
+			renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+				transform: {
+					let mut transform = Transform::default();
+					transform.position = pos;
+					transform
+				},
+				mesh: newMeshRef({
+					let mut mesh = Primitives3D::cube(1.0, 1.0, 1.0).buildSimpleMesh(gl.clone());
+					mesh.upload(simpleLightShader.clone()).logErr().unwrap();
+					mesh
+				}),
+				material: newMaterialRef(Material {
+					shader: simpleMatColorShader.clone(),
+					color,
+					diffuse: None,
+					specular: Vec3::ZERO,
+					shininess: 0.0,
+				}),
+			}));
+		};
+		addLight(Vec3::new(-20.0, 5.0, 20.0), Vec3::X);
+		addLight(Vec3::new(0.0, 5.0, 20.0), Vec3::Y);
+		addLight(Vec3::new(20.0, 5.0, 20.0), Vec3::Z);
+		
+		let solver = newSolverRef(Solver::new().logErr()?);
 		// renderManager.addRenderable(solver.clone());
 		
 		let camera = Camera {
@@ -202,7 +252,7 @@ impl CatBox {
 				transform
 			},
 			mesh: newMeshRef({
-				let mut mesh = Primitives3D::sphereUV(4, 8, 1.0 * scale).buildSimpleMesh(gl.clone());
+				let mut mesh = Primitives3D::sphereUV(6, 12, 1.0 * scale).buildSimpleMesh(gl.clone());
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
@@ -256,7 +306,7 @@ impl CatBox {
 				transform
 			},
 			mesh: newMeshRef({
-				let mut mesh = Primitives3D::sphereCube(1.0 * scale, 1).buildSimpleMesh(gl.clone());
+				let mut mesh = Primitives3D::sphereCube(1.0 * scale, 2).buildSimpleMesh(gl.clone());
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
@@ -344,6 +394,8 @@ impl CatBox {
 			},
 			
 			solver,
+			sunLight,
+			sunAngle,
 			renderManager,
 			clearColor: [96.0 / 255.0, 190.0 / 255.0, 200.0 / 255.0, 1.0],
 			// lastMousePos: Vec2::ZERO,
@@ -494,7 +546,6 @@ impl CatBox {
 		let mut frameLast = Instant::now();
 		let mut dt: f32 = OPTIMAL_DT;
 		let mut totalFrames: u64 = 0;
-		let mut t = 0.0;
 		while self.flags.get(F_RUNNING) {
 			let frameStart = Instant::now();
 			
@@ -512,18 +563,6 @@ impl CatBox {
 			self.imgui.context.io_mut().set_delta_time(dt);
 			
 			self.input(dt);
-			
-			let sunPos = {
-				let sun = self.renderManager.sunLightMut();
-				t += dt / 2.0;
-				t = t % TAU;
-				sun.propertiesMut().position.x = t.sin();
-				// sun.propertiesMut().position.y = t.cos();
-				sun.propertiesMut().position.z = t.cos();
-				sun.properties().position
-			};
-			
-			self.renderManager.lineRendererMut().pushLine3(Vec3::ZERO, Vec3::ONE, sunPos * 20.0, Vec3::ONE);
 			
 			self.solver.borrow_mut().update(OPTIMAL_DT);
 			{
@@ -595,7 +634,7 @@ impl CatBox {
 						  ui.text(format!("Window size: ({},{})", windowSize.0, windowSize.1));
 						  
 						  let uiWidth = ui.window_width();
-						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
+						  let itemWidth = ui.push_item_width(uiWidth * 0.65);
 						  ui.color_edit4("Clear color", &mut self.clearColor);
 						  itemWidth.end();
 					  });
@@ -616,6 +655,32 @@ impl CatBox {
 						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
 						  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
 							  uiUpdate = true;
+						  }
+						  itemWidth.end();
+						  ui.separator();
+						  
+						  ui.text("Sun light");
+						  let mut sunLight = self.sunLight.borrow_mut();
+						  
+						  let mut sunColor = sunLight.properties().color.to_array();
+						  let uiWidth = ui.window_width();
+						  let itemWidth = ui.push_item_width(uiWidth * 0.8);
+						  if ui.color_edit3("Color", &mut sunColor) {
+							  sunLight.propertiesMut().color = Vec3::from_array(sunColor);
+						  }
+						  itemWidth.end();
+						  
+						  let itemWidth = ui.push_item_width(uiWidth * 0.3);
+						  ui.slider_f32("##sunAmbient", &mut sunLight.propertiesMut().ambient, 0.0, 1.0);
+						  ui.same_line();
+						  ui.slider_f32("##sunDiffuse", &mut sunLight.propertiesMut().diffuse, 0.0, 1.0);
+						  ui.same_line();
+						  ui.slider_f32("##sunSpecular", &mut sunLight.propertiesMut().specular, 0.0, 1.0);
+						  itemWidth.end();
+						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
+						  if ui.slider_f32("Sun angle", &mut self.sunAngle, 0.0, TAU) {
+							  sunLight.propertiesMut().position.x = self.sunAngle.sin();
+							  sunLight.propertiesMut().position.z = self.sunAngle.cos();
 						  }
 						  itemWidth.end();
 					  });

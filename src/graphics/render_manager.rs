@@ -1,15 +1,16 @@
 use std::rc::Rc;
 use bool_flags::Flags8;
-use glam::{Mat4, Vec3};
+use glam::Mat4;
 use tracing::warn;
-use crate::graphics::light::{Light, LightProperties};
 use crate::graphics::LineRenderer;
 use crate::graphics::material::Material;
 use crate::graphics::mesh::Mesh;
 use crate::LogError;
 use crate::simulation::Transform;
-use crate::types::{GlRef, MaterialRef, MeshRef, RenderableRef};
+use crate::types::{GlRef, LightRef, MaterialRef, MeshRef, RenderableRef};
 use crate::window::camera::Camera;
+
+pub const MAX_LIGHTS: usize = 8;
 
 #[allow(unused)]
 pub struct SimpleRenderable {
@@ -35,7 +36,7 @@ impl Renderable for SimpleRenderable {
 		Rc::get_mut(&mut self.material)
 	}
 	
-	fn renderPost(&self, _gl: &GlRef, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
+	fn renderPost(&self, _gl: &GlRef, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _lights: &Vec<LightRef>, _camera: &Camera) -> Result<(), String> {
 		// let vertices = self.mesh.vertices();
 		// for vertex in vertices.iter() {
 		// 	let p = self.modelMatrix().mul_vec4(vertex.position.extend(1.0)).truncate();
@@ -60,7 +61,7 @@ pub trait Renderable {
 	
 	fn materialMut(&mut self) -> Option<&mut Material>;
 	
-	fn render(&self, gl: &GlRef, projViewMat: &Mat4, dt: f32, _lineRenderer: &mut LineRenderer, sunLight: &Light, camera: &Camera) -> Result<(), String> {
+	fn render(&self, gl: &GlRef, projViewMat: &Mat4, dt: f32, _lineRenderer: &mut LineRenderer, lights: &Vec<LightRef>, camera: &Camera) -> Result<(), String> {
 		if let Some(mesh) = self.mesh() && let Some(material) = self.material() {
 			let shader = material.shader.read().unwrap();
 			
@@ -69,18 +70,25 @@ pub trait Renderable {
 			shader.setMatrix4f("u_modelMatrix", &self.modelMatrix());
 			
 			shader.setUniform3fv("u_viewPos", &camera.transform.position);
-			let sunProperties = sunLight.properties();
-			shader.setUniform4fv("u_sunLight.position", &(sunProperties.position.extend(sunLight.toU8() as f32))); // w is type
-			shader.setUniform3fv("u_sunLight.ambient", &sunProperties.ambient);
-			shader.setUniform3fv("u_sunLight.diffuse", &sunProperties.diffuse);
-			shader.setUniform3fv("u_sunLight.specular", &sunProperties.specular);
+			
+			// todo: closest to camera priority
+			for i in 0..lights.len() {
+				let borrow = lights[i].borrow();
+				let sunProperties = borrow.properties();
+				shader.setUniform4fv(format!("u_lights[{}].position", i).as_str(), &(sunProperties.position.extend(borrow.toU8() as f32))); // w is type
+				
+				shader.setUniform3fv(format!("u_lights[{}].color", i).as_str(), &sunProperties.color);
+				shader.setUniform3f(format!("u_lights[{}].strength", i).as_str(), sunProperties.ambient, sunProperties.diffuse, sunProperties.specular);
+				
+				shader.setUniform2f(format!("u_lights[{}].attenuation", i).as_str(), sunProperties.intensity, sunProperties.radius);
+			}
 			
 			mesh.draw();
 		}
 		Ok(())
 	}
 	
-	fn renderPost(&self, _gl: &GlRef, _projViewMat: &Mat4, _dt: f32, _lineRenderer: &mut LineRenderer, _sunLight: &Light, _camera: &Camera) -> Result<(), String> {
+	fn renderPost(&self, _gl: &GlRef, _projViewMat: &Mat4, _dt: f32, _lineRenderer: &mut LineRenderer, _lights: &Vec<LightRef>, _camera: &Camera) -> Result<(), String> {
 		Ok(())
 	}
 	
@@ -104,10 +112,9 @@ const F_DESTROYED: u8 = 0;
 pub struct RenderManager {
 	flags: Flags8,
 	gl: GlRef,
-	renderables: Vec<RenderableRef>,
 	lineRenderer: LineRenderer,
-	
-	sunLight: Light,
+	renderables: Vec<RenderableRef>,
+	lights: Vec<LightRef>,
 }
 
 impl RenderManager {
@@ -118,18 +125,18 @@ impl RenderManager {
 		Ok(Self {
 			flags: Flags8::none(),
 			gl,
-			renderables: Vec::new(),
 			lineRenderer,
-			
-			sunLight: Light::Directional(LightProperties {
-				position: Vec3::NEG_ONE.normalize(),
-				..Default::default()
-			}),
+			renderables: Vec::new(),
+			lights: Vec::new(),
 		})
 	}
 	
 	pub fn addRenderable(&mut self, renderable: RenderableRef) {
 		self.renderables.push(renderable);
+	}
+	
+	pub fn addLight(&mut self, light: LightRef) {
+		self.lights.push(light);
 	}
 	
 	pub fn draw(&mut self, projViewMat: &Mat4, dt: f32, camera: &Camera) -> Result<(), String> {
@@ -140,8 +147,8 @@ impl RenderManager {
 		for renderable in self.renderables.iter() {
 			let renderable = renderable.borrow();
 			if renderable.visible() {
-				renderable.render(&self.gl, projViewMat, dt, &mut self.lineRenderer, &self.sunLight, camera).logErr()?;
-				renderable.renderPost(&self.gl, projViewMat, dt, &mut self.lineRenderer, &self.sunLight, camera).logErr()?;
+				renderable.render(&self.gl, projViewMat, dt, &mut self.lineRenderer, &self.lights, camera).logErr()?;
+				renderable.renderPost(&self.gl, projViewMat, dt, &mut self.lineRenderer, &self.lights, camera).logErr()?;
 			}
 		}
 		self.lineRenderer.drawFlush(&projViewMat);
@@ -163,13 +170,5 @@ impl RenderManager {
 	
 	pub fn lineRendererMut(&mut self) -> &mut LineRenderer {
 		&mut self.lineRenderer
-	}
-	
-	pub fn sunLight(&self) -> &Light {
-		&self.sunLight
-	}
-	
-	pub fn sunLightMut(&mut self) -> &mut Light {
-		&mut self.sunLight
 	}
 }

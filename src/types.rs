@@ -4,6 +4,7 @@ use std::sync::{Arc, RwLock};
 use glow::{Context as GlowContext};
 use sdl3::video::Window as SdlWindow;
 use crate::graphics::{Material, Texture};
+use crate::graphics::light::Light;
 use crate::graphics::mesh::Mesh;
 use crate::graphics::Renderable;
 use crate::graphics::shader::Shader;
@@ -20,6 +21,8 @@ pub type TextureRef = Arc<Texture>;
 pub type MaterialRef = Rc<Material>;
 
 pub type MeshRef = Rc<Mesh>;
+
+pub type LightRef = Rc<RefCell<Light>>;
 
 pub type RenderableRef = Rc<RefCell<dyn Renderable>>;
 
@@ -49,6 +52,10 @@ pub fn newMaterialRef(material: Material) -> MaterialRef {
 
 pub fn newMeshRef(mesh: Mesh) -> MeshRef {
 	Rc::new(mesh)
+}
+
+pub fn newLightRef(light: Light) -> LightRef {
+	Rc::new(RefCell::new(light))
 }
 
 pub fn newRenderableRef<T: Renderable + 'static>(renderable: T) -> RenderableRef {
