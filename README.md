@@ -12,6 +12,7 @@ This is also a continuation of my Java attempt [CatBox](https://github.com/Coffe
 - [x] Mesh builder for 3D
 - [x] Textures
 - [x] Environment controls (Gravity, Pause/Step, Step time or DT)
+- [x] Simple lighting (Sun + points)
 - [ ] Simple object (ball)
 - [ ] Collide with world boundaries
 - [ ] Separate solver thread (Maybe later)
