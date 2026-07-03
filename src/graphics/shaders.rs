@@ -19,6 +19,10 @@ pub const INSTANCE_VERTEX: &str = include_str!("../../resources/shaders/instance
 pub const INSTANCE_FRAGMENT: &str = include_str!("../../resources/shaders/instance.frag");
 static INSTANCE_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
+pub const SHADOW_MAP_VERTEX: &str = include_str!("../../resources/shaders/shadow_map.vert");
+pub const SHADOW_MAP_FRAGMENT: &str = include_str!("../../resources/shaders/shadow_map.frag");
+static SHADOW_MAP_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
+
 pub fn simpleAttribColorShader(gl: GlRef) -> ShaderRef {
 	SIMPLE_ATTRIB_COLOR_SHADER_REF.get_or_init(|| {
 		newShaderRef(Shader::new(gl).logErr().unwrap()
@@ -55,6 +59,15 @@ pub fn instanceShader(gl: GlRef) -> ShaderRef {
 	}).clone()
 }
 
+pub fn shadowMapShader(gl: GlRef) -> ShaderRef {
+	SHADOW_MAP_SHADER_REF.get_or_init(|| {
+		newShaderRef(Shader::new(gl).logErr().unwrap()
+			.attachFromSource(ShaderType::Vertex, SHADOW_MAP_VERTEX).logErr().unwrap()
+			.attachFromSource(ShaderType::Fragment, SHADOW_MAP_FRAGMENT).logErr().unwrap()
+			.link().logErr().unwrap())
+	}).clone()
+}
+
 fn destroyShaderRef(shader: &OnceLock<ShaderRef>) {
 	if let Some(shader) = shader.get() {
 		shader.write().unwrap().destroy();
@@ -66,4 +79,5 @@ pub fn destroyAllShaders() {
 	destroyShaderRef(&SIMPLE_MAT_COLOR_SHADER_REF);
 	destroyShaderRef(&SIMPLE_LIGHT_SHADER_REF);
 	destroyShaderRef(&INSTANCE_SHADER_REF);
+	destroyShaderRef(&SHADOW_MAP_SHADER_REF);
 }

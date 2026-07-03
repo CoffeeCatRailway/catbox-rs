@@ -110,69 +110,69 @@ impl Primitives3D {
 		
 		// back
 		builder.triangleVertices(
-			Vertex::new(p3, Vec3::ZERO, uv10).normalFromPosition(),
-			Vertex::new(p2, Vec3::ZERO, uv00).normalFromPosition(),
-			Vertex::new(p1, Vec3::ZERO, uv01).normalFromPosition(),
+			Vertex::new(p3, Vec3::NEG_Z, uv10),//.normalFromPosition(),
+			Vertex::new(p2, Vec3::NEG_Z, uv00),//.normalFromPosition(),
+			Vertex::new(p1, Vec3::NEG_Z, uv01),//.normalFromPosition(),
 		);
 		builder.triangleVertices(
-			Vertex::new(p3, Vec3::ZERO, uv10).normalFromPosition(),
-			Vertex::new(p1, Vec3::ZERO, uv01).normalFromPosition(),
-			Vertex::new(p0, Vec3::ZERO, uv11).normalFromPosition(),
+			Vertex::new(p3, Vec3::NEG_Z, uv10),//.normalFromPosition(),
+			Vertex::new(p1, Vec3::NEG_Z, uv01),//.normalFromPosition(),
+			Vertex::new(p0, Vec3::NEG_Z, uv11),//.normalFromPosition(),
 		);
 		// right
 		builder.triangleVertices(
-			Vertex::new(p2, Vec3::ZERO, uv10).normalFromPosition(),
-			Vertex::new(p6, Vec3::ZERO, uv00).normalFromPosition(),
-			Vertex::new(p5, Vec3::ZERO, uv01).normalFromPosition(),
+			Vertex::new(p2, Vec3::X, uv10),//.normalFromPosition(),
+			Vertex::new(p6, Vec3::X, uv00),//.normalFromPosition(),
+			Vertex::new(p5, Vec3::X, uv01),//.normalFromPosition(),
 		);
 		builder.triangleVertices(
-			Vertex::new(p2, Vec3::ZERO, uv10).normalFromPosition(),
-			Vertex::new(p5, Vec3::ZERO, uv01).normalFromPosition(),
-			Vertex::new(p1, Vec3::ZERO, uv11).normalFromPosition(),
+			Vertex::new(p2, Vec3::X, uv10),//.normalFromPosition(),
+			Vertex::new(p5, Vec3::X, uv01),//.normalFromPosition(),
+			Vertex::new(p1, Vec3::X, uv11),//.normalFromPosition(),
 		);
 		// front
 		builder.triangleVertices(
-			Vertex::new(p6, Vec3::ZERO, uv10).normalFromPosition(),
-			Vertex::new(p7, Vec3::ZERO, uv00).normalFromPosition(),
-			Vertex::new(p4, Vec3::ZERO, uv01).normalFromPosition(),
+			Vertex::new(p6, Vec3::Z, uv10),//.normalFromPosition(),
+			Vertex::new(p7, Vec3::Z, uv00),//.normalFromPosition(),
+			Vertex::new(p4, Vec3::Z, uv01),//.normalFromPosition(),
 		);
 		builder.triangleVertices(
-			Vertex::new(p6, Vec3::ZERO, uv10).normalFromPosition(),
-			Vertex::new(p4, Vec3::ZERO, uv01).normalFromPosition(),
-			Vertex::new(p5, Vec3::ZERO, uv11).normalFromPosition(),
+			Vertex::new(p6, Vec3::Z, uv10),//.normalFromPosition(),
+			Vertex::new(p4, Vec3::Z, uv01),//.normalFromPosition(),
+			Vertex::new(p5, Vec3::Z, uv11),//.normalFromPosition(),
 		);
 		// left
 		builder.triangleVertices(
-			Vertex::new(p0, Vec3::ZERO, uv01).normalFromPosition(),
-			Vertex::new(p4, Vec3::ZERO, uv11).normalFromPosition(),
-			Vertex::new(p7, Vec3::ZERO, uv10).normalFromPosition(),
+			Vertex::new(p0, Vec3::NEG_X, uv01),//.normalFromPosition(),
+			Vertex::new(p4, Vec3::NEG_X, uv11),//.normalFromPosition(),
+			Vertex::new(p7, Vec3::NEG_X, uv10),//.normalFromPosition(),
 		);
 		builder.triangleVertices(
-			Vertex::new(p0, Vec3::ZERO, uv01).normalFromPosition(),
-			Vertex::new(p7, Vec3::ZERO, uv10).normalFromPosition(),
-			Vertex::new(p3, Vec3::ZERO, uv00).normalFromPosition(),
+			Vertex::new(p0, Vec3::NEG_X, uv01),//.normalFromPosition(),
+			Vertex::new(p7, Vec3::NEG_X, uv10),//.normalFromPosition(),
+			Vertex::new(p3, Vec3::NEG_X, uv00),//.normalFromPosition(),
 		);
 		// top
 		builder.triangleVertices(
-			Vertex::new(p7, Vec3::ZERO, uv01).normalFromPosition(),
-			Vertex::new(p2, Vec3::ZERO, uv10).normalFromPosition(),
-			Vertex::new(p3, Vec3::ZERO, uv00).normalFromPosition(),
+			Vertex::new(p7, Vec3::Y, uv01),//.normalFromPosition(),
+			Vertex::new(p2, Vec3::Y, uv10),//.normalFromPosition(),
+			Vertex::new(p3, Vec3::Y, uv00),//.normalFromPosition(),
 		);
 		builder.triangleVertices(
-			Vertex::new(p7, Vec3::ZERO, uv01).normalFromPosition(),
-			Vertex::new(p6, Vec3::ZERO, uv11).normalFromPosition(),
-			Vertex::new(p2, Vec3::ZERO, uv10).normalFromPosition(),
+			Vertex::new(p7, Vec3::Y, uv01),//.normalFromPosition(),
+			Vertex::new(p6, Vec3::Y, uv11),//.normalFromPosition(),
+			Vertex::new(p2, Vec3::Y, uv10),//.normalFromPosition(),
 		);
 		// bottom
 		builder.triangleVertices(
-			Vertex::new(p5, Vec3::ZERO, uv10).normalFromPosition(),
-			Vertex::new(p0, Vec3::ZERO, uv01).normalFromPosition(),
-			Vertex::new(p1, Vec3::ZERO, uv11).normalFromPosition(),
+			Vertex::new(p5, Vec3::NEG_Y, uv10),//.normalFromPosition(),
+			Vertex::new(p0, Vec3::NEG_Y, uv01),//.normalFromPosition(),
+			Vertex::new(p1, Vec3::NEG_Y, uv11),//.normalFromPosition(),
 		);
 		builder.triangleVertices(
-			Vertex::new(p5, Vec3::ZERO, uv10).normalFromPosition(),
-			Vertex::new(p4, Vec3::ZERO, uv00).normalFromPosition(),
-			Vertex::new(p0, Vec3::ZERO, uv01).normalFromPosition(),
+			Vertex::new(p5, Vec3::NEG_Y, uv10),//.normalFromPosition(),
+			Vertex::new(p4, Vec3::NEG_Y, uv00),//.normalFromPosition(),
+			Vertex::new(p0, Vec3::NEG_Y, uv01),//.normalFromPosition(),
 		);
 		
 		builder

@@ -165,7 +165,7 @@ impl Texture {
 			return;
 		}
 		unsafe {
-			let handle = self.handle.take().unwrap();
+			let handle = self.handle.unwrap();
 			warn!("Deleting texture {:?}", handle);
 			self.gl.delete_texture(handle);
 			self.flags.set(F_DELETED);

@@ -1,12 +1,12 @@
 use std::fmt::Debug;
 use glam::{Mat4, Vec3};
+use glow::Texture as GlowTexture;
 use tracing::warn;
 use crate::graphics::{LineRenderer, Renderable, Material};
-use crate::graphics::light::Light;
 use crate::graphics::mesh::Mesh;
 use crate::LogError;
 use crate::simulation::region::AABB;
-use crate::types::{GlRef, LightRef};
+use crate::types::{GlRef, LightRef, ShaderRef};
 use crate::window::camera::Camera;
 
 #[derive(Clone)]
@@ -157,7 +157,7 @@ impl<T> Renderable for QuadTree<T> {
 		None
 	}
     
-    fn render(&self, _gl: &GlRef, _projViewMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _lights: &Vec<LightRef>, _camera: &Camera) -> Result<(), String> {
+    fn render(&self, _gl: &GlRef, _projectMat: &Mat4, _lightSpaceMat: &Mat4, _dt: f32, lineRenderer: &mut LineRenderer, _sunLight: &LightRef, _lights: &Vec<LightRef>, _camera: &Camera, _shadowMapShader: Option<ShaderRef>, _shadowDepthMap: Option<GlowTexture>) -> Result<(), String> {
 		if !lineRenderer.isEnabled() {
 			return Ok(())
 		}
@@ -171,10 +171,10 @@ impl<T> Renderable for QuadTree<T> {
             return Ok(());
         }
         
-        self.northWest.as_ref().unwrap().render(_gl, _projViewMat, _dt, lineRenderer, _lights, _camera).logErr()?;
-        self.northEast.as_ref().unwrap().render(_gl, _projViewMat, _dt, lineRenderer, _lights, _camera).logErr()?;
-        self.southWest.as_ref().unwrap().render(_gl, _projViewMat, _dt, lineRenderer, _lights, _camera).logErr()?;
-        self.southEast.as_ref().unwrap().render(_gl, _projViewMat, _dt, lineRenderer, _lights, _camera).logErr()?;
+        self.northWest.as_ref().unwrap().render(_gl, _projectMat, _lightSpaceMat, _dt, lineRenderer, _sunLight, _lights, _camera, _shadowMapShader.clone(), _shadowDepthMap).logErr()?;
+        self.northEast.as_ref().unwrap().render(_gl, _projectMat, _lightSpaceMat, _dt, lineRenderer, _sunLight, _lights, _camera, _shadowMapShader.clone(), _shadowDepthMap).logErr()?;
+        self.southWest.as_ref().unwrap().render(_gl, _projectMat, _lightSpaceMat, _dt, lineRenderer, _sunLight, _lights, _camera, _shadowMapShader.clone(), _shadowDepthMap).logErr()?;
+        self.southEast.as_ref().unwrap().render(_gl, _projectMat, _lightSpaceMat, _dt, lineRenderer, _sunLight, _lights, _camera, _shadowMapShader.clone(), _shadowDepthMap).logErr()?;
         
         Ok(())
     }

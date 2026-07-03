@@ -7,7 +7,7 @@ use bool_flags::Flags8;
 use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
-use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, WindowFlags};
+use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, TextureId, WindowFlags};
 use glam::{vec3, Mat4, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
@@ -58,15 +58,12 @@ pub struct CatBox {
 	imgui: Imgui,
 	
 	solver: SolverRef,
-	sunLight: LightRef,
-	sunAngle: f32,
 	renderManager: RenderManager,
 	clearColor: [f32; 4],
 	// lastMousePos: Vec2,
 	
 	camera: Camera,
 	projectionMatrix: Mat4,
-	viewMatrix: Mat4,
 }
 
 impl CatBox {
@@ -109,7 +106,7 @@ impl CatBox {
 		unsafe {
 			gl.enable(glow::CULL_FACE);
 			gl.cull_face(glow::BACK);
-			gl.front_face(glow::CCW);
+			// gl.front_face(glow::CCW);
 			gl_check_error!(gl);
 			
 			gl.enable(glow::DEPTH_TEST);
@@ -159,12 +156,8 @@ impl CatBox {
 		let simpleLightShader = shaders::simpleLightShader(gl.clone());
 		// let instanceShader = shaders::instanceShader(gl.clone()).logErr()?;
 		
-		let mut renderManager = RenderManager::new(gl.clone()).logErr()?;
-		renderManager.lineRendererMut().enable(true);
-		
-		let sunAngle: f32 = TAU * 5.0/8.0;
 		let sunLight = Light::Directional(LightProperties {
-			position: Vec3::new(sunAngle.sin(), -1.0, sunAngle.cos()),
+			position: Vec3::new(-(PI / 4.0).cos(), -1.0, -(PI / 4.0).sin()),
 			
 			color: Vec3::ONE,
 			ambient: 0.85,
@@ -173,8 +166,8 @@ impl CatBox {
 			
 			..Default::default()
 		});
-		let sunLight = newLightRef(sunLight);
-		renderManager.addLight(sunLight.clone());
+		let mut renderManager = RenderManager::new(gl.clone(), sunLight).logErr()?;
+		renderManager.lineRendererMut().enable(true);
 		
 		let mut addLight = |pos: Vec3, color: Vec3| {
 			renderManager.addLight(newLightRef(Light::Point(LightProperties {
@@ -223,7 +216,7 @@ impl CatBox {
 				..Frustum::default()
 			},
 			transform: Transform {
-				position: vec3(0.0, 20.0, 100.0),
+				position: vec3(0.0, 2.5, 10.0),
 				..Transform::default()
 			},
 			..Camera::default()
@@ -231,28 +224,28 @@ impl CatBox {
 		
 		let textureContainer = newTextureRef(Texture::fromBytes(
 			gl.clone(),
-			include_bytes!("../../resources/textures/container2.png")).logErr()?
+			include_bytes!("../../resources/textures/default_texture.png")).logErr()?
 		);
 		let material = newMaterialRef(Material {
 			shader: simpleLightShader.clone(),
-			color: Vec3::ONE,
+			color: Vec3::new(99.0, 171.0, 63.0) / 255.0,
 			diffuse: Some(textureContainer.clone()),
 			specular: Vec3::ONE / 2.0,
 			shininess: 32.0,
 		});
 		
-		let scale = 10.0;
+		let scale = 1.0;
 		
 		// sphere
 		let meshStart = Instant::now();
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
-				transform.position.y = 10.0;
+				transform.position.y = scale;
 				transform
 			},
 			mesh: newMeshRef({
-				let mut mesh = Primitives3D::sphereUV(6, 12, 1.0 * scale).buildSimpleMesh(gl.clone());
+				let mut mesh = Primitives3D::sphereUV(6, 12, scale).buildSimpleMesh(gl.clone());
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
@@ -265,12 +258,12 @@ impl CatBox {
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
-				transform.position.x = 1.0 * scale;
-				transform.position.y = 10.0;
+				transform.position.x = 5.0 * scale;
+				transform.position.y = scale;
 				transform
 			},
 			mesh: newMeshRef({
-				let mut mesh = Primitives3D::tetrahedron(1.0 * scale).buildSimpleMesh(gl.clone());
+				let mut mesh = Primitives3D::tetrahedron(scale).buildSimpleMesh(gl.clone());
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
@@ -283,12 +276,12 @@ impl CatBox {
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
-				transform.position.x = -1.0 * scale;
-				transform.position.y = 10.0;
+				transform.position.x = -5.0 * scale;
+				transform.position.y = scale;
 				transform
 			},
 			mesh: newMeshRef({
-				let mut mesh = Primitives3D::cube(1.0 * scale, 1.0 * scale, 1.0 * scale).buildSimpleMesh(gl.clone());
+				let mut mesh = Primitives3D::cube(scale, scale, scale).buildSimpleMesh(gl.clone());
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
@@ -301,12 +294,12 @@ impl CatBox {
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
-				transform.position.x = -2.0 * scale;
-				transform.position.y = 10.0;
+				transform.position.x = -10.0 * scale;
+				transform.position.y = scale;
 				transform
 			},
 			mesh: newMeshRef({
-				let mut mesh = Primitives3D::sphereCube(1.0 * scale, 2).buildSimpleMesh(gl.clone());
+				let mut mesh = Primitives3D::sphereCube(scale, 2).buildSimpleMesh(gl.clone());
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
@@ -319,12 +312,12 @@ impl CatBox {
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
-				transform.position.x = 2.0 * scale;
-				transform.position.y = 10.0;
+				transform.position.x = 10.0 * scale;
+				transform.position.y = scale;
 				transform
 			},
 			mesh: newMeshRef({
-				let mut mesh = Primitives3D::icosphere(1.0 * scale, 0).buildSimpleMesh(gl.clone());
+				let mut mesh = Primitives3D::icosphere(scale, 0).buildSimpleMesh(gl.clone());
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
@@ -333,20 +326,40 @@ impl CatBox {
 		info!("Mesh (Icosphere, D20) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
 		
 		// floor
+		let floorMesh = newMeshRef({
+			let mut mesh = Primitives3D::cube(10.0, scale, 10.0).buildSimpleMesh(gl.clone());
+			mesh.upload(simpleLightShader.clone()).logErr()?;
+			mesh
+		});
+		let floorMaterial = newMaterialRef(Material {
+			shader: simpleLightShader.clone(),
+			color: Vec3::new(125.0, 56.0, 51.0) / 255.0,
+			diffuse: Some(textureContainer.clone()),
+			specular: Vec3::ZERO,
+			shininess: 64.0,
+		});
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: Transform::default(),
-			mesh: newMeshRef({
-				let mut mesh = Primitives3D::cube(100.0, 10.0, 100.0).buildSimpleMesh(gl.clone());
-				mesh.upload(simpleLightShader.clone()).logErr()?;
-				mesh
-			}),
-			material: newMaterialRef(Material {
-				shader: simpleLightShader.clone(),
-				color: Vec3::ONE,
-				diffuse: Some(textureContainer.clone()),
-				specular: Vec3::ZERO,
-				shininess: 64.0,
-			})
+			mesh: floorMesh.clone(),
+			material: floorMaterial.clone(),
+		}));
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = Transform::default();
+				transform.position.x = 10.0;
+				transform
+			},
+			mesh: floorMesh.clone(),
+			material: floorMaterial.clone(),
+		}));
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = Transform::default();
+				transform.position.x = -10.0;
+				transform
+			},
+			mesh: floorMesh.clone(),
+			material: floorMaterial.clone(),
 		}));
 		
 		// Setup physicals
@@ -394,15 +407,12 @@ impl CatBox {
 			},
 			
 			solver,
-			sunLight,
-			sunAngle,
 			renderManager,
 			clearColor: [96.0 / 255.0, 190.0 / 255.0, 200.0 / 255.0, 1.0],
 			// lastMousePos: Vec2::ZERO,
 			
 			camera,
 			projectionMatrix: Mat4::IDENTITY,
-			viewMatrix: Mat4::IDENTITY,
 		};
 		catbox.updateProjectionMatrix();
 		Ok(catbox)
@@ -518,22 +528,22 @@ impl CatBox {
 		// Camera WASD
 		if mouseCaptured && !self.imgui.context.io().want_capture_keyboard() {
 			if self.inputHelper.isKeyPressed(Keycode::W) {
-				self.camera.transform.translateLocalForward(30.0 * dt);
+				self.camera.transform.translateLocalForward(10.0 * dt);
 			}
 			if self.inputHelper.isKeyPressed(Keycode::S) {
-				self.camera.transform.translateLocalForward(-30.0 * dt);
+				self.camera.transform.translateLocalForward(-10.0 * dt);
 			}
 			if self.inputHelper.isKeyPressed(Keycode::A) {
-				self.camera.transform.translateLocalRight(-30.0 * dt);
+				self.camera.transform.translateLocalRight(-10.0 * dt);
 			}
 			if self.inputHelper.isKeyPressed(Keycode::D) {
-				self.camera.transform.translateLocalRight(30.0 * dt);
+				self.camera.transform.translateLocalRight(10.0 * dt);
 			}
 			if self.inputHelper.isKeyPressed(Keycode::Space) {
-				self.camera.transform.translateGlobal(Vec3::Y * 30.0 * dt);
+				self.camera.transform.translateGlobal(Vec3::Y * 10.0 * dt);
 			}
 			if self.inputHelper.isKeyPressed(Keycode::LCtrl) {
-				self.camera.transform.translateGlobal(Vec3::Y * -30.0 * dt);
+				self.camera.transform.translateGlobal(Vec3::Y * -10.0 * dt);
 			}
 		}
 	}
@@ -566,9 +576,9 @@ impl CatBox {
 			
 			self.solver.borrow_mut().update(OPTIMAL_DT);
 			{
-				let s: f32 = 500.0;
+				let s: f32 = 100.0;
 				let hs = s / 2.0;
-				let n = 50;
+				let n = 10;
 				for i in 0..n+1 {
 					let x = (i as f32 / n as f32) * s - hs;
 					let mut col = Vec3::ONE;
@@ -579,6 +589,10 @@ impl CatBox {
 					(col.x, col.z) = (col.z, col.x);
 					self.renderManager.lineRendererMut().pushLine3(Vec3::new(hs, 0.0, x), col, Vec3::new(-hs, 0.0, x), col);
 				}
+			}
+			{
+				let sunDir = self.renderManager.sunLight().borrow().properties().position;
+				self.renderManager.lineRendererMut().pushLine3(Vec3::ZERO, Vec3::ONE, sunDir, Vec3::ONE);
 			}
 			
 			// Imgui
@@ -660,7 +674,7 @@ impl CatBox {
 						  ui.separator();
 						  
 						  ui.text("Sun light");
-						  let mut sunLight = self.sunLight.borrow_mut();
+						  let mut sunLight = self.renderManager.sunLight().borrow_mut();
 						  
 						  let mut sunColor = sunLight.properties().color.to_array();
 						  let uiWidth = ui.window_width();
@@ -672,17 +686,29 @@ impl CatBox {
 						  
 						  let itemWidth = ui.push_item_width(uiWidth * 0.3);
 						  ui.slider_f32("##sunAmbient", &mut sunLight.propertiesMut().ambient, 0.0, 1.0);
+						  if ui.is_item_hovered() {
+							  ui.tooltip_text("Ambient");
+						  }
 						  ui.same_line();
 						  ui.slider_f32("##sunDiffuse", &mut sunLight.propertiesMut().diffuse, 0.0, 1.0);
+						  if ui.is_item_hovered() {
+							  ui.tooltip_text("Diffuse");
+						  }
 						  ui.same_line();
 						  ui.slider_f32("##sunSpecular", &mut sunLight.propertiesMut().specular, 0.0, 1.0);
-						  itemWidth.end();
-						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
-						  if ui.slider_f32("Sun angle", &mut self.sunAngle, 0.0, TAU) {
-							  sunLight.propertiesMut().position.x = self.sunAngle.sin();
-							  sunLight.propertiesMut().position.z = self.sunAngle.cos();
+						  if ui.is_item_hovered() {
+							  ui.tooltip_text("Specular");
 						  }
 						  itemWidth.end();
+						  
+						  let mut sunAngle = sunLight.properties().position.z.atan2(sunLight.properties().position.x);
+						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
+						  if ui.slider_f32("Sun angle", &mut sunAngle, -PI, PI) {
+							  sunLight.propertiesMut().position = Vec3::new(sunAngle.cos(), -1.0, sunAngle.sin());
+						  }
+						  itemWidth.end();
+						  
+						  // ui.image(TextureId::from(1u64), [64.0, 64.0]);
 					  });
 			  });
 			
@@ -703,11 +729,7 @@ impl CatBox {
 				self.gl.clear_color(self.clearColor[0], self.clearColor[1], self.clearColor[2], self.clearColor[3]);
 				gl_check_error!(self.gl);
 				
-				// calculate camera matrices
-				self.viewMatrix = self.camera.getViewMatrix();
-				let projViewMat = self.projectionMatrix * self.viewMatrix;
-				
-				self.renderManager.draw(&projViewMat, dt, &self.camera).logErr()?;
+				self.renderManager.draw(self.width, self.height, &self.projectionMatrix, dt, &self.camera).logErr()?;
 				
 				if wireframe {
 					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
