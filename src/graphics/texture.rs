@@ -175,6 +175,6 @@ impl Texture {
 
 impl Drop for Texture {
 	fn drop(&mut self) {
-		self.delete();
+		// self.delete(); // todo: fix, causes seg fault on exit
 	}
 }

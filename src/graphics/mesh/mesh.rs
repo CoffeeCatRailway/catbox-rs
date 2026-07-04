@@ -267,6 +267,6 @@ impl Mesh {
 
 impl Drop for Mesh {
 	fn drop(&mut self) {
-		self.destroy();
+		// self.destroy(); // todo: fix, causes seg fault on exit
 	}
 }
