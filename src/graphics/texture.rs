@@ -251,11 +251,11 @@ impl Texture {
 		}
 		unsafe {
 			if let Some(handle) = self.handleTex {
-				warn!("Deleting texture {:?}", handle);
+				warn!("Deleting texture {}", handle.0);
 				self.gl.delete_texture(handle);
 			}
 			if let Some(handle) = self.handleFBO {
-				warn!("Deleting depth map fbo {:?}", handle);
+				warn!("Deleting depth map fbo {}", handle.0);
 				self.gl.delete_framebuffer(handle);
 			}
 			self.flags.set(F_DELETED);
