@@ -169,41 +169,44 @@ impl CatBox {
 		let mut renderManager = RenderManager::new(gl.clone(), sunLight).logErr()?;
 		renderManager.lineRendererMut().enable(true);
 		
-		let mut addLight = |pos: Vec3, color: Vec3| {
-			renderManager.addLight(newLightRef(Light::Point(LightProperties {
-				position: pos,
-				
-				color,
-				ambient: 1.0,
-				diffuse: 1.0,
-				specular: 1.0,
-				intensity: 1.0,
-				
-				radius: 30.0,
-			})));
-			renderManager.addRenderable(newRenderableRef(SimpleRenderable {
-				transform: {
-					let mut transform = Transform::default();
-					transform.position = pos;
-					transform
-				},
-				mesh: newMeshRef({
-					let mut mesh = Primitives3D::cube(1.0, 1.0, 1.0).buildSimpleMesh(gl.clone());
-					mesh.upload(simpleLightShader.clone()).logErr().unwrap();
-					mesh
-				}),
-				material: newMaterialRef(Material {
-					shader: simpleMatColorShader.clone(),
-					color,
-					diffuse: None,
-					specular: Vec3::ZERO,
-					shininess: 0.0,
-				}),
-			}));
-		};
-		addLight(Vec3::new(-20.0, 5.0, 20.0), Vec3::X);
-		addLight(Vec3::new(0.0, 5.0, 20.0), Vec3::Y);
-		addLight(Vec3::new(20.0, 5.0, 20.0), Vec3::Z);
+		// let mut addLight = |pos: Vec3, color: Vec3| {
+		// 	renderManager.addLight(newLightRef(Light::Point(LightProperties {
+		// 		position: pos,
+		//
+		// 		color,
+		// 		ambient: 1.0,
+		// 		diffuse: 1.0,
+		// 		specular: 1.0,
+		// 		intensity: 1.0,
+		//
+		// 		radius: 5.0,
+		// 	})));
+		// 	renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+		// 		transform: {
+		// 			let mut transform = Transform::default();
+		// 			transform.position = pos;
+		// 			transform
+		// 		},
+		// 		mesh: newMeshRef({
+		// 			let mut mesh = Primitives3D::cube(0.25, 0.25, 0.25).buildSimpleMesh(gl.clone());
+		// 			mesh.upload(simpleLightShader.clone()).logErr().unwrap();
+		// 			mesh
+		// 		}),
+		// 		material: newMaterialRef(Material {
+		// 			shader: simpleMatColorShader.clone(),
+		// 			color,
+		// 			diffuse: None,
+		// 			specular: Vec3::ZERO,
+		// 			shininess: 0.0,
+		// 		}),
+		// 	}));
+		// };
+		// addLight(Vec3::new(-10.0, 0.5, 3.0), Vec3::X);
+		// addLight(Vec3::new(0.0, 0.5, 3.0), Vec3::Y);
+		// addLight(Vec3::new(10.0, 0.5, 3.0), Vec3::Z);
+		// addLight(Vec3::new(-10.0, 0.5, -3.0), Vec3::new(0.0, 1.0, 1.0));
+		// addLight(Vec3::new(0.0, 0.5, -3.0), Vec3::new(1.0, 0.0, 1.0));
+		// addLight(Vec3::new(10.0, 0.5, -3.0), Vec3::new(1.0, 1.0, 0.0));
 		
 		let solver = newSolverRef(Solver::new().logErr()?);
 		// renderManager.addRenderable(solver.clone());
