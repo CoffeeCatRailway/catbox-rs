@@ -1,15 +1,16 @@
 use std::rc::Rc;
+use std::sync::Arc;
 use bool_flags::Flags8;
 use glam::{Mat4, Vec3, Vec4};
-use glow::{HasContext, PixelUnpackData, Framebuffer, Texture as GlowTexture};
+use glow::HasContext;
 use tracing::warn;
-use crate::graphics::{shaders, LineRenderer};
+use crate::graphics::{shaders, LineRenderer, Texture};
 use crate::graphics::material::Material;
 use crate::graphics::mesh::Mesh;
 use crate::{gl_check_error, LogError};
 use crate::graphics::light::Light;
 use crate::simulation::Transform;
-use crate::types::{newLightRef, GlRef, LightRef, MaterialRef, MeshRef, RenderableRef, ShaderRef};
+use crate::types::{newLightRef, newTextureRef, GlRef, LightRef, MaterialRef, MeshRef, RenderableRef, ShaderRef, TextureRef};
 use crate::window::camera::Camera;
 
 pub const MAX_LIGHTS: usize = 8;
@@ -63,7 +64,7 @@ pub trait Renderable {
 	
 	fn materialMut(&mut self) -> Option<&mut Material>;
 	
-	fn render(&self, gl: &GlRef, projectMat: &Mat4, lightSpaceMat: &Mat4, dt: f32, _lineRenderer: &mut LineRenderer, sunLight: &LightRef, lights: &Vec<LightRef>, camera: &Camera, shadowMapShader: Option<ShaderRef>, shadowDepthMap: Option<GlowTexture>) -> Result<(), String> {
+	fn render(&self, gl: &GlRef, projectMat: &Mat4, lightSpaceMat: &Mat4, dt: f32, _lineRenderer: &mut LineRenderer, sunLight: &LightRef, lights: &Vec<LightRef>, camera: &Camera, shadowMapShader: Option<ShaderRef>, shadowMap: Option<TextureRef>) -> Result<(), String> {
 		if let Some(mesh) = self.mesh() && let Some(material) = self.material() {
 			let shader = if let Some(shader) = shadowMapShader {
 				shader.read().unwrap().bind();
@@ -103,12 +104,9 @@ pub trait Renderable {
 				shader.setUniform2f(format!("u_lights[{}].attenuation", i).as_str(), sunProperties.intensity, sunProperties.radius);
 			}
 			
-			if shadowDepthMap.is_some() {
+			if shadowMap.is_some() {
 				shader.setUniform1i("u_shadowMap", 1);
-				unsafe {
-					gl.active_texture(glow::TEXTURE1);
-					gl.bind_texture(glow::TEXTURE_2D, shadowDepthMap);
-				}
+				shadowMap.unwrap().bind(1);
 			}
 			
 			mesh.draw();
@@ -155,8 +153,7 @@ pub struct RenderManager {
 	lights: Vec<LightRef>,
 	sunLight: LightRef,
 	
-	shadowDepthMapFBO: Framebuffer,
-	shadowDepthMap: GlowTexture,
+	shadowMap: TextureRef,
 	shadowMapShader: ShaderRef,
 }
 
@@ -166,41 +163,7 @@ impl RenderManager {
 		lineRenderer.enable(false);
 		lineRenderer.setLineWidth(1.5);
 		
-		let (shadowDepthMapFBO, shadowDepthMap) = unsafe {
-			let depthMapFBO = gl.create_framebuffer().logErr()?;
-			gl.bind_framebuffer(glow::FRAMEBUFFER, Some(depthMapFBO));
-			gl_check_error!(gl);
-			
-			let depthMap = gl.create_texture().logErr()?;
-			gl.bind_texture(glow::TEXTURE_2D, Some(depthMap));
-			gl_check_error!(gl);
-			
-			gl.tex_image_2d(glow::TEXTURE_2D, 0, glow::DEPTH_COMPONENT16 as i32, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT, 0, glow::DEPTH_COMPONENT, glow::FLOAT, PixelUnpackData::Slice(None));
-			gl_check_error!(gl);
-			
-			gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MIN_FILTER, glow::NEAREST as i32);
-			gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MAG_FILTER, glow::NEAREST as i32);
-			gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_S, glow::CLAMP_TO_BORDER as i32);
-			gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_T, glow::CLAMP_TO_BORDER as i32);
-			gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_COMPARE_FUNC, glow::LEQUAL as i32);
-			gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_COMPARE_MODE, glow::COMPARE_REF_TO_TEXTURE as i32);
-			gl.tex_parameter_f32_slice(glow::TEXTURE_2D, glow::TEXTURE_BORDER_COLOR, &[1.0, 1.0, 1.0, 1.0]);
-			gl_check_error!(gl);
-			
-			gl.framebuffer_texture(glow::FRAMEBUFFER, glow::DEPTH_ATTACHMENT, Some(depthMap), 0);
-			gl.draw_buffer(glow::NONE);
-			// gl.read_buffer(glow::NONE);
-			gl_check_error!(gl);
-			
-			if gl.check_framebuffer_status(glow::FRAMEBUFFER) != glow::FRAMEBUFFER_COMPLETE {
-				return Err(String::from("Shadow map framebuffer incomplete!"));
-			}
-			
-			gl.bind_framebuffer(glow::FRAMEBUFFER, None);
-			gl_check_error!(gl);
-			
-			(depthMapFBO, depthMap)
-		};
+		let shadowMap = Texture::createDepthMap(gl.clone(), SHADOW_MAP_WIDTH as u32, SHADOW_MAP_HEIGHT as u32).logErr()?;
 		let shadowMapShader = shaders::shadowMapShader(gl.clone());
 		
 		Ok(Self {
@@ -212,8 +175,7 @@ impl RenderManager {
 			lights: Vec::new(),
 			sunLight: newLightRef(sunLight),
 			
-			shadowDepthMapFBO,
-			shadowDepthMap,
+			shadowMap: newTextureRef(shadowMap),
 			shadowMapShader,
 		})
 	}
@@ -230,11 +192,11 @@ impl RenderManager {
 		&self.sunLight
 	}
 	
-	fn drawRenderables(&mut self, projectMat: &Mat4, lightSpaceMat: &Mat4, dt: f32, camera: &Camera, shadowMapShader: Option<ShaderRef>, shadowDepthMap: Option<GlowTexture>) -> Result<(), String> {
+	fn drawRenderables(&mut self, projectMat: &Mat4, lightSpaceMat: &Mat4, dt: f32, camera: &Camera, shadowMapShader: Option<ShaderRef>, shadowMap: Option<TextureRef>) -> Result<(), String> {
 		for renderable in self.renderables.iter() {
 			let renderable = renderable.borrow();
 			if renderable.visible() {
-				renderable.render(&self.gl, projectMat, lightSpaceMat, dt, &mut self.lineRenderer, &self.sunLight, &self.lights, camera, shadowMapShader.clone(), shadowDepthMap).logErr()?;
+				renderable.render(&self.gl, projectMat, lightSpaceMat, dt, &mut self.lineRenderer, &self.sunLight, &self.lights, camera, shadowMapShader.clone(), shadowMap.clone()).logErr()?;
 				renderable.renderPost(&self.gl, projectMat, dt, &mut self.lineRenderer).logErr()?;
 			}
 		}
@@ -248,7 +210,7 @@ impl RenderManager {
 		
 		unsafe {
 			self.gl.viewport(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
-			self.gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.shadowDepthMapFBO));
+			self.shadowMap.bindDepthMapFBO();
 			self.gl.clear(glow::DEPTH_BUFFER_BIT);
 			gl_check_error!(self.gl);
 			
@@ -268,7 +230,7 @@ impl RenderManager {
 			
 			let lightSpaceMat = SHADOW_MAP_BIAS_MAT * lightSpaceMat; // -1,1 to 0,1
 			self.gl.cull_face(glow::BACK);
-			self.drawRenderables(projectMat, &lightSpaceMat, dt, camera, None, Some(self.shadowDepthMap)).logErr()?;
+			self.drawRenderables(projectMat, &lightSpaceMat, dt, camera, None, Some(self.shadowMap.clone())).logErr()?;
 		}
 		
 		self.lineRenderer.drawFlush(&(projectMat * camera.getViewMatrix()));
@@ -286,17 +248,14 @@ impl RenderManager {
 			renderable.borrow_mut().destroy();
 		}
 		self.lineRenderer.destroy();
-		unsafe {
-			self.gl.delete_texture(self.shadowDepthMap);
-			self.gl.delete_framebuffer(self.shadowDepthMapFBO);
-		}
+		Arc::get_mut(&mut self.shadowMap).unwrap().delete();
 	}
 	
 	pub fn lineRendererMut(&mut self) -> &mut LineRenderer {
 		&mut self.lineRenderer
 	}
 	
-	pub fn shadowDepthMapTexture(&self) -> &GlowTexture {
-		&self.shadowDepthMap
+	pub fn shadowDepthMapTexture(&self) -> &TextureRef {
+		&self.shadowMap
 	}
 }
