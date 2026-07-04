@@ -59,7 +59,8 @@ vec3 calcLight(Light light, vec3 normal, vec3 viewDir, vec3 matDiffuse) {
 
     // shadow
     float bias = 0.005;
-    float shadow = 0.0;//ceil(textureProj(u_shadowMap, f_positionLightSpace, bias)) * shadowStrength + (1.0 - shadowStrength);
+//    float shadow = ceil(textureProj(u_shadowMap, f_positionLightSpace, bias)) * shadowStrength + (1.0 - shadowStrength);
+    float shadow = 0.0;
     vec2 shadowTexelSize = 1.0 / vec2(textureSize(u_shadowMap, 0));
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {

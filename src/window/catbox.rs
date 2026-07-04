@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::f32::consts::{PI, TAU};
+use std::f32::consts::PI;
 use std::rc::Rc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -7,7 +7,7 @@ use bool_flags::Flags8;
 use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
-use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, TextureId, WindowFlags};
+use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, WindowFlags};
 use glam::{vec3, Mat4, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
@@ -213,7 +213,7 @@ impl CatBox {
 		
 		let camera = Camera {
 			frustum: Frustum {
-				far: 500.0,
+				// far: 500.0,
 				// fov: 500.0,
 				// fovMax: 10000.0,
 				..Frustum::default()
@@ -225,16 +225,30 @@ impl CatBox {
 			..Camera::default()
 		};
 		
-		let textureContainer = newTextureRef(Texture::fromBytes(
+		let texture1 = newTextureRef(Texture::fromBytes(
 			gl.clone(),
 			include_bytes!("../../resources/textures/default_texture.png")).logErr()?
 		);
-		let material = newMaterialRef(Material {
+		let material1 = newMaterialRef(Material {
 			shader: simpleLightShader.clone(),
 			color: Vec3::new(99.0, 171.0, 63.0) / 255.0,
-			diffuse: Some(textureContainer.clone()),
+			diffuse: Some(texture1.clone()),
 			specular: Vec3::ONE / 2.0,
 			shininess: 32.0,
+		});
+		let material2 = newMaterialRef(Material {
+			shader: simpleLightShader.clone(),
+			color: Vec3::new(125.0, 56.0, 51.0) / 255.0,
+			diffuse: Some(texture1.clone()),
+			specular: Vec3::ZERO,
+			shininess: 64.0,
+		});
+		let material3 = newMaterialRef(Material {
+			shader: simpleLightShader.clone(),
+			color: Vec3::new(79.0, 164.0, 184.0) / 255.0,
+			diffuse: Some(texture1.clone()),
+			specular: Vec3::ZERO,
+			shininess: 64.0,
 		});
 		
 		let scale = 1.0;
@@ -252,7 +266,7 @@ impl CatBox {
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
-			material: material.clone(),
+			material: material1.clone(),
 		}));
 		info!("Mesh (UV Sphere) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
 		
@@ -270,25 +284,27 @@ impl CatBox {
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
-			material: material.clone(),
+			material: material1.clone(),
 		}));
 		info!("Mesh (Tetrahedron) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
 		
 		// cube
 		let meshStart = Instant::now();
+		let meshUnitCube = newMeshRef({
+			let mut mesh = Primitives3D::cube(1.0, 1.0, 1.0).buildSimpleMesh(gl.clone());
+			mesh.upload(simpleLightShader.clone()).logErr()?;
+			mesh
+		});
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
 				transform.position.x = -5.0 * scale;
 				transform.position.y = scale;
+				transform.scale *= scale;
 				transform
 			},
-			mesh: newMeshRef({
-				let mut mesh = Primitives3D::cube(scale, scale, scale).buildSimpleMesh(gl.clone());
-				mesh.upload(simpleLightShader.clone()).logErr()?;
-				mesh
-			}),
-			material: material.clone(),
+			mesh: meshUnitCube.clone(),
+			material: material1.clone(),
 		}));
 		info!("Mesh (Cube) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
 		
@@ -306,7 +322,7 @@ impl CatBox {
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
-			material: material.clone(),
+			material: material1.clone(),
 		}));
 		info!("Mesh (Cube Sphere) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
 		
@@ -324,45 +340,63 @@ impl CatBox {
 				mesh.upload(simpleLightShader.clone()).logErr()?;
 				mesh
 			}),
-			material: material.clone(),
+			material: material1.clone(),
 		}));
 		info!("Mesh (Icosphere, D20) build took: {}ms", meshStart.elapsed().as_micros() as f32 / 1000.0);
 		
 		// floor
-		let floorMesh = newMeshRef({
-			let mut mesh = Primitives3D::cube(10.0, scale, 10.0).buildSimpleMesh(gl.clone());
-			mesh.upload(simpleLightShader.clone()).logErr()?;
-			mesh
-		});
-		let floorMaterial = newMaterialRef(Material {
-			shader: simpleLightShader.clone(),
-			color: Vec3::new(125.0, 56.0, 51.0) / 255.0,
-			diffuse: Some(textureContainer.clone()),
-			specular: Vec3::ZERO,
-			shininess: 64.0,
-		});
+		let floorTransform = {
+			let mut transform = Transform::default();
+			transform.scale.x = 10.0;
+			transform.scale.y = scale;
+			transform.scale.z = 10.0;
+			transform
+		};
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
-			transform: Transform::default(),
-			mesh: floorMesh.clone(),
-			material: floorMaterial.clone(),
+			transform: floorTransform,
+			mesh: meshUnitCube.clone(),
+			material: material2.clone(),
 		}));
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: {
-				let mut transform = Transform::default();
+				let mut transform = floorTransform;
 				transform.position.x = 10.0;
 				transform
 			},
-			mesh: floorMesh.clone(),
-			material: floorMaterial.clone(),
+			mesh: meshUnitCube.clone(),
+			material: material2.clone(),
+		}));
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = floorTransform;
+				transform.position.x = -10.0;
+				transform
+			},
+			mesh: meshUnitCube.clone(),
+			material: material2.clone(),
+		}));
+		
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = Transform::default();
+				transform.position.y = scale * -2.0;
+				transform.scale.x = 50.0;
+				transform.scale.y = scale;
+				transform.scale.z = 50.0;
+				transform
+			},
+			mesh: meshUnitCube.clone(),
+			material: material3.clone(),
 		}));
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
-				transform.position.x = -10.0;
+				transform.position.z = -10.0;
+				transform.scale.y = 25.0;
 				transform
 			},
-			mesh: floorMesh.clone(),
-			material: floorMaterial.clone(),
+			mesh: meshUnitCube.clone(),
+			material: material3.clone(),
 		}));
 		
 		// Setup physicals
@@ -411,7 +445,7 @@ impl CatBox {
 			
 			solver,
 			renderManager,
-			clearColor: [96.0 / 255.0, 190.0 / 255.0, 200.0 / 255.0, 1.0],
+			clearColor: [79.0 / 255.0, 104.0 / 255.0, 133.0 / 255.0, 1.0],
 			// lastMousePos: Vec2::ZERO,
 			
 			camera,
