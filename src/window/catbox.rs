@@ -380,9 +380,9 @@ impl CatBox {
 			transform: {
 				let mut transform = Transform::default();
 				transform.position.y = scale * -2.0;
-				transform.scale.x = 50.0;
+				transform.scale.x = 60.0;
 				transform.scale.y = scale;
-				transform.scale.z = 50.0;
+				transform.scale.z = 60.0;
 				transform
 			},
 			mesh: meshUnitCube.clone(),
@@ -391,8 +391,46 @@ impl CatBox {
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 			transform: {
 				let mut transform = Transform::default();
-				transform.position.z = -10.0;
-				transform.scale.y = 25.0;
+				transform.position.x = 20.0;
+				transform.position.y = 15.0 - scale * 2.0;
+				transform.position.z = 20.0;
+				transform.scale.y = 30.0;
+				transform
+			},
+			mesh: meshUnitCube.clone(),
+			material: material3.clone(),
+		}));
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = Transform::default();
+				transform.position.x = -20.0;
+				transform.position.y = 15.0 - scale * 2.0;
+				transform.position.z = 20.0;
+				transform.scale.y = 30.0;
+				transform
+			},
+			mesh: meshUnitCube.clone(),
+			material: material3.clone(),
+		}));
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = Transform::default();
+				transform.position.x = -20.0;
+				transform.position.y = 15.0 - scale * 2.0;
+				transform.position.z = -20.0;
+				transform.scale.y = 30.0;
+				transform
+			},
+			mesh: meshUnitCube.clone(),
+			material: material3.clone(),
+		}));
+		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
+			transform: {
+				let mut transform = Transform::default();
+				transform.position.x = 20.0;
+				transform.position.y = 15.0 - scale * 2.0;
+				transform.position.z = -20.0;
+				transform.scale.y = 30.0;
 				transform
 			},
 			mesh: meshUnitCube.clone(),

@@ -9,6 +9,7 @@ use crate::graphics::material::Material;
 use crate::graphics::mesh::Mesh;
 use crate::{gl_check_error, LogError};
 use crate::graphics::light::Light;
+use crate::simulation::region::AABB;
 use crate::simulation::Transform;
 use crate::types::{newLightRef, newTextureRef, GlRef, LightRef, MaterialRef, MeshRef, RenderableRef, ShaderRef, TextureRef};
 use crate::window::camera::Camera;
@@ -135,8 +136,7 @@ pub trait Renderable {
 
 const F_DESTROYED: u8 = 0;
 
-const SHADOW_MAP_WIDTH: i32 = 1024;
-const SHADOW_MAP_HEIGHT: i32 = 1024;
+const SHADOW_MAP_RES: i32 = 2048;
 const SHADOW_MAP_BIAS_MAT: Mat4 = Mat4 {
 	x_axis: Vec4::new(0.5, 0.0, 0.0, 0.0),
 	y_axis: Vec4::new(0.0, 0.5, 0.0, 0.0),
@@ -163,7 +163,7 @@ impl RenderManager {
 		lineRenderer.enable(false);
 		lineRenderer.setLineWidth(1.5);
 		
-		let shadowMap = Texture::createDepthMap(gl.clone(), SHADOW_MAP_WIDTH as u32, SHADOW_MAP_HEIGHT as u32).logErr()?;
+		let shadowMap = Texture::createDepthMap(gl.clone(), SHADOW_MAP_RES as u32, SHADOW_MAP_RES as u32).logErr()?;
 		let shadowMapShader = shaders::shadowMapShader(gl.clone());
 		
 		Ok(Self {
@@ -209,13 +209,25 @@ impl RenderManager {
 		}
 		
 		unsafe {
-			self.gl.viewport(0, 0, SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
+			// shadow pass
+			self.gl.viewport(0, 0, SHADOW_MAP_RES, SHADOW_MAP_RES);
 			self.shadowMap.bindDepthMapFBO();
 			self.gl.clear(glow::DEPTH_BUFFER_BIT);
 			gl_check_error!(self.gl);
 			
-			let lightProj = Mat4::orthographic_rh(-10.0, 10.0, -10.0, 10.0, -10.0, 20.0);
+			// let lightProj = Mat4::orthographic_rh(-10.0, 10.0, -10.0, 10.0, -10.0, 20.0);
 			let lightView = Mat4::look_at_rh(-self.sunLight.borrow().properties().position, Vec3::ZERO, Vec3::Y);
+			
+			// todo: cascade
+			let frustumBounds = camera.calcFrustumBoundsForView(winWidth, winHeight, lightView);
+			let worldTexelSizeX = (frustumBounds.1.x - frustumBounds.0.x) / SHADOW_MAP_RES as f32;
+			let worldTexelSizeY = (frustumBounds.1.y - frustumBounds.0.y) / SHADOW_MAP_RES as f32;
+			let minX = (frustumBounds.0.x / worldTexelSizeX).floor() * worldTexelSizeX;
+			let maxX = (frustumBounds.1.x / worldTexelSizeX).floor() * worldTexelSizeX;
+			let minY = (frustumBounds.0.y / worldTexelSizeY).floor() * worldTexelSizeY;
+			let maxY = (frustumBounds.1.y / worldTexelSizeY).floor() * worldTexelSizeY;
+			
+			let lightProj = Mat4::orthographic_rh(minX, maxX, minY, maxY, -frustumBounds.1.z, -frustumBounds.0.z);
 			let lightSpaceMat = lightProj * lightView;
 			
 			self.gl.cull_face(glow::FRONT);
@@ -224,6 +236,7 @@ impl RenderManager {
 			self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
 			gl_check_error!(self.gl);
 			
+			// render pass
 			self.gl.viewport(0, 0, winWidth as i32, winHeight as i32);
 			self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
 			gl_check_error!(self.gl);
