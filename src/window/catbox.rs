@@ -81,6 +81,7 @@ impl CatBox {
 		
 		glAttributes.set_context_profile(GLProfile::Core);
 		glAttributes.set_context_version(4, 5);
+		glAttributes.set_depth_size(24); // set to 24 to avoid z-fighting issues (issue only seen on arch so far)
 		
 		info!("Window and GL context");
 		let window = video.window(WIN_TITLE, WIN_WIDTH, WIN_HEIGHT)
@@ -152,7 +153,7 @@ impl CatBox {
 		
 		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
-		let simpleMatColorShader = shaders::simpleMatColorShader(gl.clone());
+		// let simpleMatColorShader = shaders::simpleMatColorShader(gl.clone());
 		let simpleLightShader = shaders::simpleLightShader(gl.clone());
 		// let instanceShader = shaders::instanceShader(gl.clone()).logErr()?;
 		
@@ -213,7 +214,7 @@ impl CatBox {
 		
 		let camera = Camera {
 			frustum: Frustum {
-				// far: 500.0,
+				far: 200.0,
 				// fov: 500.0,
 				// fovMax: 10000.0,
 				..Frustum::default()

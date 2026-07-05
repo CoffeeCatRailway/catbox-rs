@@ -9,7 +9,6 @@ use crate::graphics::material::Material;
 use crate::graphics::mesh::Mesh;
 use crate::{gl_check_error, LogError};
 use crate::graphics::light::Light;
-use crate::simulation::region::AABB;
 use crate::simulation::Transform;
 use crate::types::{newLightRef, newTextureRef, GlRef, LightRef, MaterialRef, MeshRef, RenderableRef, ShaderRef, TextureRef};
 use crate::window::camera::Camera;
