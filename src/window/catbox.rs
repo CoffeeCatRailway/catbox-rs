@@ -7,7 +7,7 @@ use bool_flags::Flags8;
 use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
-use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, WindowFlags};
+use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, TextureFormat, TextureId, WindowFlags};
 use glam::{vec3, Mat4, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
@@ -64,6 +64,8 @@ pub struct CatBox {
 	
 	camera: Camera,
 	projectionMatrix: Mat4,
+	
+	someshit: TextureId
 }
 
 impl CatBox {
@@ -170,6 +172,8 @@ impl CatBox {
 		let mut renderManager = RenderManager::new(gl.clone(), sunLight).logErr()?;
 		renderManager.lineRendererMut().enable(true);
 		
+		let shadowMapId = imguiRenderer.texture_map_mut().register_texture(renderManager.shadowDepthMapTexture().handleTex.unwrap(), 2048, 2048, TextureFormat::Alpha8);
+		
 		// let mut addLight = |pos: Vec3, color: Vec3| {
 		// 	renderManager.addLight(newLightRef(Light::Point(LightProperties {
 		// 		position: pos,
@@ -214,7 +218,7 @@ impl CatBox {
 		
 		let camera = Camera {
 			frustum: Frustum {
-				far: 200.0,
+				// far: 200.0,
 				// fov: 500.0,
 				// fovMax: 10000.0,
 				..Frustum::default()
@@ -489,6 +493,8 @@ impl CatBox {
 			
 			camera,
 			projectionMatrix: Mat4::IDENTITY,
+			
+			someshit: shadowMapId
 		};
 		catbox.updateProjectionMatrix();
 		Ok(catbox)
@@ -783,10 +789,14 @@ impl CatBox {
 							  sunLight.propertiesMut().position = Vec3::new(sunAngle.cos(), -1.0, sunAngle.sin());
 						  }
 						  itemWidth.end();
-						  
-						  // ui.image(TextureId::from(1u64), [64.0, 64.0]);
 					  });
 			  });
+			
+			ui.window("Shadow Map")
+				.flags(WindowFlags::ALWAYS_AUTO_RESIZE)
+				.build(|| {
+					ui.image_config(self.someshit, [200.0, 200.0]).uv0([0.0, 1.0]).uv1([1.0, 0.0]).build();
+				});
 			
 			self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
 			
