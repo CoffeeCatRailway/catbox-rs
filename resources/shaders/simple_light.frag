@@ -4,8 +4,7 @@ const float LIGHT_DIRECTIONAL = 0.0;
 const float LIGHT_POINT = 1.0;
 //const float LIGHT_SPOT = 2.0;
 
-const float shadowStrength = 0.75;
-const float normalSmoothFlatMix = 1.0;
+const float SHADOW_STRENGTH = 1.0;
 
 struct Material {
     vec3 color;
@@ -64,7 +63,7 @@ vec3 calcLight(Light light, vec3 normal, vec3 viewDir, vec3 matDiffuse) {
     vec2 shadowTexelSize = 1.0 / vec2(textureSize(u_shadowMap, 0));
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
-            shadow += ceil(textureProj(u_shadowMap, f_positionLightSpace + vec4(vec2(x, y) * shadowTexelSize, 0.0, 0.0), bias)) * shadowStrength + (1.0 - shadowStrength);
+            shadow += ceil(textureProj(u_shadowMap, f_positionLightSpace + vec4(vec2(x, y) * shadowTexelSize, 0.0, 0.0), bias)) * SHADOW_STRENGTH + (1.0 - SHADOW_STRENGTH);
         }
     }
     shadow /= 9.0;
@@ -84,7 +83,8 @@ vec3 calcLight(Light light, vec3 normal, vec3 viewDir, vec3 matDiffuse) {
 
 void main() {
     vec3 matDiffuse = texture(u_material.diffuse, f_uv).rgb * u_material.color;
-    vec3 normal = mix(normalize(f_normal), normalize(cross(dFdx(f_position), dFdy(f_position))), normalSmoothFlatMix);
+//    vec3 normal = normalize(f_normal);
+    vec3 normal = normalize(cross(dFdx(f_position), dFdy(f_position)));
     vec3 viewDir = normalize(u_viewPos - f_position);
 
     vec3 finalCol = calcLight(u_sunLight, normal, viewDir, matDiffuse);
