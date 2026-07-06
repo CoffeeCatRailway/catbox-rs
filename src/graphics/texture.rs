@@ -22,6 +22,15 @@ pub struct Texture {
 }
 
 #[derive(Debug, Copy, Clone, Default)]
+pub enum DepthComponent {
+	#[default]
+	U16,
+	U24,
+	U32,
+	F32,
+}
+
+#[derive(Debug, Copy, Clone, Default)]
 pub enum FilterMode {
 	#[default]
 	Nearest,
@@ -39,6 +48,7 @@ pub enum WrapMode {
 
 pub struct TextureBuilder {
 	gl: GlRef,
+	depthComponent: DepthComponent,
 	filter: FilterMode,
 	wrap: WrapMode,
 }
@@ -47,8 +57,30 @@ impl TextureBuilder {
 	pub fn new(gl: GlRef) -> Self {
 		Self {
 			gl,
+			depthComponent: DepthComponent::default(),
 			filter: FilterMode::default(),
 			wrap: WrapMode::default(),
+		}
+	}
+	
+	pub fn depthComponent(mut self, component: DepthComponent) -> Self {
+		self.depthComponent = component;
+		self
+	}
+	
+	pub fn depthComponentValue(&self) -> i32 {
+		match self.depthComponent {
+			DepthComponent::U16 => glow::DEPTH_COMPONENT16 as i32,
+			DepthComponent::U24 => glow::DEPTH_COMPONENT24 as i32,
+			DepthComponent::U32 => glow::DEPTH_COMPONENT32 as i32,
+			DepthComponent::F32 => glow::DEPTH_COMPONENT32F as i32,
+		}
+	}
+	
+	pub fn depthComponentValueType(&self) -> u32 {
+		match self.depthComponent {
+			DepthComponent::F32 => glow::FLOAT,
+			_ => glow::UNSIGNED_INT,
 		}
 	}
 	
@@ -147,7 +179,7 @@ impl TextureBuilder {
 			gl_check_error!(self.gl);
 			info!("Creating depth map, fbo: {}, texture: {}", fbo.0, texture.0);
 			
-			self.gl.tex_image_2d(glow::TEXTURE_2D, 0, glow::DEPTH_COMPONENT16 as i32, width as i32, height as i32, 0, glow::DEPTH_COMPONENT, glow::FLOAT, PixelUnpackData::Slice(None));
+			self.gl.tex_image_2d(glow::TEXTURE_2D, 0, self.depthComponentValue(), width as i32, height as i32, 0, glow::DEPTH_COMPONENT, self.depthComponentValueType(), PixelUnpackData::Slice(None));
 			gl_check_error!(self.gl);
 			
 			let filter = self.filterValue();
@@ -163,8 +195,6 @@ impl TextureBuilder {
 			gl_check_error!(self.gl);
 			
 			self.gl.framebuffer_texture(glow::FRAMEBUFFER, glow::DEPTH_ATTACHMENT, Some(texture), 0);
-			self.gl.draw_buffer(glow::NONE);
-			// self.gl.read_buffer(glow::NONE);
 			gl_check_error!(self.gl);
 			
 			if self.gl.check_framebuffer_status(glow::FRAMEBUFFER) != glow::FRAMEBUFFER_COMPLETE {
