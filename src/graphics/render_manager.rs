@@ -1,6 +1,8 @@
 use std::rc::Rc;
 use std::sync::Arc;
 use bool_flags::Flags8;
+use dear_imgui_glow::GlowRenderer;
+use dear_imgui_rs::{TextureFormat, TextureId};
 use glam::{Mat4, Vec3, Vec4};
 use glow::HasContext;
 use tracing::warn;
@@ -135,7 +137,7 @@ pub trait Renderable {
 
 const F_DESTROYED: u8 = 0;
 
-const SHADOW_MAP_RES: i32 = 2048;
+const SHADOW_MAP_RES: i32 = 1024;
 const SHADOW_MAP_BIAS_MAT: Mat4 = Mat4 {
 	x_axis: Vec4::new(0.5, 0.0, 0.0, 0.0),
 	y_axis: Vec4::new(0.0, 0.5, 0.0, 0.0),
@@ -153,16 +155,18 @@ pub struct RenderManager {
 	sunLight: LightRef,
 	
 	shadowMap: TextureRef,
+	shadowMapId: TextureId,
 	shadowMapShader: ShaderRef,
 }
 
 impl RenderManager {
-	pub fn new(gl: GlRef, sunLight: Light) -> Result<Self, String> {
+	pub fn new(gl: GlRef, imguiRenderer: &mut GlowRenderer, sunLight: Light) -> Result<Self, String> {
 		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024).logErr()?;
 		lineRenderer.enable(false);
 		lineRenderer.setLineWidth(1.5);
 		
 		let shadowMap = Texture::createDepthMap(gl.clone(), SHADOW_MAP_RES as u32, SHADOW_MAP_RES as u32).logErr()?;
+		let shadowMapId = imguiRenderer.texture_map_mut().register_texture(shadowMap.handleTex.unwrap(), SHADOW_MAP_RES as u32, SHADOW_MAP_RES as u32, TextureFormat::Alpha8);
 		let shadowMapShader = shaders::shadowMapShader(gl.clone());
 		
 		Ok(Self {
@@ -175,6 +179,7 @@ impl RenderManager {
 			sunLight: newLightRef(sunLight),
 			
 			shadowMap: newTextureRef(shadowMap),
+			shadowMapId,
 			shadowMapShader,
 		})
 	}
@@ -267,7 +272,11 @@ impl RenderManager {
 		&mut self.lineRenderer
 	}
 	
-	pub fn shadowDepthMapTexture(&self) -> &TextureRef {
+	pub fn shadowMap(&self) -> &TextureRef {
 		&self.shadowMap
+	}
+	
+	pub fn shadowMapId(&self) -> &TextureId {
+		&self.shadowMapId
 	}
 }

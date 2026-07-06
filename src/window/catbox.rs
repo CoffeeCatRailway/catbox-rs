@@ -7,7 +7,7 @@ use bool_flags::Flags8;
 use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
-use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, TextureFormat, TextureId, WindowFlags};
+use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
 use glam::{vec3, Mat4, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
@@ -64,8 +64,6 @@ pub struct CatBox {
 	
 	camera: Camera,
 	projectionMatrix: Mat4,
-	
-	someshit: TextureId
 }
 
 impl CatBox {
@@ -169,10 +167,8 @@ impl CatBox {
 			
 			..Default::default()
 		});
-		let mut renderManager = RenderManager::new(gl.clone(), sunLight).logErr()?;
+		let mut renderManager = RenderManager::new(gl.clone(), &mut imguiRenderer, sunLight).logErr()?;
 		renderManager.lineRendererMut().enable(true);
-		
-		let shadowMapId = imguiRenderer.texture_map_mut().register_texture(renderManager.shadowDepthMapTexture().handleTex.unwrap(), 2048, 2048, TextureFormat::Alpha8);
 		
 		// let mut addLight = |pos: Vec3, color: Vec3| {
 		// 	renderManager.addLight(newLightRef(Light::Point(LightProperties {
@@ -493,8 +489,6 @@ impl CatBox {
 			
 			camera,
 			projectionMatrix: Mat4::IDENTITY,
-			
-			someshit: shadowMapId
 		};
 		catbox.updateProjectionMatrix();
 		Ok(catbox)
@@ -792,10 +786,15 @@ impl CatBox {
 					  });
 			  });
 			
-			ui.window("Shadow Map")
+			ui.window("Depth Maps")
 				.flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 				.build(|| {
-					ui.image_config(self.someshit, [200.0, 200.0]).uv0([0.0, 1.0]).uv1([1.0, 0.0]).build();
+					if ui.collapsing_header("Shadow Map", TreeNodeFlags::COLLAPSING_HEADER) {
+						ui.image_config(*self.renderManager.shadowMapId(), [200.0, 200.0]).uv0([0.0, 1.0]).uv1([1.0, 0.0]).build();
+					}
+					if ui.collapsing_header("Depth Map", TreeNodeFlags::COLLAPSING_HEADER) {
+						
+					}
 				});
 			
 			self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
