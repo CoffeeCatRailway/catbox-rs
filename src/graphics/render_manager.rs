@@ -137,7 +137,7 @@ pub trait Renderable {
 
 const F_DESTROYED: u8 = 0;
 
-const SHADOW_MAP_RES: i32 = 1024;
+const SHADOW_MAP_RES: i32 = 2048;
 const SHADOW_MAP_BIAS_MAT: Mat4 = Mat4 {
 	x_axis: Vec4::new(0.5, 0.0, 0.0, 0.0),
 	y_axis: Vec4::new(0.0, 0.5, 0.0, 0.0),
