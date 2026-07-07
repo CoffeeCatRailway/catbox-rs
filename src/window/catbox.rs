@@ -13,6 +13,8 @@ use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
 use sdl3::mouse::MouseUtil;
+use sdl3::pixels::PixelFormat;
+use sdl3::surface::Surface;
 use sdl3::video::{GLContext, GLProfile, SwapInterval};
 use tracing::{info, warn};
 use crate::{gl_check_error, LogError};
@@ -84,11 +86,18 @@ impl CatBox {
 		glAttributes.set_depth_size(24); // set to 24 to avoid z-fighting issues (issue only seen on arch so far)
 		
 		info!("Window and GL context");
-		let window = video.window(WIN_TITLE, WIN_WIDTH, WIN_HEIGHT)
-						  .opengl()
-						  .resizable()
-						  .position_centered()
-						  .build().logErr()?;
+		let mut window = video.window(WIN_TITLE, WIN_WIDTH, WIN_HEIGHT)
+		                      .opengl()
+		                      .resizable()
+		                      .position_centered()
+		                      .build().logErr()?;
+		{
+			let img = image::load_from_memory(include_bytes!("../../resources/textures/icon.png"))
+				.map_err(|e| format!("Failed to decode image: {}", e)).logErr()?.to_rgba8();
+			let mut raw = img.as_raw().clone();
+			let windowIcon = Surface::from_data(&mut raw, img.width(), img.height(), img.width() * 4, PixelFormat::RGBA32).logErr()?;
+			window.set_icon(windowIcon);
+		}
 		let window = newSdlWindowRef(window);
 		
 		let glContext = window.gl_create_context().logErr()?;
