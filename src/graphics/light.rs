@@ -4,6 +4,7 @@ use glam::Vec3;
 pub enum Light {
 	Directional(LightProperties),
 	Point(LightProperties),
+	// Spot(LightProperties),
 }
 
 impl Light {
@@ -11,6 +12,7 @@ impl Light {
 		match self {
 			Light::Directional(properties) => properties,
 			Light::Point(properties) => properties,
+			// Light::Spot(properties) => properties,
 		}
 	}
 	
@@ -18,6 +20,7 @@ impl Light {
 		match self {
 			Light::Directional(properties) => properties,
 			Light::Point(properties) => properties,
+			// Light::Spot(properties) => properties,
 		}
 	}
 	
@@ -25,6 +28,7 @@ impl Light {
 		match self {
 			Light::Directional(_) => 0,
 			Light::Point(_) => 1,
+			// Light::Spot(_) => 2,
 		}
 	}
 }
