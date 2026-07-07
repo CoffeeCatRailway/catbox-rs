@@ -83,7 +83,7 @@ impl CatBox {
 		
 		glAttributes.set_context_profile(GLProfile::Core);
 		glAttributes.set_context_version(4, 5);
-		glAttributes.set_depth_size(24); // set to 24 to avoid z-fighting issues (issue only seen on arch so far)
+		glAttributes.set_depth_size(24); // set to 24 to avoid z-fighting issues (issue only seen on arch/framework laptop so far)
 		
 		info!("Window and GL context");
 		let mut window = video.window(WIN_TITLE, WIN_WIDTH, WIN_HEIGHT)
