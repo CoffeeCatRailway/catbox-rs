@@ -4,9 +4,11 @@ use bool_flags::Flags8;
 use dear_imgui_glow::GlowRenderer;
 use dear_imgui_rs::{TextureFormat, TextureId};
 use glam::{Mat4, Vec3, Vec4};
+use glam::camera::rh::proj::opengl::orthographic;
+use glam::camera::rh::view::look_at_mat4;
 use glow::HasContext;
 use tracing::warn;
-use crate::graphics::{shaders, LineRenderer, Texture};
+use crate::graphics::{shaders, DepthComponent, LineRenderer, Texture};
 use crate::graphics::material::Material;
 use crate::graphics::mesh::Mesh;
 use crate::{gl_check_error, LogError};
@@ -160,12 +162,12 @@ pub struct RenderManager {
 }
 
 impl RenderManager {
-	pub fn new(gl: GlRef, imguiRenderer: &mut GlowRenderer, sunLight: Light) -> Result<Self, String> {
+	pub fn new(gl: GlRef, imguiRenderer: &mut GlowRenderer, sunLight: Light, winWidth: u32, winHeight: u32) -> Result<Self, String> {
 		let mut lineRenderer = LineRenderer::new(gl.clone(), 1024).logErr()?;
 		lineRenderer.enable(false);
 		lineRenderer.setLineWidth(1.5);
 		
-		let shadowMap = Texture::createDepthMap(gl.clone(), SHADOW_MAP_RES as u32, SHADOW_MAP_RES as u32).logErr()?;
+		let shadowMap = Texture::createDepthMap(gl.clone(), SHADOW_MAP_RES as u32, SHADOW_MAP_RES as u32, DepthComponent::U16).logErr()?;
 		let shadowMapId = imguiRenderer.texture_map_mut().register_texture(shadowMap.handleTex.unwrap(), SHADOW_MAP_RES as u32, SHADOW_MAP_RES as u32, TextureFormat::Alpha8);
 		let shadowMapShader = shaders::shadowMapShader(gl.clone());
 		

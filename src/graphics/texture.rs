@@ -48,7 +48,6 @@ pub enum WrapMode {
 
 pub struct TextureBuilder {
 	gl: GlRef,
-	depthComponent: DepthComponent,
 	filter: FilterMode,
 	wrap: WrapMode,
 }
@@ -57,30 +56,8 @@ impl TextureBuilder {
 	pub fn new(gl: GlRef) -> Self {
 		Self {
 			gl,
-			depthComponent: DepthComponent::default(),
 			filter: FilterMode::default(),
 			wrap: WrapMode::default(),
-		}
-	}
-	
-	pub fn depthComponent(mut self, component: DepthComponent) -> Self {
-		self.depthComponent = component;
-		self
-	}
-	
-	pub fn depthComponentValue(&self) -> i32 {
-		match self.depthComponent {
-			DepthComponent::U16 => glow::DEPTH_COMPONENT16 as i32,
-			DepthComponent::U24 => glow::DEPTH_COMPONENT24 as i32,
-			DepthComponent::U32 => glow::DEPTH_COMPONENT32 as i32,
-			DepthComponent::F32 => glow::DEPTH_COMPONENT32F as i32,
-		}
-	}
-	
-	pub fn depthComponentValueType(&self) -> u32 {
-		match self.depthComponent {
-			DepthComponent::F32 => glow::FLOAT,
-			_ => glow::UNSIGNED_INT,
 		}
 	}
 	
@@ -168,7 +145,7 @@ impl TextureBuilder {
 		}
 	}
 	
-	pub fn createDepthMap(self, width: u32, height: u32) -> Result<Texture, String> {
+	pub fn createDepthMap(self, width: u32, height: u32, depthComponent: DepthComponent) -> Result<Texture, String> {
 		unsafe {
 			let fbo = self.gl.create_framebuffer().logErr()?;
 			self.gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
@@ -179,7 +156,13 @@ impl TextureBuilder {
 			gl_check_error!(self.gl);
 			info!("Creating depth map, fbo: {}, texture: {}", fbo.0, texture.0);
 			
-			self.gl.tex_image_2d(glow::TEXTURE_2D, 0, self.depthComponentValue(), width as i32, height as i32, 0, glow::DEPTH_COMPONENT, self.depthComponentValueType(), PixelUnpackData::Slice(None));
+			let (depthValue, depthType) = match depthComponent {
+				DepthComponent::U16 => (glow::DEPTH_COMPONENT16 as i32, glow::UNSIGNED_INT),
+				DepthComponent::U24 => (glow::DEPTH_COMPONENT24 as i32, glow::UNSIGNED_INT),
+				DepthComponent::U32 => (glow::DEPTH_COMPONENT32 as i32, glow::UNSIGNED_INT),
+				DepthComponent::F32 => (glow::DEPTH_COMPONENT32F as i32, glow::FLOAT),
+			};
+			self.gl.tex_image_2d(glow::TEXTURE_2D, 0, depthValue, width as i32, height as i32, 0, glow::DEPTH_COMPONENT, depthType, PixelUnpackData::Slice(None));
 			gl_check_error!(self.gl);
 			
 			let filter = self.filterValue();
@@ -234,8 +217,8 @@ impl Texture {
 	}
 	
 	/// Quick create depth map
-	pub fn createDepthMap(gl: GlRef, width: u32, height: u32) -> Result<Texture, String> {
-		TextureBuilder::new(gl).filter(FilterMode::Nearest).wrap(WrapMode::ClampToBorder).createDepthMap(width, height)
+	pub fn createDepthMap(gl: GlRef, width: u32, height: u32, depthComponent: DepthComponent) -> Result<Texture, String> {
+		TextureBuilder::new(gl).filter(FilterMode::Nearest).wrap(WrapMode::ClampToBorder).createDepthMap(width, height, depthComponent)
 	}
 	
 	pub fn builder(gl: GlRef) -> TextureBuilder {

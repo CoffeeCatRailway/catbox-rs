@@ -176,7 +176,7 @@ impl CatBox {
 			
 			..Default::default()
 		});
-		let mut renderManager = RenderManager::new(gl.clone(), &mut imguiRenderer, sunLight).logErr()?;
+		let mut renderManager = RenderManager::new(gl.clone(), &mut imguiRenderer, sunLight, WIN_WIDTH, WIN_HEIGHT).logErr()?;
 		renderManager.lineRendererMut().enable(true);
 		
 		// let mut addLight = |pos: Vec3, color: Vec3| {
