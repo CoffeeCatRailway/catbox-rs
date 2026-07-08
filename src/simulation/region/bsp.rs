@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 use glam::{Mat4, Vec3};
-use glow::Texture as GlowTexture;
 use tracing::warn;
 use crate::graphics::{LineRenderer, Renderable, Material};
 use crate::graphics::mesh::Mesh;

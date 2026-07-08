@@ -1,4 +1,6 @@
 use glam::{vec2, vec4, Mat4, Quat, Vec2, Vec3};
+use glam::camera::rh::proj::opengl::{orthographic, perspective};
+use glam::camera::rh::view::{look_at_mat4, look_to_quat};
 use crate::simulation::Transform;
 
 pub fn screenToWorldSpace(cursor: Vec2, width: u32, height: u32, projectionMatrix: Mat4, viewMatrix: Mat4) -> Vec3 {
@@ -31,7 +33,7 @@ pub struct Frustum {
 impl Default for Frustum {
 	fn default() -> Self {
 		Frustum {
-			near: 0.01,
+			near: 0.1,
 			far: 100.0,
 			fov: 45.0,
 			fovMin: 1.0,
@@ -84,7 +86,7 @@ impl Camera {
 		self.transform.localFront = front;
 		self.transform.localRight = self.transform.localFront.cross(Vec3::Y).normalize_or_zero();
 		self.transform.localUp = self.transform.localRight.cross(self.transform.localFront).normalize_or_zero();
-		self.transform.rotation = Quat::look_to_rh(self.transform.localFront, self.transform.localUp).normalize().inverse();
+		self.transform.rotation = look_to_quat(self.transform.localFront, self.transform.localUp).normalize().inverse();
 	}
 	
 	pub fn turn(&mut self, xo: f32, yo: f32) {
@@ -100,17 +102,17 @@ impl Camera {
 	pub fn getProjectionMatrix(&mut self, projection: Projection) -> Mat4 {
 		match projection {
 			Projection::Perspective(aspect) => {
-				Mat4::perspective_rh(self.frustum.fov.to_radians(), aspect, self.frustum.near, self.frustum.far)
+				perspective(self.frustum.fov.to_radians(), aspect, self.frustum.near, self.frustum.far)
 			},
 			Projection::Orthographic(left, right, bottom, top) => {
 				let zoom = self.frustum.fov;
-				Mat4::orthographic_rh(left * zoom, right * zoom, bottom * zoom, top * zoom, self.frustum.near, self.frustum.far)
+				orthographic(left * zoom, right * zoom, bottom * zoom, top * zoom, self.frustum.near, self.frustum.far)
 			},
 		}
 	}
 	
 	pub fn getViewMatrix(&self) -> Mat4 {
-		Mat4::look_at_rh(self.transform.position, self.transform.position + self.transform.localFront, self.transform.localUp)
+		look_at_mat4(self.transform.position, self.transform.position + self.transform.localFront, self.transform.localUp)
 	}
 	
 	pub fn calcFrustumBoundsForView(&self, winWidth: u32, winHeight: u32, view: Mat4) -> (Vec3, Vec3) {

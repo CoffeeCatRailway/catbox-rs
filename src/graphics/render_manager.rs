@@ -220,7 +220,7 @@ impl RenderManager {
 			gl_check_error!(self.gl);
 			
 			// let lightProj = Mat4::orthographic_rh(-10.0, 10.0, -10.0, 10.0, -10.0, 20.0);
-			let lightView = Mat4::look_at_rh(-self.sunLight.borrow().properties().position, Vec3::ZERO, Vec3::Y);
+			let lightView = look_at_mat4(-self.sunLight.borrow().properties().position, Vec3::ZERO, Vec3::Y);
 			
 			// todo: cascade
 			let frustumBounds = camera.calcFrustumBoundsForView(winWidth, winHeight, lightView);
@@ -231,16 +231,16 @@ impl RenderManager {
 			let minY = (frustumBounds.0.y / worldTexelSizeY).floor() * worldTexelSizeY;
 			let maxY = (frustumBounds.1.y / worldTexelSizeY).floor() * worldTexelSizeY;
 			
-			let lightProj = Mat4::orthographic_rh(minX, maxX, minY, maxY, -frustumBounds.1.z, -frustumBounds.0.z);
+			let lightProj = orthographic(minX, maxX, minY, maxY, -frustumBounds.1.z, -frustumBounds.0.z);
 			let lightSpaceMat = lightProj * lightView;
 			
 			self.gl.cull_face(glow::FRONT);
 			self.drawRenderables(projectMat, &lightSpaceMat, dt, camera, Some(self.shadowMapShader.clone()), None).logErr()?;
 			
+			// render pass
 			self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
 			gl_check_error!(self.gl);
 			
-			// render pass
 			self.gl.viewport(0, 0, winWidth as i32, winHeight as i32);
 			self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
 			gl_check_error!(self.gl);
