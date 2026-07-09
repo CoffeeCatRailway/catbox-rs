@@ -33,7 +33,7 @@ pub struct Frustum {
 impl Default for Frustum {
 	fn default() -> Self {
 		Frustum {
-			near: 0.1,
+			near: 0.01,
 			far: 100.0,
 			fov: 45.0,
 			fovMin: 1.0,
