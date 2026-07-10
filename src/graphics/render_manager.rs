@@ -216,12 +216,12 @@ impl RenderManager {
 		
 		unsafe {
 			// shadow pass
-			self.gl.viewport(0, 0, SHADOW_MAP_RES, SHADOW_MAP_RES);
 			self.shadowMap.bindDepthMapFBO();
+			self.gl.viewport(0, 0, SHADOW_MAP_RES, SHADOW_MAP_RES);
 			self.gl.clear(glow::DEPTH_BUFFER_BIT);
 			gl_check_error!(self.gl);
 			
-			// let lightProj = Mat4::orthographic_rh(-10.0, 10.0, -10.0, 10.0, -10.0, 20.0);
+			// let lightProj = orthographic(-10.0, 10.0, -10.0, 10.0, -10.0, 20.0);
 			let lightView = look_at_mat4(-self.sunLight.borrow().properties().position, Vec3::ZERO, Vec3::Y);
 			
 			// todo: cascade
