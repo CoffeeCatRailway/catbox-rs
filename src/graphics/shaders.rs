@@ -23,49 +23,33 @@ pub const SHADOW_MAP_VERTEX: &str = include_str!("../../resources/shaders/shadow
 pub const SHADOW_MAP_FRAGMENT: &str = include_str!("../../resources/shaders/shadow_map.frag");
 static SHADOW_MAP_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
-pub fn simpleAttribColorShader(gl: GlRef) -> ShaderRef {
-	SIMPLE_ATTRIB_COLOR_SHADER_REF.get_or_init(|| {
+fn getOrInitSimpleShader(gl: GlRef, shaderRef: &OnceLock<ShaderRef>, vertex: &str, fragment: &str) -> ShaderRef {
+	shaderRef.get_or_init(|| {
 		newShaderRef(Shader::new(gl).logErr().unwrap()
-			.attachFromSource(ShaderType::Vertex, SIMPLE_ATTRIB_COLOR_VERTEX).logErr().unwrap()
-			.attachFromSource(ShaderType::Fragment, SIMPLE_ATTRIB_COLOR_FRAGMENT).logErr().unwrap()
-			.link().logErr().unwrap())
+		                            .attachFromSource(ShaderType::Vertex, vertex).logErr().unwrap()
+		                            .attachFromSource(ShaderType::Fragment, fragment).logErr().unwrap()
+		                            .link().logErr().unwrap())
 	}).clone()
+}
+
+pub fn simpleAttribColorShader(gl: GlRef) -> ShaderRef {
+	getOrInitSimpleShader(gl, &SIMPLE_ATTRIB_COLOR_SHADER_REF, SIMPLE_ATTRIB_COLOR_VERTEX, SIMPLE_ATTRIB_COLOR_FRAGMENT)
 }
 
 pub fn simpleMatColorShader(gl: GlRef) -> ShaderRef {
-	SIMPLE_MAT_COLOR_SHADER_REF.get_or_init(|| {
-		newShaderRef(Shader::new(gl).logErr().unwrap()
-			.attachFromSource(ShaderType::Vertex, SIMPLE_MAT_COLOR_VERTEX).logErr().unwrap()
-			.attachFromSource(ShaderType::Fragment, SIMPLE_MAT_COLOR_FRAGMENT).logErr().unwrap()
-			.link().logErr().unwrap())
-	}).clone()
+	getOrInitSimpleShader(gl, &SIMPLE_MAT_COLOR_SHADER_REF, SIMPLE_MAT_COLOR_VERTEX, SIMPLE_MAT_COLOR_FRAGMENT)
 }
 
 pub fn simpleLightShader(gl: GlRef) -> ShaderRef {
-	SIMPLE_LIGHT_SHADER_REF.get_or_init(|| {
-		newShaderRef(Shader::new(gl).logErr().unwrap()
-			.attachFromSource(ShaderType::Vertex, SIMPLE_LIGHT_VERTEX).logErr().unwrap()
-			.attachFromSource(ShaderType::Fragment, SIMPLE_LIGHT_FRAGMENT).logErr().unwrap()
-			.link().logErr().unwrap())
-	}).clone()
+	getOrInitSimpleShader(gl, &SIMPLE_LIGHT_SHADER_REF, SIMPLE_LIGHT_VERTEX, SIMPLE_LIGHT_FRAGMENT)
 }
 
 pub fn instanceShader(gl: GlRef) -> ShaderRef {
-	INSTANCE_SHADER_REF.get_or_init(|| {
-		newShaderRef(Shader::new(gl).logErr().unwrap()
-			.attachFromSource(ShaderType::Vertex, INSTANCE_VERTEX).logErr().unwrap()
-			.attachFromSource(ShaderType::Fragment, INSTANCE_FRAGMENT).logErr().unwrap()
-			.link().logErr().unwrap())
-	}).clone()
+	getOrInitSimpleShader(gl, &INSTANCE_SHADER_REF, INSTANCE_VERTEX, INSTANCE_FRAGMENT)
 }
 
 pub fn shadowMapShader(gl: GlRef) -> ShaderRef {
-	SHADOW_MAP_SHADER_REF.get_or_init(|| {
-		newShaderRef(Shader::new(gl).logErr().unwrap()
-			.attachFromSource(ShaderType::Vertex, SHADOW_MAP_VERTEX).logErr().unwrap()
-			.attachFromSource(ShaderType::Fragment, SHADOW_MAP_FRAGMENT).logErr().unwrap()
-			.link().logErr().unwrap())
-	}).clone()
+	getOrInitSimpleShader(gl, &SHADOW_MAP_SHADER_REF, SHADOW_MAP_VERTEX, SHADOW_MAP_FRAGMENT)
 }
 
 fn destroyShaderRef(shader: &OnceLock<ShaderRef>) {
