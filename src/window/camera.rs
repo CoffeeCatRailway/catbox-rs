@@ -1,5 +1,5 @@
 use glam::{vec2, vec4, Mat4, Quat, Vec2, Vec3};
-use glam::camera::rh::proj::opengl::{orthographic, perspective};
+use glam::camera::rh::proj::directx::{orthographic, perspective};
 use glam::camera::rh::view::{look_at_mat4, look_to_quat};
 use crate::simulation::Transform;
 

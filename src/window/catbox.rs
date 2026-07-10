@@ -792,19 +792,11 @@ impl CatBox {
 							  sunLight.propertiesMut().position = Vec3::new(sunAngle.cos(), -1.0, sunAngle.sin());
 						  }
 						  itemWidth.end();
+						  if ui.collapsing_header("Shadow Map", TreeNodeFlags::COLLAPSING_HEADER) {
+							  ui.image_config(*self.renderManager.shadowMapId(), [200.0, 200.0]).uv0([0.0, 1.0]).uv1([1.0, 0.0]).build();
+						  }
 					  });
 			  });
-			
-			ui.window("Depth Maps")
-				.flags(WindowFlags::ALWAYS_AUTO_RESIZE)
-				.build(|| {
-					if ui.collapsing_header("Shadow Map", TreeNodeFlags::COLLAPSING_HEADER) {
-						ui.image_config(*self.renderManager.shadowMapId(), [200.0, 200.0]).uv0([0.0, 1.0]).uv1([1.0, 0.0]).build();
-					}
-					if ui.collapsing_header("Depth Map", TreeNodeFlags::COLLAPSING_HEADER) {
-						
-					}
-				});
 			
 			self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
 			

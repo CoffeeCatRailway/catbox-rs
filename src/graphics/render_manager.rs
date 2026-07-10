@@ -4,7 +4,7 @@ use bool_flags::Flags8;
 use dear_imgui_glow::GlowRenderer;
 use dear_imgui_rs::{TextureFormat, TextureId};
 use glam::{Mat4, Vec3, Vec4};
-use glam::camera::rh::proj::opengl::orthographic;
+use glam::camera::rh::proj::directx::orthographic;
 use glam::camera::rh::view::look_at_mat4;
 use glow::HasContext;
 use tracing::warn;
