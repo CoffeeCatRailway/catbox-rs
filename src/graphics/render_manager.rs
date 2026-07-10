@@ -1,8 +1,9 @@
+use std::f32::consts::PI;
 use std::rc::Rc;
 use std::sync::Arc;
 use bool_flags::Flags8;
 use dear_imgui_glow::GlowRenderer;
-use dear_imgui_rs::{TextureFormat, TextureId};
+use dear_imgui_rs::{TextureFormat, TextureId, TreeNodeFlags, Ui, WindowFlags};
 use glam::{Mat4, Vec3, Vec4};
 use glam::camera::rh::proj::directx::orthographic;
 use glam::camera::rh::view::look_at_mat4;
@@ -254,6 +255,55 @@ impl RenderManager {
 		
 		self.lineRenderer.drawFlush(&(projectMat * camera.getViewMatrix()));
 		Ok(())
+	}
+	
+	pub fn gui(&self, ui: &mut Ui) {
+		ui.window("Render Manager")
+		  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
+		  .build(|| {
+			  ui.text("Line Renderer:");
+			  ui.text(format!("Buffer capacity: {}", self.lineRenderer.getBufferCapacity()));
+			  ui.text(format!("Last floats pushed: {}", self.lineRenderer.getLastFloatsPushed()));
+			  ui.separator();
+			  
+			  ui.text("Sun");
+			  let mut sunLight = self.sunLight.borrow_mut();
+			  
+			  let mut sunColor = sunLight.properties().color.to_array();
+			  let uiWidth = ui.window_width();
+			  let itemWidth = ui.push_item_width(uiWidth * 0.8);
+			  if ui.color_edit3("Color", &mut sunColor) {
+				  sunLight.propertiesMut().color = Vec3::from_array(sunColor);
+			  }
+			  itemWidth.end();
+			  
+			  let itemWidth = ui.push_item_width(uiWidth * 0.3);
+			  ui.slider_f32("##sunAmbient", &mut sunLight.propertiesMut().ambient, 0.0, 1.0);
+			  if ui.is_item_hovered() {
+				  ui.tooltip_text("Ambient");
+			  }
+			  ui.same_line();
+			  ui.slider_f32("##sunDiffuse", &mut sunLight.propertiesMut().diffuse, 0.0, 1.0);
+			  if ui.is_item_hovered() {
+				  ui.tooltip_text("Diffuse");
+			  }
+			  ui.same_line();
+			  ui.slider_f32("##sunSpecular", &mut sunLight.propertiesMut().specular, 0.0, 1.0);
+			  if ui.is_item_hovered() {
+				  ui.tooltip_text("Specular");
+			  }
+			  itemWidth.end();
+			  
+			  let mut sunAngle = sunLight.properties().position.z.atan2(sunLight.properties().position.x);
+			  let itemWidth = ui.push_item_width(uiWidth * 0.6);
+			  if ui.slider_f32("Angle", &mut sunAngle, -PI, PI) {
+				  sunLight.propertiesMut().position = Vec3::new(sunAngle.cos(), -1.0, sunAngle.sin());
+			  }
+			  itemWidth.end();
+			  if ui.collapsing_header("Shadow Map", TreeNodeFlags::COLLAPSING_HEADER) {
+				  ui.image_config(self.shadowMapId, [200.0, 200.0]).uv0([0.0, 1.0]).uv1([1.0, 0.0]).build();
+			  }
+		  });
 	}
 	
 	pub fn destroy(&mut self) {

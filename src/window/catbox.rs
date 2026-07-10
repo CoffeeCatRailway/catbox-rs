@@ -7,7 +7,7 @@ use bool_flags::Flags8;
 use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
-use dear_imgui_rs::{ChildFlags, ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
+use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
 use glam::{vec3, Mat4, Vec3};
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
@@ -692,112 +692,57 @@ impl CatBox {
 			ui.window("App Info")
 			  .flags(WindowFlags::ALWAYS_AUTO_RESIZE)
 			  .build(|| {
-				  let flags = ChildFlags::AUTO_RESIZE_X | ChildFlags::AUTO_RESIZE_Y;
-				  ui.child_window("##info")
-					  .child_flags(flags)
-					  .build(ui, || {
-						  ui.text(format!("ImGUI FPS: {:.3}", ui.io().framerate()));
-						  ui.text(format!("Delta time: {}", dt));
-						  ui.text(format!("Total frames: {}", totalFrames));
-						  ui.separator();
-						  
-						  let group = ui.begin_group();
-						  ui.text("Mouse capture:");
-						  ui.same_line();
-						  
-						  if ui.checkbox("##mouseCapture", &mut mouseCaptured) {
-							  uiUpdate = true;
-						  }
-						  
-						  ui.same_line();
-						  ui.text(format!("({:.2},{:.2})", self.inputHelper.mousePos().x, self.inputHelper.mousePos().y));
-						  group.end();
-						  if ui.is_item_hovered() {
-							  ui.tooltip_text("Press 1");
-						  }
-						  
-						  let group = ui.begin_group();
-						  ui.text("Wireframe:");
-						  ui.same_line();
-						  
-						  if ui.checkbox("##toggleWireframe", &mut wireframe) {
-							  uiUpdate = true;
-						  }
-						  group.end();
-						  if ui.is_item_hovered() {
-							  ui.tooltip_text("Press 2");
-						  }
-						  ui.separator();
-						  
-						  let windowSize = self.window.size();
-						  ui.text(format!("Window size: ({},{})", windowSize.0, windowSize.1));
-						  
-						  let uiWidth = ui.window_width();
-						  let itemWidth = ui.push_item_width(uiWidth * 0.65);
-						  ui.color_edit4("Clear color", &mut self.clearColor);
-						  itemWidth.end();
-					  });
+				  ui.text(format!("ImGUI FPS: {:.3}", ui.io().framerate()));
+				  ui.text(format!("Delta time: {}", dt));
+				  ui.text(format!("Total frames: {}", totalFrames));
+				  ui.separator();
+				  
+				  let group = ui.begin_group();
+				  ui.text("Mouse capture:");
 				  ui.same_line();
-				  ui.separator_vertical();
+				  
+				  if ui.checkbox("##mouseCapture", &mut mouseCaptured) {
+					  uiUpdate = true;
+				  }
+				  
 				  ui.same_line();
-				  ui.child_window("##controls")
-					  .child_flags(flags)
-					  .build(ui, || {
-						  ui.text("Line Renderer:");
-						  let lineRendererMut = self.renderManager.lineRendererMut();
-						  ui.text(format!("Buffer capacity: {}", lineRendererMut.getBufferCapacity()));
-						  ui.text(format!("Last floats pushed: {}", lineRendererMut.getLastFloatsPushed()));
-						  ui.separator();
-						  
-						  ui.text(format!("Camera: ({:.2}, {:.2}, {:.2})", self.camera.transform.position.x, self.camera.transform.position.y, self.camera.transform.position.z));
-						  let uiWidth = ui.window_width();
-						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
-						  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
-							  uiUpdate = true;
-						  }
-						  itemWidth.end();
-						  ui.separator();
-						  
-						  ui.text("Sun light");
-						  let mut sunLight = self.renderManager.sunLight().borrow_mut();
-						  
-						  let mut sunColor = sunLight.properties().color.to_array();
-						  let uiWidth = ui.window_width();
-						  let itemWidth = ui.push_item_width(uiWidth * 0.8);
-						  if ui.color_edit3("Color", &mut sunColor) {
-							  sunLight.propertiesMut().color = Vec3::from_array(sunColor);
-						  }
-						  itemWidth.end();
-						  
-						  let itemWidth = ui.push_item_width(uiWidth * 0.3);
-						  ui.slider_f32("##sunAmbient", &mut sunLight.propertiesMut().ambient, 0.0, 1.0);
-						  if ui.is_item_hovered() {
-							  ui.tooltip_text("Ambient");
-						  }
-						  ui.same_line();
-						  ui.slider_f32("##sunDiffuse", &mut sunLight.propertiesMut().diffuse, 0.0, 1.0);
-						  if ui.is_item_hovered() {
-							  ui.tooltip_text("Diffuse");
-						  }
-						  ui.same_line();
-						  ui.slider_f32("##sunSpecular", &mut sunLight.propertiesMut().specular, 0.0, 1.0);
-						  if ui.is_item_hovered() {
-							  ui.tooltip_text("Specular");
-						  }
-						  itemWidth.end();
-						  
-						  let mut sunAngle = sunLight.properties().position.z.atan2(sunLight.properties().position.x);
-						  let itemWidth = ui.push_item_width(uiWidth * 0.6);
-						  if ui.slider_f32("Sun angle", &mut sunAngle, -PI, PI) {
-							  sunLight.propertiesMut().position = Vec3::new(sunAngle.cos(), -1.0, sunAngle.sin());
-						  }
-						  itemWidth.end();
-						  if ui.collapsing_header("Shadow Map", TreeNodeFlags::COLLAPSING_HEADER) {
-							  ui.image_config(*self.renderManager.shadowMapId(), [200.0, 200.0]).uv0([0.0, 1.0]).uv1([1.0, 0.0]).build();
-						  }
-					  });
+				  ui.text(format!("({:.2},{:.2})", self.inputHelper.mousePos().x, self.inputHelper.mousePos().y));
+				  group.end();
+				  if ui.is_item_hovered() {
+					  ui.tooltip_text("Press 1");
+				  }
+				  
+				  let group = ui.begin_group();
+				  ui.text("Wireframe:");
+				  ui.same_line();
+				  
+				  if ui.checkbox("##toggleWireframe", &mut wireframe) {
+					  uiUpdate = true;
+				  }
+				  group.end();
+				  if ui.is_item_hovered() {
+					  ui.tooltip_text("Press 2");
+				  }
+				  
+				  ui.text(format!("Camera: ({:.2}, {:.2}, {:.2})", self.camera.transform.position.x, self.camera.transform.position.y, self.camera.transform.position.z));
+				  let uiWidth = ui.window_width();
+				  let itemWidth = ui.push_item_width(uiWidth * 0.6);
+				  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
+					  uiUpdate = true;
+				  }
+				  itemWidth.end();
+				  ui.separator();
+				  
+				  let windowSize = self.window.size();
+				  ui.text(format!("Window size: ({},{})", windowSize.0, windowSize.1));
+				  
+				  let uiWidth = ui.window_width();
+				  let itemWidth = ui.push_item_width(uiWidth * 0.65);
+				  ui.color_edit4("Clear color", &mut self.clearColor);
+				  itemWidth.end();
 			  });
 			
+			self.renderManager.gui(ui);
 			self.solver.borrow_mut().gui(ui, OPTIMAL_DT);
 			
 			// Update anything borrowing 'self' afterward
