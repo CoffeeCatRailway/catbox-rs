@@ -140,7 +140,7 @@ pub trait Renderable {
 
 const F_DESTROYED: u8 = 0;
 
-const SHADOW_MAP_RES: i32 = 2048;
+const SHADOW_MAP_RES: u32 = 2048;
 const SHADOW_MAP_BIAS_MAT: Mat4 = Mat4 {
 	x_axis: Vec4::new(0.5, 0.0, 0.0, 0.0),
 	y_axis: Vec4::new(0.0, 0.5, 0.0, 0.0),
@@ -168,9 +168,9 @@ impl RenderManager {
 		lineRenderer.enable(false);
 		lineRenderer.setLineWidth(1.5);
 		
-		let shadowMap = Texture::createDepthMap(gl.clone(), SHADOW_MAP_RES as u32, SHADOW_MAP_RES as u32, DepthComponent::U16).logErr()?;
-		let shadowMapId = imguiRenderer.texture_map_mut().register_texture(shadowMap.handleTex.unwrap(), SHADOW_MAP_RES as u32, SHADOW_MAP_RES as u32, TextureFormat::Alpha8);
-		let shadowMapShader = shaders::shadowMapShader(gl.clone());
+		let shadowMap = Texture::createDepthMap(gl.clone(), SHADOW_MAP_RES, SHADOW_MAP_RES, DepthComponent::U16).logErr()?;
+		let shadowMapId = imguiRenderer.texture_map_mut().register_texture(shadowMap.handleTex.unwrap(), SHADOW_MAP_RES, SHADOW_MAP_RES, TextureFormat::Alpha8);
+		let shadowMapShader = shaders::depthMapShader(gl.clone());
 		
 		Ok(Self {
 			flags: Flags8::none(),
@@ -218,7 +218,7 @@ impl RenderManager {
 		unsafe {
 			// shadow pass
 			self.shadowMap.bindDepthMapFBO();
-			self.gl.viewport(0, 0, SHADOW_MAP_RES, SHADOW_MAP_RES);
+			self.gl.viewport(0, 0, SHADOW_MAP_RES as i32, SHADOW_MAP_RES as i32);
 			self.gl.clear(glow::DEPTH_BUFFER_BIT);
 			gl_check_error!(self.gl);
 			

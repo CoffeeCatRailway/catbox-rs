@@ -19,9 +19,9 @@ pub const INSTANCE_VERTEX: &str = include_str!("../../resources/shaders/instance
 pub const INSTANCE_FRAGMENT: &str = include_str!("../../resources/shaders/instance.frag");
 static INSTANCE_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
-pub const SHADOW_MAP_VERTEX: &str = include_str!("../../resources/shaders/shadow_map.vert");
-pub const SHADOW_MAP_FRAGMENT: &str = include_str!("../../resources/shaders/shadow_map.frag");
-static SHADOW_MAP_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
+pub const DEPTH_MAP_VERTEX: &str = include_str!("../../resources/shaders/depth_map.vert");
+pub const DEPTH_MAP_FRAGMENT: &str = include_str!("../../resources/shaders/depth_map.frag");
+static DEPTH_MAP_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
 fn getOrInitSimpleShader(gl: GlRef, shaderRef: &OnceLock<ShaderRef>, vertex: &str, fragment: &str) -> ShaderRef {
 	shaderRef.get_or_init(|| {
@@ -48,8 +48,8 @@ pub fn instanceShader(gl: GlRef) -> ShaderRef {
 	getOrInitSimpleShader(gl, &INSTANCE_SHADER_REF, INSTANCE_VERTEX, INSTANCE_FRAGMENT)
 }
 
-pub fn shadowMapShader(gl: GlRef) -> ShaderRef {
-	getOrInitSimpleShader(gl, &SHADOW_MAP_SHADER_REF, SHADOW_MAP_VERTEX, SHADOW_MAP_FRAGMENT)
+pub fn depthMapShader(gl: GlRef) -> ShaderRef {
+	getOrInitSimpleShader(gl, &DEPTH_MAP_SHADER_REF, DEPTH_MAP_VERTEX, DEPTH_MAP_FRAGMENT)
 }
 
 fn destroyShaderRef(shader: &OnceLock<ShaderRef>) {
@@ -63,5 +63,5 @@ pub fn destroyAllShaders() {
 	destroyShaderRef(&SIMPLE_MAT_COLOR_SHADER_REF);
 	destroyShaderRef(&SIMPLE_LIGHT_SHADER_REF);
 	destroyShaderRef(&INSTANCE_SHADER_REF);
-	destroyShaderRef(&SHADOW_MAP_SHADER_REF);
+	destroyShaderRef(&DEPTH_MAP_SHADER_REF);
 }
