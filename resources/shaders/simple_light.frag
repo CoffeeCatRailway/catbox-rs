@@ -1,4 +1,4 @@
-#version 330 core
+#version 460 core
 
 const float LIGHT_DIRECTIONAL = 0.0;
 const float LIGHT_POINT = 1.0;
