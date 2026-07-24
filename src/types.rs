@@ -10,7 +10,7 @@ use crate::graphics::Renderable;
 use crate::graphics::shader::Shader;
 use crate::simulation::{Physical, Solver};
 
-pub type SdlWindowRef = Rc<SdlWindow>;
+pub type SdlWindowRef = Rc<RefCell<SdlWindow>>;
 
 pub type GlRef = Arc<GlowContext>;
 
@@ -31,7 +31,7 @@ pub type PhysicalRef = Arc<RwLock<dyn Physical>>;
 pub type SolverRef = Rc<RefCell<Solver>>;
 
 pub fn newSdlWindowRef(window: SdlWindow) -> SdlWindowRef {
-	Rc::new(window)
+	Rc::new(RefCell::new(window))
 }
 
 pub fn newGlRef(gl: GlowContext) -> GlRef {

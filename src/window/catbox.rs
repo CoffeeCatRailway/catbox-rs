@@ -62,7 +62,6 @@ pub struct CatBox {
 	solver: SolverRef,
 	renderManager: RenderManager,
 	clearColor: [f32; 4],
-	// lastMousePos: Vec2,
 	
 	camera: Camera,
 	projectionMatrix: Mat4,
@@ -98,7 +97,6 @@ impl CatBox {
 			let windowIcon = Surface::from_data(&mut raw, img.width(), img.height(), img.width() * 4, PixelFormat::RGBA32).logErr()?;
 			window.set_icon(windowIcon);
 		}
-		let window = newSdlWindowRef(window);
 		
 		let glContext = window.gl_create_context().logErr()?;
 		
@@ -162,9 +160,7 @@ impl CatBox {
 		
 		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
-		// let simpleMatColorShader = shaders::simpleMatColorShader(gl.clone());
-		let simpleLightShader = shaders::lightSimpleShadowShader(gl.clone());
-		// let instanceShader = shaders::instanceShader(gl.clone()).logErr()?;
+		let lightShader = shaders::lightCascadeShadowShader(gl.clone());
 		
 		let sunLight = Light::Directional(LightProperties {
 			position: Vec3::new(-(PI / 4.0).cos(), -1.0, -(PI / 4.0).sin()),
@@ -177,6 +173,7 @@ impl CatBox {
 			..Default::default()
 		});
 		let mut renderManager = RenderManager::new(gl.clone(), &mut imguiRenderer, sunLight, WIN_WIDTH, WIN_HEIGHT).logErr()?;
+		let window = newSdlWindowRef(window);
 		renderManager.lineRendererMut().enable(true);
 		
 		// let mut addLight = |pos: Vec3, color: Vec3| {
@@ -240,21 +237,21 @@ impl CatBox {
 			include_bytes!("../../resources/textures/default_texture.png")).logErr()?
 		);
 		let material1 = newMaterialRef(Material {
-			shader: simpleLightShader.clone(),
+			shader: lightShader.clone(),
 			color: Vec3::new(99.0, 171.0, 63.0) / 255.0,
 			diffuse: Some(texture1.clone()),
 			specular: Vec3::ONE / 2.0,
 			shininess: 32.0,
 		});
 		let material2 = newMaterialRef(Material {
-			shader: simpleLightShader.clone(),
+			shader: lightShader.clone(),
 			color: Vec3::new(125.0, 56.0, 51.0) / 255.0,
 			diffuse: Some(texture1.clone()),
 			specular: Vec3::ZERO,
 			shininess: 64.0,
 		});
 		let material3 = newMaterialRef(Material {
-			shader: simpleLightShader.clone(),
+			shader: lightShader.clone(),
 			color: Vec3::new(79.0, 164.0, 184.0) / 255.0,
 			diffuse: Some(texture1.clone()),
 			specular: Vec3::ZERO,
@@ -273,7 +270,7 @@ impl CatBox {
 			},
 			mesh: newMeshRef({
 				let mut mesh = Primitives3D::sphereUV(6, 12, scale).buildSimpleMesh(gl.clone());
-				mesh.upload(simpleLightShader.clone()).logErr()?;
+				mesh.upload(lightShader.clone()).logErr()?;
 				mesh
 			}),
 			material: material1.clone(),
@@ -291,7 +288,7 @@ impl CatBox {
 			},
 			mesh: newMeshRef({
 				let mut mesh = Primitives3D::tetrahedron(scale).buildSimpleMesh(gl.clone());
-				mesh.upload(simpleLightShader.clone()).logErr()?;
+				mesh.upload(lightShader.clone()).logErr()?;
 				mesh
 			}),
 			material: material1.clone(),
@@ -302,7 +299,7 @@ impl CatBox {
 		let meshStart = Instant::now();
 		let meshUnitCube = newMeshRef({
 			let mut mesh = Primitives3D::cube(1.0, 1.0, 1.0).buildSimpleMesh(gl.clone());
-			mesh.upload(simpleLightShader.clone()).logErr()?;
+			mesh.upload(lightShader.clone()).logErr()?;
 			mesh
 		});
 		renderManager.addRenderable(newRenderableRef(SimpleRenderable {
@@ -329,7 +326,7 @@ impl CatBox {
 			},
 			mesh: newMeshRef({
 				let mut mesh = Primitives3D::sphereCube(scale, 2).buildSimpleMesh(gl.clone());
-				mesh.upload(simpleLightShader.clone()).logErr()?;
+				mesh.upload(lightShader.clone()).logErr()?;
 				mesh
 			}),
 			material: material1.clone(),
@@ -347,7 +344,7 @@ impl CatBox {
 			},
 			mesh: newMeshRef({
 				let mut mesh = Primitives3D::icosphere(scale, 0).buildSimpleMesh(gl.clone());
-				mesh.upload(simpleLightShader.clone()).logErr()?;
+				mesh.upload(lightShader.clone()).logErr()?;
 				mesh
 			}),
 			material: material1.clone(),
@@ -537,7 +534,7 @@ impl CatBox {
 					self.updateProjectionMatrix();
 				},
 				WindowEvent::CloseRequested => {
-					if window_id == self.window.id() {
+					if window_id == self.window.borrow().id() {
 						self.requestClose();
 					}
 				},
@@ -582,7 +579,7 @@ impl CatBox {
 			return;
 		}
 		
-		self.mouseUtil.set_relative_mouse_mode(&self.window, capture);
+		self.mouseUtil.set_relative_mouse_mode(&self.window.borrow(), capture);
 		
 		let mut imguiConfigFlags = self.imgui.context.io().config_flags();
 		if capture {
@@ -733,7 +730,7 @@ impl CatBox {
 				  itemWidth.end();
 				  ui.separator();
 				  
-				  let windowSize = self.window.size();
+				  let windowSize = self.window.borrow().size();
 				  ui.text(format!("Window size: ({},{})", windowSize.0, windowSize.1));
 				  
 				  let uiWidth = ui.window_width();
@@ -777,7 +774,7 @@ impl CatBox {
 						self.imgui.context.update_platform_windows();
 						self.imgui.context.render_platform_windows_default();
 						// Restore main GL context
-						self.window.gl_make_current(&self.glContext).logErr()?;
+						self.window.borrow().gl_make_current(&self.glContext).logErr()?;
 					}
 				}
 				if wireframe {
@@ -785,7 +782,7 @@ impl CatBox {
 				}
 				gl_check_error!(self.gl);
 				
-				self.window.gl_swap_window();
+				self.window.borrow().gl_swap_window();
 			}
 			
 			// fps counter
@@ -793,7 +790,7 @@ impl CatBox {
 			totalFrames = totalFrames.saturating_add(1);
 			if frameStart >= frameLast + Duration::from_millis(1000) {
 				let newTitle = format!("{} - FPS: {}", WIN_TITLE, fps);
-				Rc::get_mut(&mut self.window).unwrap().set_title(&newTitle).logErr()?;
+				self.window.borrow_mut().set_title(&newTitle).logErr()?;
 				
 				frameLast = frameStart;
 				fps = 0;
