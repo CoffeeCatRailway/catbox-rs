@@ -163,7 +163,7 @@ impl CatBox {
 		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
 		// let simpleMatColorShader = shaders::simpleMatColorShader(gl.clone());
-		let simpleLightShader = shaders::simpleLightShader(gl.clone());
+		let simpleLightShader = shaders::lightSimpleShadowShader(gl.clone());
 		// let instanceShader = shaders::instanceShader(gl.clone()).logErr()?;
 		
 		let sunLight = Light::Directional(LightProperties {

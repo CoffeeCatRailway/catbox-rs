@@ -3,17 +3,17 @@ use crate::graphics::shader::{Shader, ShaderType};
 use crate::LogError;
 use crate::types::{newShaderRef, GlRef, ShaderRef};
 
-pub const SIMPLE_ATTRIB_COLOR_VERTEX: &str = include_str!("../../resources/shaders/simple_attrib_color.vert");
-pub const SIMPLE_ATTRIB_COLOR_FRAGMENT: &str = include_str!("../../resources/shaders/simple_attrib_color.frag");
-static SIMPLE_ATTRIB_COLOR_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
+pub const COLOR_ATTRIBUTE_VERTEX: &str = include_str!("../../resources/shaders/color_attribute.vert");
+pub const COLOR_ATTRIBUTE_FRAGMENT: &str = include_str!("../../resources/shaders/color_attribute.frag");
+static COLOR_ATTRIBUTE_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
-pub const SIMPLE_MAT_COLOR_VERTEX: &str = include_str!("../../resources/shaders/simple_mat_color.vert");
-pub const SIMPLE_MAT_COLOR_FRAGMENT: &str = include_str!("../../resources/shaders/simple_mat_color.frag");
-static SIMPLE_MAT_COLOR_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
+pub const COLOR_MATERIAL_VERTEX: &str = include_str!("../../resources/shaders/color_material.vert");
+pub const COLOR_MATERIAL_FRAGMENT: &str = include_str!("../../resources/shaders/color_material.frag");
+static COLOR_MATERIAL_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
-pub const SIMPLE_LIGHT_VERTEX: &str = include_str!("../../resources/shaders/simple_light.vert");
-pub const SIMPLE_LIGHT_FRAGMENT: &str = include_str!("../../resources/shaders/simple_light.frag");
-static SIMPLE_LIGHT_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
+pub const LIGHT_SIMPLE_SHADOW_VERTEX: &str = include_str!("../../resources/shaders/light_simple_shadow.vert");
+pub const LIGHT_SIMPLE_SHADOW_FRAGMENT: &str = include_str!("../../resources/shaders/light_simple_shadow.frag");
+static LIGHT_SIMPLE_SHADOW_SHADER_REF: OnceLock<ShaderRef> = OnceLock::new();
 
 pub const INSTANCE_VERTEX: &str = include_str!("../../resources/shaders/instance.vert");
 pub const INSTANCE_FRAGMENT: &str = include_str!("../../resources/shaders/instance.frag");
@@ -32,16 +32,16 @@ fn getOrInitSimpleShader(gl: GlRef, shaderRef: &OnceLock<ShaderRef>, vertex: &st
 	}).clone()
 }
 
-pub fn simpleAttribColorShader(gl: GlRef) -> ShaderRef {
-	getOrInitSimpleShader(gl, &SIMPLE_ATTRIB_COLOR_SHADER_REF, SIMPLE_ATTRIB_COLOR_VERTEX, SIMPLE_ATTRIB_COLOR_FRAGMENT)
+pub fn colorAttributeShader(gl: GlRef) -> ShaderRef {
+	getOrInitSimpleShader(gl, &COLOR_ATTRIBUTE_SHADER_REF, COLOR_ATTRIBUTE_VERTEX, COLOR_ATTRIBUTE_FRAGMENT)
 }
 
-pub fn simpleMatColorShader(gl: GlRef) -> ShaderRef {
-	getOrInitSimpleShader(gl, &SIMPLE_MAT_COLOR_SHADER_REF, SIMPLE_MAT_COLOR_VERTEX, SIMPLE_MAT_COLOR_FRAGMENT)
+pub fn colorMaterialShader(gl: GlRef) -> ShaderRef {
+	getOrInitSimpleShader(gl, &COLOR_MATERIAL_SHADER_REF, COLOR_MATERIAL_VERTEX, COLOR_MATERIAL_FRAGMENT)
 }
 
-pub fn simpleLightShader(gl: GlRef) -> ShaderRef {
-	getOrInitSimpleShader(gl, &SIMPLE_LIGHT_SHADER_REF, SIMPLE_LIGHT_VERTEX, SIMPLE_LIGHT_FRAGMENT)
+pub fn lightSimpleShadowShader(gl: GlRef) -> ShaderRef {
+	getOrInitSimpleShader(gl, &LIGHT_SIMPLE_SHADOW_SHADER_REF, LIGHT_SIMPLE_SHADOW_VERTEX, LIGHT_SIMPLE_SHADOW_FRAGMENT)
 }
 
 pub fn instanceShader(gl: GlRef) -> ShaderRef {
@@ -59,9 +59,9 @@ fn destroyShaderRef(shader: &OnceLock<ShaderRef>) {
 }
 
 pub fn destroyAllShaders() {
-	destroyShaderRef(&SIMPLE_ATTRIB_COLOR_SHADER_REF);
-	destroyShaderRef(&SIMPLE_MAT_COLOR_SHADER_REF);
-	destroyShaderRef(&SIMPLE_LIGHT_SHADER_REF);
+	destroyShaderRef(&COLOR_ATTRIBUTE_SHADER_REF);
+	destroyShaderRef(&COLOR_MATERIAL_SHADER_REF);
+	destroyShaderRef(&LIGHT_SIMPLE_SHADOW_SHADER_REF);
 	destroyShaderRef(&INSTANCE_SHADER_REF);
 	destroyShaderRef(&DEPTH_MAP_SHADER_REF);
 }
