@@ -1,5 +1,5 @@
-use glam::{vec2, vec4, Mat4, Quat, Vec2, Vec3};
-use glam::camera::rh::proj::directx::{orthographic, perspective};
+use glam::{vec2, vec4, Mat4, Vec2, Vec3};
+use glam::camera::rh::proj::opengl::{orthographic, perspective};
 use glam::camera::rh::view::{look_at_mat4, look_to_quat};
 use crate::simulation::Transform;
 
@@ -115,11 +115,9 @@ impl Camera {
 		look_at_mat4(self.transform.position, self.transform.position + self.transform.localFront, self.transform.localUp)
 	}
 	
-	pub fn calcFrustumBoundsForView(&self, winWidth: u32, winHeight: u32, view: Mat4) -> (Vec3, Vec3) {
+	pub fn calcFrustumBoundsForView(&self, winWidth: u32, winHeight: u32, view: Mat4, near: f32, far: f32) -> (Vec3, Vec3) {
 		let aspect = winWidth as f32 / winHeight as f32;
 		let fovRad = self.frustum.fov.to_radians();
-		let near = self.frustum.near;
-		let far = self.frustum.far;
 		let hNear = 2.0 * (fovRad / 2.0).tan() * near;
 		let wNear = hNear * aspect;
 		let hFar = 2.0 * (fovRad / 2.0).tan() * far;

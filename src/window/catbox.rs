@@ -1,14 +1,13 @@
 use std::error::Error;
 use std::f32::consts::PI;
-use std::rc::Rc;
 use std::thread;
 use std::time::{Duration, Instant};
 use bool_flags::Flags8;
 use dear_imgui_glow::{GlowRenderer, SimpleTextureMap};
 #[cfg(feature = "multi-viewport")]
 use dear_imgui_glow::multi_viewport as glow_mvp;
-use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, TreeNodeFlags, WindowFlags};
-use glam::{vec3, Mat4, Vec3};
+use dear_imgui_rs::{ConfigFlags, Context as ImguiContext, WindowFlags};
+use glam::Vec3;
 use glow::HasContext;
 use sdl3::event::{Event, WindowEvent};
 use sdl3::keyboard::Keycode;
@@ -26,7 +25,7 @@ use crate::graphics::shaders;
 use crate::simulation::{Solver, Transform};
 use crate::types::{newGlRef, newLightRef, newMaterialRef, newMeshRef, newRenderableRef, newSdlWindowRef, newSolverRef, newTextureRef, GlRef, LightRef, SdlWindowRef, SolverRef};
 use crate::window::InputHelper;
-use crate::window::camera::{Camera, Frustum, Projection};
+use crate::window::camera::{Camera, Frustum};
 
 const F_RUNNING: u8 = 0;
 const F_MOUSE_CAPTURED: u8 = 1;
@@ -62,9 +61,6 @@ pub struct CatBox {
 	solver: SolverRef,
 	renderManager: RenderManager,
 	clearColor: [f32; 4],
-	
-	camera: Camera,
-	projectionMatrix: Mat4,
 }
 
 impl CatBox {
@@ -161,6 +157,7 @@ impl CatBox {
 		// Initialize renderers, shaders and camera
 		info!("Initializing locals");
 		let lightShader = shaders::lightCascadeShadowShader(gl.clone());
+		// let colorMaterialShader = shaders::colorMaterialShader(gl.clone());
 		
 		let sunLight = Light::Directional(LightProperties {
 			position: Vec3::new(-(PI / 4.0).cos(), -1.0, -(PI / 4.0).sin()),
@@ -172,8 +169,21 @@ impl CatBox {
 			
 			..Default::default()
 		});
-		let mut renderManager = RenderManager::new(gl.clone(), &mut imguiRenderer, sunLight, WIN_WIDTH, WIN_HEIGHT).logErr()?;
+		let camera = Camera {
+			frustum: Frustum {
+				// far: 200.0,
+				// fov: 500.0,
+				// fovMax: 10000.0,
+				..Frustum::default()
+			},
+			transform: Transform {
+				position: Vec3::new(0.0, 2.5, 10.0),
+				..Transform::default()
+			},
+			..Camera::default()
+		};
 		let window = newSdlWindowRef(window);
+		let mut renderManager = RenderManager::new(gl.clone(), window.clone(), camera, &mut imguiRenderer, sunLight).logErr()?;
 		renderManager.lineRendererMut().enable(true);
 		
 		// let mut addLight = |pos: Vec3, color: Vec3| {
@@ -181,12 +191,12 @@ impl CatBox {
 		// 		position: pos,
 		//
 		// 		color,
-		// 		ambient: 1.0,
-		// 		diffuse: 1.0,
+		// 		ambient: 0.85,
+		// 		diffuse: 0.9,
 		// 		specular: 1.0,
-		// 		intensity: 1.0,
 		//
-		// 		radius: 5.0,
+		// 		radius: 3.0,
+		// 		..Default::default()
 		// 	})));
 		// 	renderManager.addRenderable(newRenderableRef(SimpleRenderable {
 		// 		transform: {
@@ -196,11 +206,11 @@ impl CatBox {
 		// 		},
 		// 		mesh: newMeshRef({
 		// 			let mut mesh = Primitives3D::cube(0.25, 0.25, 0.25).buildSimpleMesh(gl.clone());
-		// 			mesh.upload(simpleLightShader.clone()).logErr().unwrap();
+		// 			mesh.upload(colorMaterialShader.clone()).logErr().unwrap();
 		// 			mesh
 		// 		}),
 		// 		material: newMaterialRef(Material {
-		// 			shader: simpleMatColorShader.clone(),
+		// 			shader: colorMaterialShader.clone(),
 		// 			color,
 		// 			diffuse: None,
 		// 			specular: Vec3::ZERO,
@@ -208,29 +218,15 @@ impl CatBox {
 		// 		}),
 		// 	}));
 		// };
-		// addLight(Vec3::new(-10.0, 0.5, 3.0), Vec3::X);
-		// addLight(Vec3::new(0.0, 0.5, 3.0), Vec3::Y);
-		// addLight(Vec3::new(10.0, 0.5, 3.0), Vec3::Z);
-		// addLight(Vec3::new(-10.0, 0.5, -3.0), Vec3::new(0.0, 1.0, 1.0));
-		// addLight(Vec3::new(0.0, 0.5, -3.0), Vec3::new(1.0, 0.0, 1.0));
-		// addLight(Vec3::new(10.0, 0.5, -3.0), Vec3::new(1.0, 1.0, 0.0));
+		// addLight(Vec3::new(-10.0, 1.0, 4.0), Vec3::X);
+		// addLight(Vec3::new(0.0, 1.0, 4.0), Vec3::Y);
+		// addLight(Vec3::new(10.0, 1.0, 4.0), Vec3::Z);
+		// addLight(Vec3::new(-10.0, 1.0, -4.0), Vec3::new(0.0, 1.0, 1.0));
+		// addLight(Vec3::new(0.0, 1.0, -4.0), Vec3::new(1.0, 0.0, 1.0));
+		// addLight(Vec3::new(10.0, 1.0, -4.0), Vec3::new(1.0, 1.0, 0.0));
 		
 		let solver = newSolverRef(Solver::new().logErr()?);
 		// renderManager.addRenderable(solver.clone());
-		
-		let camera = Camera {
-			frustum: Frustum {
-				// far: 200.0,
-				// fov: 500.0,
-				// fovMax: 10000.0,
-				..Frustum::default()
-			},
-			transform: Transform {
-				position: vec3(0.0, 2.5, 10.0),
-				..Transform::default()
-			},
-			..Camera::default()
-		};
 		
 		let texture1 = newTextureRef(Texture::fromBytes(
 			gl.clone(),
@@ -472,7 +468,7 @@ impl CatBox {
 		// let ballRenderable = newRenderableRef(ballRenderable);
 		// renderManager.addRenderable(ballRenderable.clone());
 		
-		let mut catbox = CatBox {
+		Ok(CatBox {
 			width: WIN_WIDTH,
 			height: WIN_HEIGHT,
 			flags,
@@ -491,22 +487,7 @@ impl CatBox {
 			solver,
 			renderManager,
 			clearColor: [79.0 / 255.0, 104.0 / 255.0, 133.0 / 255.0, 1.0],
-			// lastMousePos: Vec2::ZERO,
-			
-			camera,
-			projectionMatrix: Mat4::IDENTITY,
-		};
-		catbox.updateProjectionMatrix();
-		Ok(catbox)
-	}
-	
-	fn updateProjectionMatrix(&mut self) {
-		let windowSize = self.window.size();
-		let windowAspect = windowSize.0 as f32 / windowSize.1 as f32;
-		
-		let projection = Projection::Perspective(windowAspect);
-		// let projection = Projection::Orthographic(windowAspect * -1.0, windowAspect * 1.0, -1.0, 1.0);
-		self.projectionMatrix = self.camera.getProjectionMatrix(projection);
+		})
 	}
 	
 	fn requestClose(&mut self) {
@@ -531,7 +512,7 @@ impl CatBox {
 					gl_check_error!(self.gl);
 					self.width = width as u32;
 					self.height = height as u32;
-					self.updateProjectionMatrix();
+					self.renderManager.updateProjectionMatrix();
 				},
 				WindowEvent::CloseRequested => {
 					if window_id == self.window.borrow().id() {
@@ -540,19 +521,9 @@ impl CatBox {
 				},
 				_ => {},
 			},
-			Event::MouseWheel { y, .. } => {
-				if !self.imgui.context.io().want_capture_mouse() {
-					self.camera.frustum.zoom(-y * 1.0);
-					self.updateProjectionMatrix();
-				}
-			},
-			Event::MouseMotion { xrel, yrel, .. } => {
-				if self.flags.get(F_MOUSE_CAPTURED) {
-					self.camera.turn(xrel, -yrel);
-				}
-			}
 			_ => {},
 		}
+		self.renderManager.inputMouse(event, self.imgui.context.io().want_capture_mouse(), self.flags.get(F_MOUSE_CAPTURED));
 	}
 	
 	fn setWireFrame(&mut self, wireframe: bool) {
@@ -609,24 +580,7 @@ impl CatBox {
 		
 		// Camera WASD
 		if mouseCaptured && !self.imgui.context.io().want_capture_keyboard() {
-			if self.inputHelper.isKeyPressed(Keycode::W) {
-				self.camera.transform.translateLocalForward(10.0 * dt);
-			}
-			if self.inputHelper.isKeyPressed(Keycode::S) {
-				self.camera.transform.translateLocalForward(-10.0 * dt);
-			}
-			if self.inputHelper.isKeyPressed(Keycode::A) {
-				self.camera.transform.translateLocalRight(-10.0 * dt);
-			}
-			if self.inputHelper.isKeyPressed(Keycode::D) {
-				self.camera.transform.translateLocalRight(10.0 * dt);
-			}
-			if self.inputHelper.isKeyPressed(Keycode::Space) {
-				self.camera.transform.translateGlobal(Vec3::Y * 10.0 * dt);
-			}
-			if self.inputHelper.isKeyPressed(Keycode::LCtrl) {
-				self.camera.transform.translateGlobal(Vec3::Y * -10.0 * dt);
-			}
+			self.renderManager.inputKeyboard(&self.inputHelper, dt);
 		}
 	}
 	
@@ -720,14 +674,6 @@ impl CatBox {
 				  if ui.is_item_hovered() {
 					  ui.tooltip_text("Press 2");
 				  }
-				  
-				  ui.text(format!("Camera: ({:.2}, {:.2}, {:.2})", self.camera.transform.position.x, self.camera.transform.position.y, self.camera.transform.position.z));
-				  let uiWidth = ui.window_width();
-				  let itemWidth = ui.push_item_width(uiWidth * 0.6);
-				  if ui.slider_f32("FOV/Zoom", &mut self.camera.frustum.fov, self.camera.frustum.fovMin, self.camera.frustum.fovMax) {
-					  uiUpdate = true;
-				  }
-				  itemWidth.end();
 				  ui.separator();
 				  
 				  let windowSize = self.window.borrow().size();
@@ -746,7 +692,6 @@ impl CatBox {
 			if uiUpdate {
 				self.captureMouse(mouseCaptured);
 				self.setWireFrame(wireframe);
-				self.updateProjectionMatrix();
 			}
 			
 			let drawData = self.imgui.context.render();
@@ -757,7 +702,7 @@ impl CatBox {
 				self.gl.clear_color(self.clearColor[0], self.clearColor[1], self.clearColor[2], self.clearColor[3]);
 				gl_check_error!(self.gl);
 				
-				self.renderManager.draw(self.width, self.height, &self.projectionMatrix, dt, &self.camera).logErr()?;
+				self.renderManager.draw(dt).logErr()?;
 				
 				if wireframe {
 					self.gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);

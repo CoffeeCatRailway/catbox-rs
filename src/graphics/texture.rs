@@ -10,6 +10,7 @@ static DEFAULT_TEXTURE_REF: OnceLock<TextureRef> = OnceLock::new();
 
 const F_DELETED: u8 = 0;
 const F_DEPTH_MAP: u8 = 1;
+const F_ARRAY_TEXTURE: u8 = 2;
 
 #[derive(Debug, Clone)]
 pub struct Texture {
@@ -145,6 +146,15 @@ impl TextureBuilder {
 		}
 	}
 	
+	fn depthValueAndType(&self, component: DepthComponent) -> (i32, u32) {
+		match component {
+			DepthComponent::U16 => (glow::DEPTH_COMPONENT16 as i32, glow::UNSIGNED_INT),
+			DepthComponent::U24 => (glow::DEPTH_COMPONENT24 as i32, glow::UNSIGNED_INT),
+			DepthComponent::U32 => (glow::DEPTH_COMPONENT32 as i32, glow::UNSIGNED_INT),
+			DepthComponent::F32 => (glow::DEPTH_COMPONENT32F as i32, glow::FLOAT),
+		}
+	}
+	
 	pub fn createDepthMap(self, width: u32, height: u32, depthComponent: DepthComponent) -> Result<Texture, String> {
 		unsafe {
 			let fbo = self.gl.create_framebuffer().logErr()?;
@@ -156,12 +166,7 @@ impl TextureBuilder {
 			gl_check_error!(self.gl);
 			info!("Creating depth map, fbo: {}, texture: {}", fbo.0, texture.0);
 			
-			let (depthValue, depthType) = match depthComponent {
-				DepthComponent::U16 => (glow::DEPTH_COMPONENT16 as i32, glow::UNSIGNED_INT),
-				DepthComponent::U24 => (glow::DEPTH_COMPONENT24 as i32, glow::UNSIGNED_INT),
-				DepthComponent::U32 => (glow::DEPTH_COMPONENT32 as i32, glow::UNSIGNED_INT),
-				DepthComponent::F32 => (glow::DEPTH_COMPONENT32F as i32, glow::FLOAT),
-			};
+			let (depthValue, depthType) = self.depthValueAndType(depthComponent);
 			self.gl.tex_image_2d(glow::TEXTURE_2D, 0, depthValue, width as i32, height as i32, 0, glow::DEPTH_COMPONENT, depthType, PixelUnpackData::Slice(None));
 			gl_check_error!(self.gl);
 			
@@ -199,6 +204,57 @@ impl TextureBuilder {
 			})
 		}
 	}
+	
+	pub fn createDepthMapArray(self, width: u32, height: u32, depth: u32, depthComponent: DepthComponent) -> Result<Texture, String> {
+		unsafe {
+			let fbo = self.gl.create_framebuffer().logErr()?;
+			self.gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
+			gl_check_error!(self.gl);
+			
+			let textures = self.gl.create_texture().logErr()?;
+			self.gl.bind_texture(glow::TEXTURE_2D_ARRAY, Some(textures));
+			gl_check_error!(self.gl);
+			info!("Creating depth map array, fbo: {}, texture: {}", fbo.0, textures.0);
+			
+			let (depthValue, depthType) = self.depthValueAndType(depthComponent);
+			self.gl.tex_image_3d(glow::TEXTURE_2D_ARRAY, 0, depthValue, width as i32, height as i32, depth as i32 + 1, 0, glow::DEPTH_COMPONENT, depthType, PixelUnpackData::Slice(None));
+			gl_check_error!(self.gl);
+			
+			let filter = self.filterValue();
+			let wrap = self.wrapValue();
+			
+			self.gl.tex_parameter_i32(glow::TEXTURE_2D_ARRAY, glow::TEXTURE_MIN_FILTER, filter);
+			self.gl.tex_parameter_i32(glow::TEXTURE_2D_ARRAY, glow::TEXTURE_MAG_FILTER, filter);
+			self.gl.tex_parameter_i32(glow::TEXTURE_2D_ARRAY, glow::TEXTURE_WRAP_S, wrap);
+			self.gl.tex_parameter_i32(glow::TEXTURE_2D_ARRAY, glow::TEXTURE_WRAP_T, wrap);
+			self.gl.tex_parameter_i32(glow::TEXTURE_2D_ARRAY, glow::TEXTURE_COMPARE_FUNC, glow::LEQUAL as i32);
+			self.gl.tex_parameter_i32(glow::TEXTURE_2D_ARRAY, glow::TEXTURE_COMPARE_MODE, glow::COMPARE_REF_TO_TEXTURE as i32);
+			self.gl.tex_parameter_f32_slice(glow::TEXTURE_2D_ARRAY, glow::TEXTURE_BORDER_COLOR, &[1.0, 1.0, 1.0, 1.0]);
+			gl_check_error!(self.gl);
+			
+			self.gl.framebuffer_texture(glow::FRAMEBUFFER, glow::DEPTH_ATTACHMENT, Some(textures), 0);
+			gl_check_error!(self.gl);
+			
+			if self.gl.check_framebuffer_status(glow::FRAMEBUFFER) != glow::FRAMEBUFFER_COMPLETE {
+				return Err(String::from("Depth map fbo incomplete!"));
+			}
+			
+			self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+			gl_check_error!(self.gl);
+			
+			let mut flags = Flags8::none();
+			flags.set(F_DEPTH_MAP);
+			flags.set(F_ARRAY_TEXTURE);
+			Ok(Texture {
+				gl: self.gl,
+				flags,
+				handleTex: Some(textures),
+				handleFBO: Some(fbo),
+				width,
+				height,
+			})
+		}
+	}
 }
 
 impl Texture {
@@ -219,6 +275,11 @@ impl Texture {
 	/// Quick create depth map
 	pub fn createDepthMap(gl: GlRef, width: u32, height: u32, depthComponent: DepthComponent) -> Result<Texture, String> {
 		TextureBuilder::new(gl).filter(FilterMode::Nearest).wrap(WrapMode::ClampToBorder).createDepthMap(width, height, depthComponent)
+	}
+	
+	/// Quick create depth map array
+	pub fn createDepthMapArray(gl: GlRef, width: u32, height: u32, depth: u32, depthComponent: DepthComponent) -> Result<Texture, String> {
+		TextureBuilder::new(gl).filter(FilterMode::Nearest).wrap(WrapMode::ClampToBorder).createDepthMapArray(width, height, depth, depthComponent)
 	}
 	
 	pub fn builder(gl: GlRef) -> TextureBuilder {
@@ -242,7 +303,11 @@ impl Texture {
 		}
 		unsafe {
 			self.gl.active_texture(glow::TEXTURE0 + active);
-			self.gl.bind_texture(glow::TEXTURE_2D, self.handleTex);
+			if self.flags.get(F_ARRAY_TEXTURE) {
+				self.gl.bind_texture(glow::TEXTURE_2D_ARRAY, self.handleTex);
+			} else {
+				self.gl.bind_texture(glow::TEXTURE_2D, self.handleTex);
+			}
 			gl_check_error!(self.gl);
 		}
 	}
