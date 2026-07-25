@@ -144,7 +144,6 @@ pub trait Renderable {
 const F_DESTROYED: u8 = 0;
 
 const SHADOW_MAP_RES: u32 = 1024 * 1;
-const SHADOW_CASCADE_DEPTH: u32 = 4;
 
 pub struct RenderManager {
 	flags: Flags8,
@@ -160,7 +159,7 @@ pub struct RenderManager {
 	sunLight: LightRef,
 	
 	shadowMap: TextureRef,
-	shadowMapId: TextureId,
+	// shadowMapId: TextureId,
 	shadowMapShader: ShaderRef,
 	shadowCascadeLevels: Vec<f32>,
 	lightSpaceMatUBO: NativeBuffer,
@@ -172,20 +171,21 @@ impl RenderManager {
 		lineRenderer.enable(false);
 		lineRenderer.setLineWidth(1.5);
 		
-		let shadowMap = Texture::createDepthMapArray(gl.clone(), SHADOW_MAP_RES, SHADOW_MAP_RES, SHADOW_CASCADE_DEPTH, DepthComponent::U16).logErr()?;
-		let shadowMapId = imguiRenderer.texture_map_mut().register_texture(shadowMap.handleTex.unwrap(), SHADOW_MAP_RES, SHADOW_MAP_RES, TextureFormat::Alpha8);
-		let shadowMapShader = shaders::depthMapArrayShader(gl.clone());
-		
 		// calculate cascade planes for shadows
+		// let maxCascade: u32 = 4;
 		// let mut shadowCascadeLevels = Vec::new();
-		// for i in 1..=SHADOW_CASCADE_DEPTH {
+		// for i in 1..=maxCascade {
 		// 	let bias = 1.0; // 1 = uniform, >1 = bunched close
-		// 	let p = (i as f32 / SHADOW_CASCADE_DEPTH as f32).powf(bias) / 2.0;
+		// 	let p = (i as f32 / maxCascade as f32).powf(bias) / 2.0;
 		// 	shadowCascadeLevels.push(camera.frustum.far * p);
 		// 	// info!("cascade layer {}: {:?}", i, shadowCascadeLevels.last());
 		// }
 		let farPlane = camera.frustum.far;
 		let shadowCascadeLevels = vec![farPlane / 8.0, farPlane / 6.0, farPlane / 4.0, farPlane / 2.0];
+		
+		let shadowMap = Texture::createDepthMapArray(gl.clone(), SHADOW_MAP_RES, SHADOW_MAP_RES, (shadowCascadeLevels.len() + 1) as u32, DepthComponent::U16).logErr()?;
+		// let shadowMapId = imguiRenderer.texture_map_mut().register_texture(shadowMap.handleTex.unwrap(), SHADOW_MAP_RES, SHADOW_MAP_RES, TextureFormat::Alpha8);
+		let shadowMapShader = shaders::depthMapArrayShader(gl.clone());
 		
 		let lightSpaceMatUBO = unsafe {
 			let ubo = gl.create_buffer().logErr()?;
@@ -210,7 +210,7 @@ impl RenderManager {
 			sunLight: newLightRef(sunLight),
 			
 			shadowMap: newTextureRef(shadowMap),
-			shadowMapId,
+			// shadowMapId,
 			shadowMapShader,
 			shadowCascadeLevels,
 			lightSpaceMatUBO,
@@ -293,6 +293,13 @@ impl RenderManager {
 			maxZ *= zMult;
 		}
 		
+		let worldTexelX = (maxX - minX) / SHADOW_MAP_RES as f32;
+		let worldTexelY = (maxY - minY) / SHADOW_MAP_RES as f32;
+		minX = (minX / worldTexelX).floor() * worldTexelX;
+		maxX = (maxX / worldTexelX).floor() * worldTexelX;
+		minY = (minY / worldTexelY).floor() * worldTexelY;
+		maxY = (maxY / worldTexelY).floor() * worldTexelY;
+		
 		let lightProj = orthographic(minX, maxX, minY, maxY, minZ, maxZ);
 		lightProj * lightView
 		
@@ -342,7 +349,7 @@ impl RenderManager {
 			self.gl.clear(glow::DEPTH_BUFFER_BIT);
 			gl_check_error!(self.gl);
 			
-			self.gl.cull_face(glow::FRONT);
+			// self.gl.cull_face(glow::FRONT);
 			let shader = self.shadowMapShader.read().unwrap();
 			shader.bind();
 			// for i in 0..lightSpaceMats.len() {
@@ -355,7 +362,7 @@ impl RenderManager {
 					mesh.draw();
 				}
 			}
-			self.gl.cull_face(glow::BACK);
+			// self.gl.cull_face(glow::BACK);
 			
 			// render pass
 			self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
@@ -541,9 +548,5 @@ impl RenderManager {
 	
 	pub fn shadowMap(&self) -> &TextureRef {
 		&self.shadowMap
-	}
-	
-	pub fn shadowMapId(&self) -> &TextureId {
-		&self.shadowMapId
 	}
 }
