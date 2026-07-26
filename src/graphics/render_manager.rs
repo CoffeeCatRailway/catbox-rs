@@ -172,7 +172,7 @@ impl RenderManager {
 		lineRenderer.setLineWidth(1.5);
 		
 		// calculate cascade planes for shadows
-		// let maxCascade: u32 = 4;
+		// let maxCascade: u32 = 3;
 		// let mut shadowCascadeLevels = Vec::new();
 		// for i in 1..=maxCascade {
 		// 	let bias = 1.0; // 1 = uniform, >1 = bunched close
@@ -181,7 +181,7 @@ impl RenderManager {
 		// 	// info!("cascade layer {}: {:?}", i, shadowCascadeLevels.last());
 		// }
 		let farPlane = camera.frustum.far;
-		let shadowCascadeLevels = vec![farPlane / 8.0, farPlane / 6.0, farPlane / 4.0, farPlane / 2.0];
+		let shadowCascadeLevels = vec![farPlane / 6.0, farPlane / 4.0, farPlane / 2.0];
 		
 		let shadowMap = Texture::createDepthMapArray(gl.clone(), SHADOW_MAP_RES, SHADOW_MAP_RES, (shadowCascadeLevels.len() + 1) as u32, DepthComponent::U16).logErr()?;
 		// let shadowMapId = imguiRenderer.texture_map_mut().register_texture(shadowMap.handleTex.unwrap(), SHADOW_MAP_RES, SHADOW_MAP_RES, TextureFormat::Alpha8);
