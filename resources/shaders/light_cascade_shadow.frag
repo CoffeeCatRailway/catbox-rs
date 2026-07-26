@@ -45,9 +45,9 @@ in vec2 f_uv;
 
 out vec4 o_color;
 
-float calcShadow(vec3 posWorldSpace, vec3 normal, vec3 lightDir) {
+float calcShadow(vec3 normal, vec3 lightDir) {
     // select cascade layer
-    vec4 posViewSpace = u_viewMatrix * vec4(posWorldSpace, 1.0);
+    vec4 posViewSpace = u_viewMatrix * vec4(f_position, 1.0);
     float depth = abs(posViewSpace.z);
     int layer = u_cascadeCount;
     for (int i = 0; i < u_cascadeCount; i++) {
@@ -58,7 +58,7 @@ float calcShadow(vec3 posWorldSpace, vec3 normal, vec3 lightDir) {
     }
 
     // perspective divide and transform to 0,1
-    vec4 posLightSpace = u_lightSpaceMats[layer] * vec4(posWorldSpace, 1.0);
+    vec4 posLightSpace = u_lightSpaceMats[layer] * vec4(f_position, 1.0);
     vec3 projCoords = (posLightSpace.xyz / posLightSpace.w) * 0.5 + 0.5;
 
     float currentDepth = projCoords.z;
@@ -74,7 +74,9 @@ float calcShadow(vec3 posWorldSpace, vec3 normal, vec3 lightDir) {
     } else {
         bias *= 1.0 / (u_cascadePlaneDists[layer] * biasMod);
     }
-
+    
+//    float pcfDepth = texture(u_shadowMap, vec3(projCoords.xy, layer)).r;
+//    float shadow = (currentDepth - bias) < pcfDepth ? SHADOW_STRENGTH : 0.0;
     // PCF
     float shadow = 0.0;
     vec2 shadowTexelSize = 1.0 / vec2(textureSize(u_shadowMap, 0));
@@ -111,7 +113,7 @@ vec3 calcLight(Light light, vec3 normal, vec3 viewDir, vec3 matDiffuse) {
 //    vec3 result = ambient + diffuse + specular;
 
     // shadow
-    float shadow = calcShadow(f_position, normal, lightDir);
+    float shadow = calcShadow(normal, lightDir);
     vec3 result = ambient + shadow * (diffuse + specular);
 
     if (light.position.w != LIGHT_DIRECTIONAL) {
@@ -127,6 +129,17 @@ vec3 calcLight(Light light, vec3 normal, vec3 viewDir, vec3 matDiffuse) {
 
 void main() {
     vec3 matDiffuse = texture(u_material.diffuse, f_uv).rgb * u_material.color;
+//    vec4 posViewSpace = u_viewMatrix * vec4(f_position, 1.0);
+//    float depth = abs(posViewSpace.z);
+//    int layer = u_cascadeCount;
+//    for (int i = 0; i < u_cascadeCount; i++) {
+//        if (depth < u_cascadePlaneDists[i]) {
+//            layer = i;
+//            break;
+//        }
+//    }
+//    matDiffuse *= float(layer) / float(u_cascadeCount);
+    
 //    vec3 normal = normalize(f_normal);
     vec3 normal = normalize(cross(dFdx(f_position), dFdy(f_position)));
     vec3 viewDir = normalize(u_viewPos - f_position);
